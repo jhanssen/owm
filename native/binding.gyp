@@ -13,7 +13,8 @@
 	    }]
 	],
 	"sources": [
-	    "cppsrc/main.cc"
+	    "cppsrc/main.cc",
+	    "cppsrc/owm.cc"
 	],
 	'include_dirs': [
 	    "<!@(node -p \"require('node-addon-api').include\")"
