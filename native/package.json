@@ -1,20 +1,21 @@
 {
-    "name": "owm-native",
-    "version": "1.0.0",
-    "description": "",
-    "main": "src/index.js",
-    "gypfile": true,
-    "scripts": {
-	"build": "node-gyp rebuild",
-	"clean": "node-gyp clean"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "MIT",
-    "devDependencies": {
-	"node-gyp": "^6.0.0"
-    },
-    "dependencies": {
-	"node-addon-api": "^1.7.1"
-    }
+   "name": "owm-native",
+   "version": "1.0.0",
+   "description": "",
+   "main": "src/index.js",
+   "gypfile": true,
+   "scripts": {
+      "build": "node-gyp rebuild",
+      "commands": "node-gyp configure -- -f compile_commands_json",
+      "clean": "node-gyp clean"
+   },
+   "keywords": [],
+   "author": "",
+   "license": "MIT",
+   "devDependencies": {
+      "node-gyp": "^6.0.0"
+   },
+   "dependencies": {
+      "node-addon-api": "^1.7.1"
+   }
 }
