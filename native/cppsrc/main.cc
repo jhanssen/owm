@@ -15,39 +15,56 @@ struct Data
     owm::Stack<owm::Request> requestPool;
     std::vector<owm::Request*> requests;
     int wakeup[2];
+    Napi::ThreadSafeFunction tsfn;
 };
 
 static Data data;
 
-void Start(const Napi::CallbackInfo& info)
+Napi::Value Start(const Napi::CallbackInfo& info)
 {
-    if (data.started)
-        return;
-
     auto env = info.Env();
 
+    Napi::Promise::Deferred* deferred = new Napi::Promise::Deferred(env);
+    if (data.started) {
+        deferred->Reject(Napi::String::New(env, "owm already started"));
+        auto promise = deferred->Promise();
+        delete deferred;
+        return promise;
+    }
     if (!info[0].IsFunction()) {
         throw Napi::TypeError::New(env, "First argument needs to be a callback function");
     }
 
+    std::string display;
+    if (info[1].IsString()) {
+        display = info[1].As<Napi::String>();
+    }
+
     data.started = true;
-    Napi::ThreadSafeFunction tsfn = Napi::ThreadSafeFunction::New(env,
-                                                                  info[0].As<Napi::Function>(),
-                                                                  "owm callback",
-                                                                  0,              // unlimited queue
-                                                                  1,              // number of threads using this
-                                                                  [](Napi::Env) { // finalizer
-                                                                      data.thread.join();
-                                                                  });
+    data.tsfn = Napi::ThreadSafeFunction::New(env,
+                                              info[0].As<Napi::Function>(),
+                                              "owm callback",
+                                              0,              // unlimited queue
+                                              1,              // number of threads using this
+                                              [](Napi::Env) { // finalizer
+                                                  data.thread.join();
+                                              });
 
     int ret = pipe2(data.wakeup, O_NONBLOCK);
     if (ret == -1) {
         // so, so bad
-        return;
+        deferred->Reject(Napi::String::New(env, "unable to pipe2()"));
+        auto promise = deferred->Promise();
+        delete deferred;
+        return promise;
     }
 
+    auto promise = deferred->Promise();
+
     const int wakeupfd = data.wakeup[0];
-    data.thread = std::thread([wakeupfd, &tsfn]() {
+    data.thread = std::thread([wakeupfd, display, deferred, loop{uv_default_loop()}](){
+        owm::RunLater<std::function<void(const std::string&)> > runLater(loop);
+
         int epoll = epoll_create1(0);
 
         epoll_event event;
@@ -63,8 +80,14 @@ void Start(const Napi::CallbackInfo& info)
             wm.responsePool.release(resp);
         };
 
+        auto reject = [deferred, &runLater](const char* r) {
+            runLater.call([deferred](const std::string& reason) {
+                //deferred->Reject(env, Napi::String::New(env, "owm already started"));
+            }, r);
+        };
+
         int defaultScreen;
-        wm.conn = xcb_connect(nullptr, &defaultScreen);
+        wm.conn = xcb_connect(display.empty() ? nullptr : display.c_str(), &defaultScreen);
         if (!wm.conn) { // boo
             return;
         }
@@ -145,7 +168,7 @@ void Start(const Napi::CallbackInfo& info)
                         xcb_generic_event_t *event = xcb_poll_for_event(wm.conn);
                         if (!event)
                             break;
-                        owm::handleXcb(wm, tsfn, event);
+                        owm::handleXcb(wm, data.tsfn, event);
                     }
                 } else if (events[i].data.fd == wakeupfd) {
                     // wakeup!
@@ -158,7 +181,7 @@ void Start(const Napi::CallbackInfo& info)
                         for (auto req : requests) {
                             auto resp = wm.responsePool.acquire();
                             resp->type = owm::Response::NewWindow;
-                            auto status = tsfn.BlockingCall(resp, callback);
+                            auto status = data.tsfn.BlockingCall(resp, callback);
                             if (status != napi_ok) {
                                 // error?
                             }
@@ -171,7 +194,7 @@ void Start(const Napi::CallbackInfo& info)
             }
         }
 
-        tsfn.Release();
+        data.tsfn.Release();
     });
 
     auto cmd = data.requestPool.acquire();
@@ -181,6 +204,8 @@ void Start(const Napi::CallbackInfo& info)
     data.requests.push_back(cmd);
     locker.unlock();
     data.cond.notify_one();
+
+    return promise;
 }
 
 void Stop(const Napi::CallbackInfo& info)
