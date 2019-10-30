@@ -99,25 +99,22 @@ void Stack<T, Count>::release(T* cmd)
     taken[entries.begin() - cmd] = false;
 }
 
-template<typename Func>
 struct RunLater
 {
-    RunLater(uv_loop_t* loop)
-        : async(new uv_async_t)
+    RunLater()
+        : created(std::this_thread::get_id())
     {
-        uv_async_init(loop, async.get(), callback);
-        async->data = this;
+        uv_async_init(uv_default_loop(), &async, callback);
+        async.data = this;
     }
 
     ~RunLater()
     {
-        if (async) {
-            async->data = nullptr;
-            uv_close(reinterpret_cast<uv_handle_t*>(async.get()), nullptr);
-        }
+        assert(std::this_thread::get_id() == created);
+        uv_close(reinterpret_cast<uv_handle_t*>(&async), nullptr);
     }
 
-    template<typename ...Args>
+    template<typename Func, typename ...Args>
     void call(Func&& func, Args&& ...args)
     {
         auto tuple = std::make_tuple(std::forward<Args>(args)...);
@@ -125,7 +122,7 @@ struct RunLater
         funcs.push_back([tuple{std::move(tuple)}, func{std::move(func)}]() {
             std::apply(func, tuple);
         });
-        uv_async_send(async.get());
+        uv_async_send(&async);
     }
 
 private:
@@ -145,7 +142,8 @@ private:
 private:
     std::mutex mutex;
     std::vector<std::function<void()> > funcs;
-    std::unique_ptr<uv_async_t> async;
+    uv_async_t async;
+    std::thread::id created;
 
     RunLater(const RunLater&) = delete;
     RunLater& operator=(const RunLater&) = delete;
