@@ -12,6 +12,7 @@
 #include <array>
 #include <vector>
 #include <mutex>
+#include <memory>
 #include <thread>
 #include <variant>
 
@@ -153,11 +154,11 @@ private:
 };
 
 // needs to be constructed in the right thread, can be resolved or rejected in any thread
-class ThreadSafePromise
+class ThreadSafePromise : public std::enable_shared_from_this<ThreadSafePromise>
 {
 public:
     // Non-thread safe, these need to be called in the js thread
-    ThreadSafePromise(napi_env env);
+    ThreadSafePromise(napi_env env, const std::shared_ptr<Napi::AsyncContext>& c);
     ~ThreadSafePromise();
 
     Napi::Promise Promise() const { return deferred.Promise(); }
@@ -172,6 +173,7 @@ private:
 
 private:
     Napi::Promise::Deferred deferred;
+    std::shared_ptr<Napi::AsyncContext> ctx;
     mutable uv_async_t async;
     mutable std::mutex mutex;
     mutable std::function<void()> run;
@@ -183,8 +185,8 @@ private:
     ThreadSafePromise& operator=(ThreadSafePromise&&) = delete;
 };
 
-inline ThreadSafePromise::ThreadSafePromise(napi_env env)
-    : deferred(env), created(std::this_thread::get_id())
+inline ThreadSafePromise::ThreadSafePromise(napi_env env, const std::shared_ptr<Napi::AsyncContext>& c)
+    : deferred(env), ctx(c), created(std::this_thread::get_id())
 {
     uv_async_init(uv_default_loop(), &async, callback);
     async.data = this;
@@ -192,6 +194,7 @@ inline ThreadSafePromise::ThreadSafePromise(napi_env env)
 
 inline ThreadSafePromise::~ThreadSafePromise()
 {
+    assert(created == std::this_thread::get_id());
     uv_close(reinterpret_cast<uv_handle_t*>(&async), nullptr);
 }
 
@@ -202,11 +205,15 @@ inline void ThreadSafePromise::Resolve(const Variant& value) const
         return;
     }
 
+    auto ptr = shared_from_this();
+    auto c = std::move(ctx);
+
     std::scoped_lock locker(mutex);
-    run = [value, this]() {
-        auto env = deferred.Env();
+    run = [value, ptr, c]() {
+        auto env = ptr->deferred.Env();
         Napi::HandleScope scope(env);
-        deferred.Resolve(fromVariant(deferred.Env(), value));
+        Napi::CallbackScope callback(env, *c);
+        ptr->deferred.Resolve(fromVariant(env, value));
     };
     uv_async_send(&async);
 }
@@ -218,11 +225,15 @@ inline void ThreadSafePromise::Reject(const Variant& value) const
         return;
     }
 
+    auto ptr = shared_from_this();
+    auto c = std::move(ctx);
+
     std::scoped_lock locker(mutex);
-    run = [value, this]() {
-        auto env = deferred.Env();
+    run = [value, ptr, c]() {
+        auto env = ptr->deferred.Env();
         Napi::HandleScope scope(env);
-        deferred.Reject(fromVariant(env, value));
+        Napi::CallbackScope callback(env, *c);
+        ptr->deferred.Reject(fromVariant(env, value));
     };
     uv_async_send(&async);
 }

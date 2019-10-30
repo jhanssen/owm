@@ -24,7 +24,8 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 {
     auto env = info.Env();
 
-    std::shared_ptr<owm::ThreadSafePromise> deferred = std::make_shared<owm::ThreadSafePromise>(env);
+    std::shared_ptr<Napi::AsyncContext> ctx = std::make_shared<Napi::AsyncContext>(env, "ThreadSafePromise");
+    std::shared_ptr<owm::ThreadSafePromise> deferred = std::make_shared<owm::ThreadSafePromise>(env, ctx);
     if (data.started) {
         deferred->Reject("owm already started");
         return deferred->Promise();
@@ -59,9 +60,6 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
     const int wakeupfd = data.wakeup[0];
     data.thread = std::thread([wakeupfd, display, deferred, loop{uv_default_loop()}](){
-        owm::RunLater<std::function<void(const std::string&)> > rejectLater(loop);
-        owm::RunLater<std::function<void()> > resolveLater(loop);
-
         int epoll = epoll_create1(0);
 
         epoll_event event;
@@ -77,25 +75,10 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             wm.responsePool.release(resp);
         };
 
-        auto resolve = [deferred, &resolveLater]() {
-            resolveLater.call([deferred]() {
-                auto env = deferred->Env();
-                Napi::HandleScope scope(env);
-                deferred->Resolve(env.Undefined());
-            });
-        };
-
-        auto reject = [deferred, &rejectLater](const char* r) {
-            rejectLater.call([deferred](const std::string& reason) {
-                Napi::HandleScope scope(deferred->Env());
-                deferred->Reject(reason);
-            }, r);
-        };
-
         int defaultScreen;
         wm.conn = xcb_connect(display.empty() ? nullptr : display.c_str(), &defaultScreen);
         if (!wm.conn) { // boo
-            reject("Unable to xcb_connect()");
+            deferred->Reject("Unable to xcb_connect()");
             return;
         }
 
@@ -121,7 +104,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm.conn, wm.screens[defaultScreen].screen->root, XCB_CW_EVENT_MASK, values);
             err.reset(xcb_request_check(wm.conn, cookie));
             if (err) { // another wm already running
-                reject("Another wm is already running?");
+                deferred->Reject("Another wm is already running?");
                 return;
             }
         }
@@ -129,11 +112,11 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         wm.ewmh = new xcb_ewmh_connection_t;
         xcb_intern_atom_cookie_t* ewmhCookie = xcb_ewmh_init_atoms(wm.conn, wm.ewmh);
         if (!ewmhCookie) {
-            reject("Unable to init ewmh atoms");
+            deferred->Reject("Unable to init ewmh atoms");
             return;
         }
         if (!xcb_ewmh_init_atoms_replies(wm.ewmh, ewmhCookie, 0)) {
-            reject("Unable to init ewmh atoms");
+            deferred->Reject("Unable to init ewmh atoms");
             return;
         }
 
@@ -151,14 +134,14 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm.conn, s.screen->root, XCB_CW_EVENT_MASK, values);
                 err.reset(xcb_request_check(wm.conn, cookie));
                 if (err) {
-                    reject("Unable to change attributes on one of the root windows");
+                    deferred->Reject("Unable to change attributes on one of the root windows");
                     return;
                 }
                 xcb_ewmh_set_wm_pid(wm.ewmh, s.screen->root, getpid());
             }
         }
 
-        resolve();
+        deferred->Resolve(owm::Undefined);
 
         enum { MaxEvents = 5 };
         epoll_event events[MaxEvents];
