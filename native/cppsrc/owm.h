@@ -201,6 +201,9 @@ inline ThreadSafePromise::~ThreadSafePromise()
 inline void ThreadSafePromise::Resolve(const Variant& value) const
 {
     if (std::this_thread::get_id() == created) {
+        auto env = deferred.Env();
+        Napi::HandleScope scope(env);
+        Napi::CallbackScope callback(env, *ctx);
         deferred.Resolve(fromVariant(deferred.Env(), value));
         return;
     }
@@ -221,6 +224,9 @@ inline void ThreadSafePromise::Resolve(const Variant& value) const
 inline void ThreadSafePromise::Reject(const Variant& value) const
 {
     if (std::this_thread::get_id() == created) {
+        auto env = deferred.Env();
+        Napi::HandleScope scope(env);
+        Napi::CallbackScope callback(env, *ctx);
         deferred.Reject(fromVariant(deferred.Env(), value));
         return;
     }
