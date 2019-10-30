@@ -20,7 +20,7 @@ namespace owm {
 
 enum UndefinedType { Undefined };
 
-typedef std::variant<double, std::string, bool, UndefinedType> Variant;
+typedef std::variant<double, std::string, const char*, bool, UndefinedType> Variant;
 
 Variant toVariant(Napi::Value value);
 Napi::Value fromVariant(napi_env env, const Variant& variant);
@@ -284,6 +284,8 @@ inline Napi::Value fromVariant(napi_env env, const Variant& variant)
     } else if (auto n = std::get_if<double>(&variant)) {
         return Napi::Number::New(env, *n);
     } else if (auto s = std::get_if<std::string>(&variant)) {
+        return Napi::String::New(env, *s);
+    } else if (auto s = std::get_if<const char*>(&variant)) {
         return Napi::String::New(env, *s);
     }
     return Napi::Env(env).Undefined();

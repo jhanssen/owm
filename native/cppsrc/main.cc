@@ -66,7 +66,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
         event.events = EPOLLIN;
         event.data.fd = wakeupfd;
-        epoll_ctl(epoll, EPOLL_CTL_ADD, 0, &event);
+        epoll_ctl(epoll, EPOLL_CTL_ADD, wakeupfd, &event);
 
         owm::WM wm;
 
@@ -86,7 +86,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
         event.events = EPOLLIN;
         event.data.fd = xcbfd;
-        epoll_ctl(epoll, EPOLL_CTL_ADD, 0, &event);
+        epoll_ctl(epoll, EPOLL_CTL_ADD, xcbfd, &event);
 
         const xcb_setup_t* setup = xcb_get_setup(wm.conn);
         const int screenCount = xcb_setup_roots_length(setup);
