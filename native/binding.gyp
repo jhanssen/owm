@@ -19,10 +19,15 @@
 	'include_dirs': [
 	    "<!@(node -p \"require('node-addon-api').include\")"
 	],
-	'libraries': [],
+	'libraries': [
+	    "-lxcb",
+	    "-lxcb-ewmh",
+	    "-lxcb-icccm",
+	    "-lxcb-util",
+	    "-lxcb-xkb"
+	],
 	'dependencies': [
 	    "<!(node -p \"require('node-addon-api').gyp\")"
-	],
-	'defines': [ 'NAPI_DISABLE_CPP_EXCEPTIONS' ]
+	]
     }]
 }

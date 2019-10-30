@@ -2,10 +2,11 @@
    "name": "owm-native",
    "version": "1.0.0",
    "description": "",
-   "main": "src/index.js",
+   "main": "index.js",
    "gypfile": true,
    "scripts": {
       "build": "node-gyp rebuild",
+      "build:debug": "node-gyp --debug rebuild",
       "commands": "node-gyp configure -- -f compile_commands_json",
       "clean": "node-gyp clean"
    },

@@ -80,12 +80,14 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         auto resolve = [deferred, &resolveLater]() {
             resolveLater.call([deferred]() {
                 auto env = deferred->Env();
+                Napi::HandleScope scope(env);
                 deferred->Resolve(env.Undefined());
             });
         };
 
         auto reject = [deferred, &rejectLater](const char* r) {
             rejectLater.call([deferred](const std::string& reason) {
+                Napi::HandleScope scope(deferred->Env());
                 deferred->Reject(reason);
             }, r);
         };

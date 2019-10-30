@@ -204,6 +204,8 @@ inline void ThreadSafePromise::Resolve(const Variant& value) const
 
     std::scoped_lock locker(mutex);
     run = [value, this]() {
+        auto env = deferred.Env();
+        Napi::HandleScope scope(env);
         deferred.Resolve(fromVariant(deferred.Env(), value));
     };
     uv_async_send(&async);
@@ -218,7 +220,9 @@ inline void ThreadSafePromise::Reject(const Variant& value) const
 
     std::scoped_lock locker(mutex);
     run = [value, this]() {
-        deferred.Reject(fromVariant(deferred.Env(), value));
+        auto env = deferred.Env();
+        Napi::HandleScope scope(env);
+        deferred.Reject(fromVariant(env, value));
     };
     uv_async_send(&async);
 }
