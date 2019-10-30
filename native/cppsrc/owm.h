@@ -12,8 +12,17 @@
 #include <array>
 #include <vector>
 #include <mutex>
+#include <thread>
+#include <variant>
 
 namespace owm {
+
+enum UndefinedType { Undefined };
+
+typedef std::variant<double, std::string, bool, UndefinedType> Variant;
+
+Variant toVariant(Napi::Value value);
+Napi::Value fromVariant(napi_env env, const Variant& variant);
 
 struct Rect
 {
@@ -142,6 +151,122 @@ private:
     RunLater(RunLater&&) = delete;
     RunLater& operator=(RunLater&&) = delete;
 };
+
+// needs to be constructed in the right thread, can be resolved or rejected in any thread
+class ThreadSafePromise
+{
+public:
+    // Non-thread safe, these need to be called in the js thread
+    ThreadSafePromise(napi_env env);
+    ~ThreadSafePromise();
+
+    Napi::Promise Promise() const { return deferred.Promise(); }
+    Napi::Env Env() const { return deferred.Env(); }
+
+    // Thread safe, can be called from anywhere
+    void Resolve(const Variant& value) const;
+    void Reject(const Variant& value) const;
+
+private:
+    static void callback(uv_async_t* async);
+
+private:
+    Napi::Promise::Deferred deferred;
+    mutable uv_async_t async;
+    mutable std::mutex mutex;
+    mutable std::function<void()> run;
+    std::thread::id created;
+
+    ThreadSafePromise(const ThreadSafePromise&) = delete;
+    ThreadSafePromise(ThreadSafePromise&&) = delete;
+    ThreadSafePromise& operator=(const ThreadSafePromise&) = delete;
+    ThreadSafePromise& operator=(ThreadSafePromise&&) = delete;
+};
+
+inline ThreadSafePromise::ThreadSafePromise(napi_env env)
+    : deferred(env), created(std::this_thread::get_id())
+{
+    uv_async_init(uv_default_loop(), &async, callback);
+    async.data = this;
+}
+
+inline ThreadSafePromise::~ThreadSafePromise()
+{
+    uv_close(reinterpret_cast<uv_handle_t*>(&async), nullptr);
+}
+
+inline void ThreadSafePromise::Resolve(const Variant& value) const
+{
+    if (std::this_thread::get_id() == created) {
+        deferred.Resolve(fromVariant(deferred.Env(), value));
+        return;
+    }
+
+    std::scoped_lock locker(mutex);
+    run = [value, this]() {
+        deferred.Resolve(fromVariant(deferred.Env(), value));
+    };
+    uv_async_send(&async);
+}
+
+inline void ThreadSafePromise::Reject(const Variant& value) const
+{
+    if (std::this_thread::get_id() == created) {
+        deferred.Reject(fromVariant(deferred.Env(), value));
+        return;
+    }
+
+    std::scoped_lock locker(mutex);
+    run = [value, this]() {
+        deferred.Reject(fromVariant(deferred.Env(), value));
+    };
+    uv_async_send(&async);
+}
+
+inline void ThreadSafePromise::callback(uv_async_t* async)
+{
+    ThreadSafePromise* that = static_cast<ThreadSafePromise*>(async->data);
+    if (!that)
+        return;
+    std::function<void()> run;
+    {
+        std::scoped_lock locker(that->mutex);
+        std::swap(run, that->run);
+    }
+    run();
+}
+
+inline Variant toVariant(Napi::Value value)
+{
+    switch (value.Type()) {
+    case napi_undefined:
+    case napi_null:
+    case napi_symbol:
+    case napi_object:
+    case napi_function:
+    case napi_external:
+    case napi_bigint:
+        return Variant(Undefined);
+    case napi_boolean:
+        return Variant(value.As<Napi::Boolean>().Value());
+    case napi_number:
+        return Variant(value.As<Napi::Number>().DoubleValue());
+    case napi_string:
+        return Variant(value.As<Napi::String>().Utf8Value());
+    }
+}
+
+inline Napi::Value fromVariant(napi_env env, const Variant& variant)
+{
+    if (auto b = std::get_if<bool>(&variant)) {
+        return Napi::Boolean::New(env, *b);
+    } else if (auto n = std::get_if<double>(&variant)) {
+        return Napi::Number::New(env, *n);
+    } else if (auto s = std::get_if<std::string>(&variant)) {
+        return Napi::String::New(env, *s);
+    }
+    return Napi::Env(env).Undefined();
+}
 
 } // namespace owm
 
