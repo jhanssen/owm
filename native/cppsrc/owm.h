@@ -72,7 +72,7 @@ struct WM
     std::vector<Response*> responses;
 };
 
-void handleXcb(WM& wm, const Napi::ThreadSafeFunction& tsfn, const xcb_generic_event_t* event);
+void handleXcb(WM& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
 
 template<typename T, size_t Count>
 T* Stack<T, Count>::acquire()
