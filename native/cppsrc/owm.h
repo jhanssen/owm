@@ -15,6 +15,7 @@
 #include <memory>
 #include <thread>
 #include <variant>
+#include <type_traits>
 
 namespace owm {
 
@@ -62,6 +63,14 @@ private:
     std::array<bool, Count> taken;
 };
 
+template<typename T>
+struct Wrap
+{
+    static Napi::Value wrap(napi_env env, const T& t);
+    static Napi::Value wrap(napi_env env, T&& wrap);
+    static T unwrap(const Napi::Value& value);
+};
+
 struct WM
 {
     xcb_connection_t* conn { nullptr };
@@ -72,7 +81,8 @@ struct WM
     std::vector<Response*> responses;
 };
 
-void handleXcb(WM& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
+void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
+Napi::Value makeXcb(napi_env env);
 
 template<typename T, size_t Count>
 T* Stack<T, Count>::acquire()
@@ -166,6 +176,11 @@ public:
     void Resolve(const Variant& value) const;
     void Reject(const Variant& value) const;
 
+    template<typename Callable, typename std::enable_if<std::is_invocable_r<Napi::Value, Callable, napi_env>::value>::type* = nullptr>
+    void Resolve(Callable&& callable) const;
+    template<typename Callable, typename std::enable_if<std::is_invocable_r<Napi::Value, Callable, napi_env>::value>::type* = nullptr>
+    void Reject(Callable&& callable) const;
+
 private:
     static void callback(uv_async_t* async);
 
@@ -196,6 +211,30 @@ inline ThreadSafePromise::~ThreadSafePromise()
     uv_close(reinterpret_cast<uv_handle_t*>(&async), nullptr);
 }
 
+template<typename Callable, typename std::enable_if<std::is_invocable_r<Napi::Value, Callable, napi_env>::value>::type*>
+inline void ThreadSafePromise::Resolve(Callable&& callable) const
+{
+    if (std::this_thread::get_id() == created) {
+        auto env = deferred.Env();
+        Napi::HandleScope scope(env);
+        Napi::CallbackScope callback(env, *ctx);
+        deferred.Resolve(callable(env));
+        return;
+    }
+
+    auto ptr = shared_from_this();
+    auto c = std::move(ctx);
+
+    std::scoped_lock locker(mutex);
+    run = [callable{std::move(callable)}, ptr, c]() {
+        auto env = ptr->deferred.Env();
+        Napi::HandleScope scope(env);
+        Napi::CallbackScope callback(env, *c);
+        ptr->deferred.Resolve(callable(env));
+    };
+    uv_async_send(&async);
+}
+
 inline void ThreadSafePromise::Resolve(const Variant& value) const
 {
     if (std::this_thread::get_id() == created) {
@@ -215,6 +254,30 @@ inline void ThreadSafePromise::Resolve(const Variant& value) const
         Napi::HandleScope scope(env);
         Napi::CallbackScope callback(env, *c);
         ptr->deferred.Resolve(fromVariant(env, value));
+    };
+    uv_async_send(&async);
+}
+
+template<typename Callable, typename std::enable_if<std::is_invocable_r<Napi::Value, Callable, napi_env>::value>::type*>
+inline void ThreadSafePromise::Reject(Callable&& callable) const
+{
+    if (std::this_thread::get_id() == created) {
+        auto env = deferred.Env();
+        Napi::HandleScope scope(env);
+        Napi::CallbackScope callback(env, *ctx);
+        deferred.Reject(callable(env));
+        return;
+    }
+
+    auto ptr = shared_from_this();
+    auto c = std::move(ctx);
+
+    std::scoped_lock locker(mutex);
+    run = [callable{std::move(callable)}, ptr, c]() {
+        auto env = ptr->deferred.Env();
+        Napi::HandleScope scope(env);
+        Napi::CallbackScope callback(env, *c);
+        ptr->deferred.Reject(callable(env));
     };
     uv_async_send(&async);
 }
@@ -287,6 +350,44 @@ inline Napi::Value fromVariant(napi_env env, const Variant& variant)
         return Napi::String::New(env, *s);
     }
     return Napi::Env(env).Undefined();
+}
+
+template<typename T>
+Napi::Value Wrap<T>::wrap(napi_env env, const T& t)
+{
+    Napi::Object obj = Napi::Object::New(env);
+    if (napi_wrap(env, obj, new T(t),
+                  [](napi_env env, void* data, void* /*hint*/) {
+                      delete reinterpret_cast<T*>(data);
+                  },
+                  nullptr, nullptr) == napi_ok) {
+        return obj;
+    }
+    return Napi::Env(env).Undefined();
+}
+
+template<typename T>
+Napi::Value Wrap<T>::wrap(napi_env env, T&& t)
+{
+    Napi::Object obj = Napi::Object::New(env);
+    if (napi_wrap(env, obj, new T(std::forward<T>(t)),
+                  [](napi_env env, void* data, void* /*hint*/) {
+                      delete reinterpret_cast<T*>(data);
+                  },
+                  nullptr, nullptr) == napi_ok) {
+        return obj;
+    }
+    return Napi::Env(env).Undefined();
+}
+
+template<typename T>
+T Wrap<T>::unwrap(const Napi::Value& value)
+{
+    void* t;
+    if (napi_unwrap(value.Env(), value, &t) == napi_ok) {
+        return *reinterpret_cast<T*>(t);
+    }
+    return T();
 }
 
 } // namespace owm
