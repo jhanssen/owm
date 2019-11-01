@@ -41,6 +41,37 @@ struct Screen
     Rect rect;
 };
 
+struct Window
+{
+    Window(xcb_window_t w, uint8_t bg, uint8_t wg, uint8_t ms, uint8_t ore,
+           uint32_t aem, uint32_t yem, uint16_t dnpm,
+           xcb_window_t r, int16_t xx, int16_t yy, uint16_t wd, uint16_t hg, uint16_t bw)
+        : window(w), bit_gravity(bg), win_gravity(wg), map_state(ms), override_redirect(ore),
+          all_event_masks(aem), your_event_mask(yem), do_not_propagate_mask(dnpm),
+          root(r), x(xx), y(yy), width(wd), height(hg), border_width(bw)
+    {
+    }
+
+    xcb_window_t window;
+
+    // attributes
+    uint8_t bit_gravity;
+    uint8_t win_gravity;
+    uint8_t map_state;
+    uint8_t override_redirect;
+    uint32_t all_event_masks;
+    uint32_t your_event_mask;
+    uint16_t do_not_propagate_mask;
+
+    // geometry
+    xcb_window_t root;
+    int16_t x;
+    int16_t y;
+    uint16_t width;
+    uint16_t height;
+    uint16_t border_width;
+};
+
 struct Request
 {
     enum Type { Start, Stop } type;

@@ -120,6 +120,58 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             return;
         }
 
+        std::shared_ptr<std::vector<owm::Window> > windows = std::make_shared<std::vector<owm::Window> >();
+        auto queryWindows = [&windows](xcb_connection_t* conn, xcb_window_t root) {
+
+            std::vector<xcb_get_window_attributes_cookie_t> attribCookies;
+            std::vector<xcb_get_geometry_cookie_t> geomCookies;
+
+            xcb_query_tree_cookie_t cookie = xcb_query_tree_unchecked(conn, root);
+            xcb_query_tree_reply_t *tree = xcb_query_tree_reply(conn, cookie, nullptr);
+            xcb_window_t *wins = xcb_query_tree_children(tree);
+
+            attribCookies.reserve(tree->children_len);
+            geomCookies.reserve(tree->children_len);
+
+            for (unsigned int i = 0; i < tree->children_len; ++i) {
+                attribCookies.push_back(xcb_get_window_attributes_unchecked(conn, wins[i]));
+                geomCookies.push_back(xcb_get_geometry_unchecked(conn, wins[i]));
+            }
+
+            for (unsigned int i = 0; i < tree->children_len; ++i) {
+                xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(conn, attribCookies[i], nullptr);
+                if (attrib->map_state == XCB_MAP_STATE_UNMAPPED) {
+                    xcb_discard_reply(conn, geomCookies[i].sequence);
+                    free(attrib);
+                    continue;
+                }
+                xcb_get_geometry_reply_t* geom = xcb_get_geometry_reply(conn, geomCookies[i], nullptr);
+                if (geom->width < 1 || geom->height < 1) {
+                    free(attrib);
+                    free(geom);
+                    continue;
+                }
+                windows->emplace_back(
+                    wins[i],
+                    attrib->bit_gravity,
+                    attrib->win_gravity,
+                    attrib->map_state,
+                    attrib->override_redirect,
+                    attrib->all_event_masks,
+                    attrib->your_event_mask,
+                    attrib->do_not_propagate_mask,
+                    geom->root,
+                    geom->x,
+                    geom->y,
+                    geom->width,
+                    geom->height,
+                    geom->border_width);
+                free(attrib);
+                free(geom);
+            }
+            free(tree);
+        };
+
         {
             const uint32_t values[] = { XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
                                         | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
@@ -132,6 +184,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                                         | XCB_EVENT_MASK_PROPERTY_CHANGE };
             for (auto s : wm->screens) {
                 xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, s.screen->root, XCB_CW_EVENT_MASK, values);
+                queryWindows(wm->conn, s.screen->root);
                 err.reset(xcb_request_check(wm->conn, cookie));
                 if (err) {
                     deferred->Reject("Unable to change attributes on one of the root windows");
@@ -148,6 +201,41 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             return obj;
         });
         deferred.reset();
+
+        auto windowsCallback = [windows{std::move(windows)}](Napi::Env env, Napi::Function js) mutable {
+            Napi::Object obj = Napi::Object::New(env);
+            obj.Set("type", "windows");
+            Napi::Array arr = Napi::Array::New(env, windows->size());
+            for (size_t i = 0; i < windows->size(); ++i) {
+                const auto& nwin = (*windows)[i];
+                Napi::Object win = Napi::Object::New(env);
+
+                win.Set("window", nwin.window);
+                win.Set("bit_gravity", nwin.bit_gravity);
+                win.Set("win_gravity", nwin.win_gravity);
+                win.Set("map_state", nwin.map_state);
+                win.Set("override_redirect", nwin.override_redirect);
+                win.Set("all_event_masks", nwin.all_event_masks);
+                win.Set("your_event_mask", nwin.your_event_mask);
+                win.Set("do_not_propagate_mask", nwin.do_not_propagate_mask);
+                win.Set("root", nwin.root);
+                win.Set("x", nwin.x);
+                win.Set("y", nwin.y);
+                win.Set("width", nwin.width);
+                win.Set("height", nwin.height);
+                win.Set("border_width", nwin.border_width);
+
+                arr.Set(i, win);
+            }
+            obj.Set("windows", arr);
+
+            napi_value nvalue = obj;
+            js.Call(1, &nvalue);
+
+            windows.reset();
+        };
+
+        data.tsfn.BlockingCall(windowsCallback);
 
         enum { MaxEvents = 5 };
         epoll_event events[MaxEvents];

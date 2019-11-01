@@ -9,16 +9,19 @@ const owm = {};
 function event(e) {
     console.log("got event", e);
 
-    if (e.type === 4) { // release
-        const config = {
-            window: 0x400007,
-            x: e.root_x,
-            y: e.root_y
-        };
-        try {
-            owm.xcb.configure_window(owm.wm, config);
-        } catch (e) {
-            console.error(e);
+    if (e.type == "xcb") {
+        const xcb = e.xcb;
+        if (xcb.type === 4) { // release
+            const config = {
+                window: 0x400007,
+                x: xcb.root_x,
+                y: xcb.root_y
+            };
+            try {
+                owm.xcb.configure_window(owm.wm, config);
+            } catch (err) {
+                console.error(err);
+            }
         }
     }
 }

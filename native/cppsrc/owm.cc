@@ -44,7 +44,11 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
             return;
         }
 
-        napi_value nvalue = value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", "xcb");
+        obj.Set("xcb", value);
+
+        napi_value nvalue = obj;
         js.Call(1, &nvalue);
     };
 
