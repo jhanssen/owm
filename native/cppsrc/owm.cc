@@ -3,7 +3,7 @@
 
 namespace owm {
 
-Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event)
+static Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -25,7 +25,7 @@ Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event)
 }
 
 // appears to be the same structure as xcb_button_press_event_t?
-Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* event)
+static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -47,7 +47,7 @@ Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* event)
 }
 
 // appears to be the same structure as xcb_button_press_event_t?
-Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t* event)
+static Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -69,7 +69,7 @@ Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t* event)
     return obj;
 }
 
-Napi::Value makeFocusIn(napi_env env, xcb_focus_in_event_t* event)
+static Napi::Value makeFocusIn(napi_env env, xcb_focus_in_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -81,7 +81,7 @@ Napi::Value makeFocusIn(napi_env env, xcb_focus_in_event_t* event)
     return obj;
 }
 
-Napi::Value makeMapRequest(napi_env env, xcb_map_request_event_t* event)
+static Napi::Value makeMapRequest(napi_env env, xcb_map_request_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -92,7 +92,7 @@ Napi::Value makeMapRequest(napi_env env, xcb_map_request_event_t* event)
     return obj;
 }
 
-Napi::Value makeUnmapNotify(napi_env env, xcb_unmap_notify_event_t* event)
+static Napi::Value makeUnmapNotify(napi_env env, xcb_unmap_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -104,7 +104,7 @@ Napi::Value makeUnmapNotify(napi_env env, xcb_unmap_notify_event_t* event)
     return obj;
 }
 
-Napi::Value makeMapNotify(napi_env env, xcb_map_notify_event_t* event)
+static Napi::Value makeMapNotify(napi_env env, xcb_map_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -116,7 +116,7 @@ Napi::Value makeMapNotify(napi_env env, xcb_map_notify_event_t* event)
     return obj;
 }
 
-Napi::Value makeKeymapNotify(napi_env env, xcb_keymap_notify_event_t* event)
+static Napi::Value makeKeymapNotify(napi_env env, xcb_keymap_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -134,7 +134,7 @@ Napi::Value makeKeymapNotify(napi_env env, xcb_keymap_notify_event_t* event)
     return obj;
 }
 
-Napi::Value makeExpose(napi_env env, xcb_expose_event_t* event)
+static Napi::Value makeExpose(napi_env env, xcb_expose_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -149,7 +149,7 @@ Napi::Value makeExpose(napi_env env, xcb_expose_event_t* event)
     return obj;
 }
 
-Napi::Value makeReparentNotify(napi_env env, xcb_reparent_notify_event_t* event)
+static Napi::Value makeReparentNotify(napi_env env, xcb_reparent_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -164,7 +164,7 @@ Napi::Value makeReparentNotify(napi_env env, xcb_reparent_notify_event_t* event)
     return obj;
 }
 
-Napi::Value makeConfigureNotify(napi_env env, xcb_configure_notify_event_t* event)
+static Napi::Value makeConfigureNotify(napi_env env, xcb_configure_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -182,7 +182,7 @@ Napi::Value makeConfigureNotify(napi_env env, xcb_configure_notify_event_t* even
     return obj;
 }
 
-Napi::Value makeConfigureRequest(napi_env env, xcb_configure_request_event_t* event)
+static Napi::Value makeConfigureRequest(napi_env env, xcb_configure_request_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -201,7 +201,7 @@ Napi::Value makeConfigureRequest(napi_env env, xcb_configure_request_event_t* ev
     return obj;
 }
 
-Napi::Value makeGravityNotify(napi_env env, xcb_gravity_notify_event_t* event)
+static Napi::Value makeGravityNotify(napi_env env, xcb_gravity_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -214,7 +214,7 @@ Napi::Value makeGravityNotify(napi_env env, xcb_gravity_notify_event_t* event)
     return obj;
 }
 
-Napi::Value makeResizeRequest(napi_env env, xcb_resize_request_event_t* event)
+static Napi::Value makeResizeRequest(napi_env env, xcb_resize_request_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -226,7 +226,7 @@ Napi::Value makeResizeRequest(napi_env env, xcb_resize_request_event_t* event)
     return obj;
 }
 
-Napi::Value makeCirculateNotify(napi_env env, xcb_circulate_notify_event_t* event)
+static Napi::Value makeCirculateNotify(napi_env env, xcb_circulate_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -238,7 +238,7 @@ Napi::Value makeCirculateNotify(napi_env env, xcb_circulate_notify_event_t* even
     return obj;
 }
 
-Napi::Value makePropertyNotify(napi_env env, xcb_property_notify_event_t* event)
+static Napi::Value makePropertyNotify(napi_env env, xcb_property_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -251,7 +251,7 @@ Napi::Value makePropertyNotify(napi_env env, xcb_property_notify_event_t* event)
     return obj;
 }
 
-Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* event)
+static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
