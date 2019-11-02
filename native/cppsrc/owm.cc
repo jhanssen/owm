@@ -357,7 +357,7 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
     }
 }
 
-Napi::Value makeXcb(napi_env env)
+Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object xcb = Napi::Object::New(env);
 
@@ -533,6 +533,126 @@ Napi::Value makeXcb(napi_env env)
     atoms.Set("CAP_HEIGHT", Napi::Number::New(env, XCB_ATOM_CAP_HEIGHT));
     atoms.Set("WM_CLASS", Napi::Number::New(env, XCB_ATOM_WM_CLASS));
     atoms.Set("WM_TRANSIENT_FOR", Napi::Number::New(env, XCB_ATOM_WM_TRANSIENT_FOR));
+
+    // ewmh atoms
+    for (int s = 0; s < wm->ewmh->nb_screens; ++s) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "_NET_WM_CM_S%d", s);
+        atoms.Set(buf, Napi::Number::New(env, wm->ewmh->_NET_WM_CM_Sn[s]));
+    }
+    atoms.Set("_NET_SUPPORTED", Napi::Number::New(env, wm->ewmh->_NET_SUPPORTED));
+    atoms.Set("_NET_CLIENT_LIST", Napi::Number::New(env, wm->ewmh->_NET_CLIENT_LIST));
+    atoms.Set("_NET_CLIENT_LIST_STACKING", Napi::Number::New(env, wm->ewmh->_NET_CLIENT_LIST_STACKING));
+    atoms.Set("_NET_NUMBER_OF_DESKTOPS", Napi::Number::New(env, wm->ewmh->_NET_NUMBER_OF_DESKTOPS));
+    atoms.Set("_NET_DESKTOP_GEOMETRY", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_GEOMETRY));
+    atoms.Set("_NET_DESKTOP_VIEWPORT", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_VIEWPORT));
+    atoms.Set("_NET_CURRENT_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_CURRENT_DESKTOP));
+    atoms.Set("_NET_DESKTOP_NAMES", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_NAMES));
+    atoms.Set("_NET_ACTIVE_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_ACTIVE_WINDOW));
+    atoms.Set("_NET_WORKAREA", Napi::Number::New(env, wm->ewmh->_NET_WORKAREA));
+    atoms.Set("_NET_SUPPORTING_WM_CHECK", Napi::Number::New(env, wm->ewmh->_NET_SUPPORTING_WM_CHECK));
+    atoms.Set("_NET_VIRTUAL_ROOTS", Napi::Number::New(env, wm->ewmh->_NET_VIRTUAL_ROOTS));
+    atoms.Set("_NET_DESKTOP_LAYOUT", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_LAYOUT));
+    atoms.Set("_NET_SHOWING_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_SHOWING_DESKTOP));
+    atoms.Set("_NET_CLOSE_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_CLOSE_WINDOW));
+    atoms.Set("_NET_MOVERESIZE_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_MOVERESIZE_WINDOW));
+    atoms.Set("_NET_WM_MOVERESIZE", Napi::Number::New(env, wm->ewmh->_NET_WM_MOVERESIZE));
+    atoms.Set("_NET_RESTACK_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_RESTACK_WINDOW));
+    atoms.Set("_NET_REQUEST_FRAME_EXTENTS", Napi::Number::New(env, wm->ewmh->_NET_REQUEST_FRAME_EXTENTS));
+    atoms.Set("_NET_WM_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_NAME));
+    atoms.Set("_NET_WM_VISIBLE_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_VISIBLE_NAME));
+    atoms.Set("_NET_WM_ICON_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_ICON_NAME));
+    atoms.Set("_NET_WM_VISIBLE_ICON_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_VISIBLE_ICON_NAME));
+    atoms.Set("_NET_WM_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_WM_DESKTOP));
+    atoms.Set("_NET_WM_WINDOW_TYPE", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE));
+    atoms.Set("_NET_WM_STATE", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE));
+    atoms.Set("_NET_WM_ALLOWED_ACTIONS", Napi::Number::New(env, wm->ewmh->_NET_WM_ALLOWED_ACTIONS));
+    atoms.Set("_NET_WM_STRUT", Napi::Number::New(env, wm->ewmh->_NET_WM_STRUT));
+    atoms.Set("_NET_WM_STRUT_PARTIAL", Napi::Number::New(env, wm->ewmh->_NET_WM_STRUT_PARTIAL));
+    atoms.Set("_NET_WM_ICON_GEOMETRY", Napi::Number::New(env, wm->ewmh->_NET_WM_ICON_GEOMETRY));
+    atoms.Set("_NET_WM_ICON", Napi::Number::New(env, wm->ewmh->_NET_WM_ICON));
+    atoms.Set("_NET_WM_PID", Napi::Number::New(env, wm->ewmh->_NET_WM_PID));
+    atoms.Set("_NET_WM_HANDLED_ICONS", Napi::Number::New(env, wm->ewmh->_NET_WM_HANDLED_ICONS));
+    atoms.Set("_NET_WM_USER_TIME", Napi::Number::New(env, wm->ewmh->_NET_WM_USER_TIME));
+    atoms.Set("_NET_WM_USER_TIME_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_WM_USER_TIME_WINDOW));
+    atoms.Set("_NET_FRAME_EXTENTS", Napi::Number::New(env, wm->ewmh->_NET_FRAME_EXTENTS));
+    atoms.Set("_NET_WM_PING", Napi::Number::New(env, wm->ewmh->_NET_WM_PING));
+    atoms.Set("_NET_WM_SYNC_REQUEST", Napi::Number::New(env, wm->ewmh->_NET_WM_SYNC_REQUEST));
+    atoms.Set("_NET_WM_SYNC_REQUEST_COUNTER", Napi::Number::New(env, wm->ewmh->_NET_WM_SYNC_REQUEST_COUNTER));
+    atoms.Set("_NET_WM_FULLSCREEN_MONITORS", Napi::Number::New(env, wm->ewmh->_NET_WM_FULLSCREEN_MONITORS));
+    atoms.Set("_NET_WM_FULL_PLACEMENT", Napi::Number::New(env, wm->ewmh->_NET_WM_FULL_PLACEMENT));
+    atoms.Set("UTF8_STRING", Napi::Number::New(env, wm->ewmh->UTF8_STRING));
+    atoms.Set("WM_PROTOCOLS", Napi::Number::New(env, wm->ewmh->WM_PROTOCOLS));
+    atoms.Set("MANAGER", Napi::Number::New(env, wm->ewmh->MANAGER));
+    atoms.Set("_NET_WM_WINDOW_TYPE_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DESKTOP));
+    atoms.Set("_NET_WM_WINDOW_TYPE_DOCK", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DOCK));
+    atoms.Set("_NET_WM_WINDOW_TYPE_TOOLBAR", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR));
+    atoms.Set("_NET_WM_WINDOW_TYPE_MENU", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_MENU));
+    atoms.Set("_NET_WM_WINDOW_TYPE_UTILITY", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_UTILITY));
+    atoms.Set("_NET_WM_WINDOW_TYPE_SPLASH", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_SPLASH));
+    atoms.Set("_NET_WM_WINDOW_TYPE_DIALOG", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DIALOG));
+    atoms.Set("_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DROPDOWN_MENU));
+    atoms.Set("_NET_WM_WINDOW_TYPE_POPUP_MENU", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_POPUP_MENU));
+    atoms.Set("_NET_WM_WINDOW_TYPE_TOOLTIP", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_TOOLTIP));
+    atoms.Set("_NET_WM_WINDOW_TYPE_NOTIFICATION", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION));
+    atoms.Set("_NET_WM_WINDOW_TYPE_COMBO", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_COMBO));
+    atoms.Set("_NET_WM_WINDOW_TYPE_DND", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DND));
+    atoms.Set("_NET_WM_WINDOW_TYPE_NORMAL", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_NORMAL));
+    atoms.Set("_NET_WM_STATE_MODAL", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_MODAL));
+    atoms.Set("_NET_WM_STATE_STICKY", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_STICKY));
+    atoms.Set("_NET_WM_STATE_MAXIMIZED_VERT", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_MAXIMIZED_VERT));
+    atoms.Set("_NET_WM_STATE_MAXIMIZED_HORZ", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_MAXIMIZED_HORZ));
+    atoms.Set("_NET_WM_STATE_SHADED", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_SHADED));
+    atoms.Set("_NET_WM_STATE_SKIP_TASKBAR", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_SKIP_TASKBAR));
+    atoms.Set("_NET_WM_STATE_SKIP_PAGER", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_SKIP_PAGER));
+    atoms.Set("_NET_WM_STATE_HIDDEN", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_HIDDEN));
+    atoms.Set("_NET_WM_STATE_FULLSCREEN", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_FULLSCREEN));
+    atoms.Set("_NET_WM_STATE_ABOVE", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_ABOVE));
+    atoms.Set("_NET_WM_STATE_BELOW", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_BELOW));
+    atoms.Set("_NET_WM_STATE_DEMANDS_ATTENTION", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_DEMANDS_ATTENTION));
+    atoms.Set("_NET_WM_ACTION_MOVE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MOVE));
+    atoms.Set("_NET_WM_ACTION_RESIZE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_RESIZE));
+    atoms.Set("_NET_WM_ACTION_MINIMIZE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MINIMIZE));
+    atoms.Set("_NET_WM_ACTION_SHADE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_SHADE));
+    atoms.Set("_NET_WM_ACTION_STICK", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_STICK));
+    atoms.Set("_NET_WM_ACTION_MAXIMIZE_HORZ", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MAXIMIZE_HORZ));
+    atoms.Set("_NET_WM_ACTION_MAXIMIZE_VERT", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MAXIMIZE_VERT));
+    atoms.Set("_NET_WM_ACTION_FULLSCREEN", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_FULLSCREEN));
+    atoms.Set("_NET_WM_ACTION_CHANGE_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_CHANGE_DESKTOP));
+    atoms.Set("_NET_WM_ACTION_CLOSE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_CLOSE));
+    atoms.Set("_NET_WM_ACTION_ABOVE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_ABOVE));
+    atoms.Set("_NET_WM_ACTION_BELOW", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_BELOW));
+
+    // some extra atoms we might want to know about
+    struct ExtraAtom {
+        size_t size;
+        const char* name;
+    };
+    const ExtraAtom extraAtoms[] = {
+        { 16, "WM_DELETE_WINDOW" },
+        {  8, "WM_STATE" },
+        { 15, "WM_CHANGE_STATE" },
+        { 14, "WM_WINDOW_ROLE" },
+        { 16, "WM_CLIENT_LEADER" },
+        { 13, "WM_TAKE_FOCUS" },
+        { 23, "_NET_SYSTEM_TRAY_OPCODE" },
+        { 28, "_NET_SYSTEM_TRAY_ORIENTATION" },
+        { 22, "_NET_WM_WINDOW_OPACITY" },
+        { 16, "_XKB_RULES_NAMES" }
+    };
+    const size_t extraCount = sizeof(extraAtoms) / sizeof(extraAtoms[0]);
+
+    std::vector<xcb_intern_atom_cookie_t> cookies;
+    cookies.reserve(extraCount);
+    for (size_t i = 0; i < extraCount; ++i) {
+        cookies.push_back(xcb_intern_atom_unchecked(wm->conn, 0, extraAtoms[i].size, extraAtoms[i].name));
+    }
+    for (size_t i = 0; i < extraCount; ++i) {
+        xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[i], nullptr);
+        atoms.Set(extraAtoms[i].name, Napi::Number::New(env, reply->atom));
+        free(reply);
+    }
+
     xcb.Set("atoms", atoms);
 
     return xcb;

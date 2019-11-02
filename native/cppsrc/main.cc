@@ -196,8 +196,8 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
         deferred->Resolve([wm](napi_env env) -> Napi::Value {
             Napi::Object obj = Napi::Object::New(env);
+            obj.Set("xcb", owm::makeXcb(env, wm));
             obj.Set("wm", owm::Wrap<std::shared_ptr<owm::WM> >::wrap(env, wm));
-            obj.Set("xcb", owm::makeXcb(env));
             return obj;
         });
         deferred.reset();

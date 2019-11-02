@@ -113,7 +113,7 @@ struct WM
 };
 
 void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
-Napi::Value makeXcb(napi_env env);
+Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm);
 
 template<typename T, size_t Count>
 T* Stack<T, Count>::acquire()
