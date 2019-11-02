@@ -11,7 +11,7 @@ function event(e) {
 
     if (e.type == "xcb") {
         const xcb = e.xcb;
-        if (xcb.type === 4) { // release
+        if (xcb.type === owm.xcb.event.BUTTON_PRESS) {
             const config = {
                 window: 0x400007,
                 x: xcb.root_x,

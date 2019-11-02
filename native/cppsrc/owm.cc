@@ -357,112 +357,10 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
     }
 }
 
-Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initAtoms(napi_env env, const std::shared_ptr<WM>& wm)
 {
-    Napi::Object xcb = Napi::Object::New(env);
-
-    xcb.Set("configure_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "configure_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uint32_t window;
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "configure_window requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        uint32_t values[7];
-        uint16_t mask = 0;
-        uint32_t off = 0;
-
-        if (arg.Has("x")) {
-            mask |= XCB_CONFIG_WINDOW_X;
-            values[off++] = arg.Get("x").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("y")) {
-            mask |= XCB_CONFIG_WINDOW_Y;
-            values[off++] = arg.Get("y").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("width")) {
-            mask |= XCB_CONFIG_WINDOW_WIDTH;
-            values[off++] = arg.Get("width").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("height")) {
-            mask |= XCB_CONFIG_WINDOW_HEIGHT;
-            values[off++] = arg.Get("height").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("border_width")) {
-            mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
-            values[off++] = arg.Get("border_width").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("sibling")) {
-            mask |= XCB_CONFIG_WINDOW_SIBLING;
-            values[off++] = arg.Get("sibling").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("stack_mode")) {
-            mask |= XCB_CONFIG_WINDOW_STACK_MODE;
-            values[off++] = arg.Get("stack_mode").As<Napi::Number>().Uint32Value();
-        }
-
-        if (off) {
-            xcb_configure_window(wm->conn, window, mask, values);
-            xcb_flush(wm->conn);
-        }
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("intern_atom", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || (!info[1].IsArray() && !info[1].IsString())) {
-            throw Napi::TypeError::New(env, "intern_atom requires two arguments");
-        }
-        bool onlyIfExists = true;
-        if (info.Length() < 3 && info[2].IsBoolean()) {
-            onlyIfExists = info[2].As<Napi::Boolean>().Value();
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        std::vector<xcb_intern_atom_cookie_t> cookies;
-        if (info[1].IsString()) {
-            const std::string str = info[1].As<Napi::String>();
-            cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
-        } else if (info[1].IsArray()) {
-            const auto array = info[1].As<Napi::Array>();
-            cookies.reserve(array.Length());
-            for (size_t i = 0; i < array.Length(); ++i) {
-                const std::string str = array[i].As<Napi::String>();
-                cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
-            }
-        }
-
-        Napi::Value val;
-        if (cookies.size() == 1) {
-            xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[0], nullptr);
-            val = Napi::Number::New(env, reply->atom);
-            free(reply);
-        } else {
-            const size_t sz = cookies.size();
-            Napi::Array ret = Napi::Array::New(env, sz);
-            for (size_t i = 0; i < sz; ++i) {
-                xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[i], nullptr);
-                ret.Set(i, Napi::Number::New(env, reply->atom));
-                free(reply);
-            }
-            val = ret;
-        }
-        return val;
-    }));
-
     Napi::Object atoms = Napi::Object::New(env);
+
     atoms.Set("NONE", Napi::Number::New(env, XCB_ATOM_NONE));
     atoms.Set("ANY", Napi::Number::New(env, XCB_ATOM_ANY));
     atoms.Set("PRIMARY", Napi::Number::New(env, XCB_ATOM_PRIMARY));
@@ -653,7 +551,157 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         free(reply);
     }
 
-    xcb.Set("atoms", atoms);
+    return atoms;
+}
+
+static Napi::Object initEvents(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object events = Napi::Object::New(env);
+
+    events.Set("KEY_PRESS", XCB_KEY_PRESS);
+    events.Set("KEY_RELEASE", XCB_KEY_RELEASE);
+    events.Set("BUTTON_PRESS", XCB_BUTTON_PRESS);
+    events.Set("BUTTON_RELEASE", XCB_BUTTON_RELEASE);
+    events.Set("MOTION_NOTIFY", XCB_MOTION_NOTIFY);
+    events.Set("ENTER_NOTIFY", XCB_ENTER_NOTIFY);
+    events.Set("LEAVE_NOTIFY", XCB_LEAVE_NOTIFY);
+    events.Set("FOCUS_IN", XCB_FOCUS_IN);
+    events.Set("FOCUS_OUT", XCB_FOCUS_OUT);
+    events.Set("KEYMAP_NOTIFY", XCB_KEYMAP_NOTIFY);
+    events.Set("EXPOSE", XCB_EXPOSE);
+    events.Set("GRAPHICS_EXPOSURE", XCB_GRAPHICS_EXPOSURE);
+    events.Set("NO_EXPOSURE", XCB_NO_EXPOSURE);
+    events.Set("VISIBILITY_NOTIFY", XCB_VISIBILITY_NOTIFY);
+    events.Set("CREATE_NOTIFY", XCB_CREATE_NOTIFY);
+    events.Set("DESTROY_NOTIFY", XCB_DESTROY_NOTIFY);
+    events.Set("UNMAP_NOTIFY", XCB_UNMAP_NOTIFY);
+    events.Set("MAP_NOTIFY", XCB_MAP_NOTIFY);
+    events.Set("MAP_REQUEST", XCB_MAP_REQUEST);
+    events.Set("REPARENT_NOTIFY", XCB_REPARENT_NOTIFY);
+    events.Set("CONFIGURE_NOTIFY", XCB_CONFIGURE_NOTIFY);
+    events.Set("CONFIGURE_REQUEST", XCB_CONFIGURE_REQUEST);
+    events.Set("GRAVITY_NOTIFY", XCB_GRAVITY_NOTIFY);
+    events.Set("RESIZE_REQUEST", XCB_RESIZE_REQUEST);
+    events.Set("CIRCULATE_NOTIFY", XCB_CIRCULATE_NOTIFY);
+    events.Set("CIRCULATE_REQUEST", XCB_CIRCULATE_REQUEST);
+    events.Set("PROPERTY_NOTIFY", XCB_PROPERTY_NOTIFY);
+    events.Set("SELECTION_CLEAR", XCB_SELECTION_CLEAR);
+    events.Set("SELECTION_REQUEST", XCB_SELECTION_REQUEST);
+    events.Set("SELECTION_NOTIFY", XCB_SELECTION_NOTIFY);
+    events.Set("COLORMAP_NOTIFY", XCB_COLORMAP_NOTIFY);
+    events.Set("CLIENT_MESSAGE", XCB_CLIENT_MESSAGE);
+    events.Set("MAPPING_NOTIFY", XCB_MAPPING_NOTIFY);
+
+    return events;
+}
+
+Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object xcb = Napi::Object::New(env);
+
+    xcb.Set("configure_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "configure_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t window;
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "configure_window requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        uint32_t values[7];
+        uint16_t mask = 0;
+        uint32_t off = 0;
+
+        if (arg.Has("x")) {
+            mask |= XCB_CONFIG_WINDOW_X;
+            values[off++] = arg.Get("x").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("y")) {
+            mask |= XCB_CONFIG_WINDOW_Y;
+            values[off++] = arg.Get("y").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("width")) {
+            mask |= XCB_CONFIG_WINDOW_WIDTH;
+            values[off++] = arg.Get("width").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("height")) {
+            mask |= XCB_CONFIG_WINDOW_HEIGHT;
+            values[off++] = arg.Get("height").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("border_width")) {
+            mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
+            values[off++] = arg.Get("border_width").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("sibling")) {
+            mask |= XCB_CONFIG_WINDOW_SIBLING;
+            values[off++] = arg.Get("sibling").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("stack_mode")) {
+            mask |= XCB_CONFIG_WINDOW_STACK_MODE;
+            values[off++] = arg.Get("stack_mode").As<Napi::Number>().Uint32Value();
+        }
+
+        if (off) {
+            xcb_configure_window(wm->conn, window, mask, values);
+            xcb_flush(wm->conn);
+        }
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("intern_atom", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || (!info[1].IsArray() && !info[1].IsString())) {
+            throw Napi::TypeError::New(env, "intern_atom requires two arguments");
+        }
+        bool onlyIfExists = true;
+        if (info.Length() < 3 && info[2].IsBoolean()) {
+            onlyIfExists = info[2].As<Napi::Boolean>().Value();
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        std::vector<xcb_intern_atom_cookie_t> cookies;
+        if (info[1].IsString()) {
+            const std::string str = info[1].As<Napi::String>();
+            cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
+        } else if (info[1].IsArray()) {
+            const auto array = info[1].As<Napi::Array>();
+            cookies.reserve(array.Length());
+            for (size_t i = 0; i < array.Length(); ++i) {
+                const std::string str = array[i].As<Napi::String>();
+                cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
+            }
+        }
+
+        Napi::Value val;
+        if (cookies.size() == 1) {
+            xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[0], nullptr);
+            val = Napi::Number::New(env, reply->atom);
+            free(reply);
+        } else {
+            const size_t sz = cookies.size();
+            Napi::Array ret = Napi::Array::New(env, sz);
+            for (size_t i = 0; i < sz; ++i) {
+                xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[i], nullptr);
+                ret.Set(i, Napi::Number::New(env, reply->atom));
+                free(reply);
+            }
+            val = ret;
+        }
+        return val;
+    }));
+
+    xcb.Set("atom", initAtoms(env, wm));
+    xcb.Set("event", initEvents(env, wm));
 
     return xcb;
 }
