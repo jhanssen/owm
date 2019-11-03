@@ -592,6 +592,32 @@ static Napi::Object initEvents(napi_env env, const std::shared_ptr<WM>& wm)
     return events;
 }
 
+static inline const Screen* screenForWindow(const std::shared_ptr<WM>& wm, xcb_window_t win)
+{
+    // first, see if this window is a root window
+    for (const auto& screen : wm->screens) {
+        if (screen.screen->root == win)
+            return &screen;
+    }
+
+    // no? well, let's query the root
+    auto cookie = xcb_get_geometry_unchecked(wm->conn, win);
+    auto reply = xcb_get_geometry_reply(wm->conn, cookie, nullptr);
+    if (!reply)
+        return nullptr;
+
+    // find the screen of the root
+    const auto root = reply->root;
+    free(reply);
+
+    for (const auto& screen : wm->screens) {
+        if (screen.screen->root == root)
+            return &screen;
+    }
+
+    return nullptr;
+}
+
 Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object xcb = Napi::Object::New(env);
@@ -647,7 +673,6 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         if (off) {
             xcb_configure_window(wm->conn, window, mask, values);
-            xcb_flush(wm->conn);
         }
 
         return env.Undefined();
@@ -695,6 +720,132 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             val = ret;
         }
         return val;
+    }));
+
+    xcb.Set("create_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "create_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        int32_t x = 0, y = 0;
+        uint32_t width, height;
+
+        if (!arg.Has("width")) {
+            throw Napi::TypeError::New(env, "create_window needs a width");
+        }
+        width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("height")) {
+            throw Napi::TypeError::New(env, "create_window needs a height");
+        }
+        height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+        uint32_t parent;
+        if (!arg.Has("parent")) {
+            throw Napi::TypeError::New(env, "create_window requires a parent");
+        }
+        parent = arg.Get("parent").As<Napi::Number>().Uint32Value();
+
+        auto screen = screenForWindow(wm, parent);
+        if (!screen) {
+            throw Napi::TypeError::New(env, "create_window couldn't find screen for parent");
+        }
+
+        if (arg.Has("x")) {
+            x = arg.Get("x").As<Napi::Number>().Int32Value();
+        }
+        if (arg.Has("y")) {
+            y = arg.Get("y").As<Napi::Number>().Int32Value();
+        }
+
+        auto win = xcb_generate_id(wm->conn);
+        xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, win, parent, x, y, width, height, 0,
+                          XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->visual->visual_id, 0, nullptr);
+
+        return Napi::Number::New(env, win);
+    }));
+
+    xcb.Set("flush", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "flush requires one arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        xcb_flush(wm->conn);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("reparent_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "reparent_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        int32_t x = 0, y = 0;
+        uint32_t window, parent;
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "rewindow_window requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("parent")) {
+            throw Napi::TypeError::New(env, "reparent_window requires a parent");
+        }
+        parent = arg.Get("parent").As<Napi::Number>().Uint32Value();
+
+        if (arg.Has("x")) {
+            x = arg.Get("x").As<Napi::Number>().Int32Value();
+        }
+        if (arg.Has("y")) {
+            y = arg.Get("y").As<Napi::Number>().Int32Value();
+        }
+
+        xcb_reparent_window(wm->conn, window, parent, x, y);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("map_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "map_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        const auto window = info[1].As<Napi::Number>().Uint32Value();
+
+        xcb_map_window(wm->conn, window);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("unmap_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "unmap_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        const auto window = info[1].As<Napi::Number>().Uint32Value();
+
+        xcb_unmap_window(wm->conn, window);
+
+        return env.Undefined();
     }));
 
     xcb.Set("atom", initAtoms(env, wm));

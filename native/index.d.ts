@@ -208,7 +208,7 @@ export interface Event {
 
 declare function owmCallback(data: Event) : void;
 
-declare interface ConfigureArgs {
+declare interface ConfigureWindowArgs {
     readonly x?: number;
     readonly y?: number;
     readonly width?: number;
@@ -218,13 +218,33 @@ declare interface ConfigureArgs {
     readonly stack_mode?: number;
 }
 
+declare interface CreateWindowArgs {
+    readonly parent: number;
+    readonly width: number;
+    readonly height: number;
+    readonly x?: number;
+    readonly y?: number;
+}
+
+declare interface ReparentWindowArgs {
+    readonly parent: number;
+    readonly window: number;
+    readonly x?: number;
+    readonly y?: number;
+}
+
 declare interface WMData {}
 
 declare interface XCBData {
     readonly atom: {[key: string]: number};
     readonly event: {[key: string]: number};
     intern_atom(name: string, onlyIfExists?: boolean): number;
-    configure_window(wm: WMData, args: ConfigureArgs): void;
+    configure_window(wm: WMData, args: ConfigureWindowArgs): void;
+    create_window(wm: WMData, args: CreateWindowArgs): number;
+    reparent_window(wm: WMData, args: ReparentWindowArgs): void;
+    map_window(wm: WMData, window: number): void;
+    unmap_window(wm: WMData, window: number): void;
+    flush(wm: WMData): void;
 }
 
 export interface Data

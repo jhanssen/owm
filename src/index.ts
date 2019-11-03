@@ -22,9 +22,8 @@ function event(e: OwmEvent) {
     console.log("got event", e);
 
     if (e.type == "xcb" && e.xcb) {
-        const xcb = e.xcb;
-        if (xcb.type === owm.xcb.event.BUTTON_PRESS) {
-            const press = xcb as XCB.ButtonPress;
+        if (e.xcb.type === owm.xcb.event.BUTTON_PRESS) {
+            const press = e.xcb as XCB.ButtonPress;
             const config = {
                 window: 0x20000d,
                 x: press.root_x,
