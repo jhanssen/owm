@@ -6,6 +6,14 @@
 #include <unistd.h>
 #include <sys/epoll.h>
 
+#define EINTRWRAP(x) ({                                                 \
+            decltype(x) eintr_wrapper_result;                           \
+            do {                                                        \
+                eintr_wrapper_result = (x);                             \
+            } while (eintr_wrapper_result == -1 && errno == EINTR);     \
+            eintr_wrapper_result;                                       \
+        })
+
 struct Data
 {
     bool started { false };
@@ -254,7 +262,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                     for (;;) {
                         if (xcb_connection_has_error(wm->conn)) {
                             // more badness
-                            printf("bad conn");
+                            printf("bad conn\n");
                             return;
                         }
                         xcb_generic_event_t *event = xcb_poll_for_event(wm->conn);
@@ -264,6 +272,20 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                     }
                 } else if (events[i].data.fd == wakeupfd) {
                     // wakeup!
+
+                    // flush the pipe
+                    for (;;) {
+                        char c;
+                        const int r = ::read(wakeupfd, &c, 1);
+                        if (r == -1) {
+                            if (errno == EAGAIN)
+                                break;
+                            // bad error
+                            printf("bad read\n");
+                            return;
+                        }
+                    }
+
                     std::unique_lock locker(data.mutex);
                     if (!data.started)
                         return;
@@ -302,6 +324,21 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
 void Stop(const Napi::CallbackInfo& info)
 {
+    auto env = info.Env();
+
+    {
+        std::unique_lock locker(data.mutex);
+        if (!data.started)
+            throw Napi::TypeError::New(env, "Not started");
+        data.started = false;
+    }
+
+    char c = 'q';
+    EINTRWRAP(::write(data.wakeup[1], &c, 1));
+
+    data.thread.join();
+    EINTRWRAP(::close(data.wakeup[0]));
+    EINTRWRAP(::close(data.wakeup[1]));
 }
 
 Napi::Object Setup(Napi::Env env, Napi::Object exports)

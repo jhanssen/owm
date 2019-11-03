@@ -276,6 +276,8 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
 
         const auto type = xcb->response_type & ~0x80;
 
+        bool log = true;
+
         switch (type) {
         case XCB_BUTTON_PRESS:
         case XCB_BUTTON_RELEASE: {
@@ -332,11 +334,16 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
         case XCB_CLIENT_MESSAGE: {
             value = makeClientMessage(env, reinterpret_cast<xcb_client_message_event_t*>(xcb));
             break; }
+        case XCB_CREATE_NOTIFY:
+            // we don't care about these
+            log = false;
+            break;
         }
         free(xcb);
 
         if (value.IsEmpty()) {
-            printf("unhandled xcb type %d\n", type);
+            if (log)
+                printf("unhandled xcb type %d\n", type);
             return;
         }
 
@@ -765,7 +772,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto win = xcb_generate_id(wm->conn);
         xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, win, parent, x, y, width, height, 0,
-                          XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->visual->visual_id, 0, nullptr);
+                          XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->screen->root_visual, 0, nullptr);
 
         return Napi::Number::New(env, win);
     }));

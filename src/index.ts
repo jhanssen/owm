@@ -15,8 +15,6 @@ function loadConfig(dir: string)
 
 xdgBaseDir.configDirs.forEach(dir => { loadConfig(dir) });
 
-console.log("faff", native);
-
 let owm: { wm: OWM.WM, xcb: OWM.XCB };
 let lib: OWMLib;
 
@@ -53,7 +51,16 @@ function event(e: OWM.Event) {
 native.start(event).then((data: { wm: OWM.WM, xcb: OWM.XCB }) => {
     console.log("started", data);
     owm = data;
-    lib = new OWMLib(data.wm);
+    lib = new OWMLib(data.wm, data.xcb);
 }).catch((err: Error) => {
     console.log("error", err);
+    native.stop();
+    process.exit();
+});
+
+process.on("SIGINT", () => {
+    if (lib)
+        lib.cleanup();
+    native.stop();
+    process.exit();
 });

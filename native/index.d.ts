@@ -244,12 +244,12 @@ export namespace OWM {
     }
 }
 
-declare function nativeCallback(data: OWM.Event) : void;
+declare function nativeCallback(data: OWM.Event): void;
 
 declare namespace Native
 {
-    export function start(callback: typeof nativeCallback, display?: string) : Promise<{ readonly wm: OWM.WM, readonly xcb: OWM.XCB }>;
-    export function stop() : void;
+    export function start(callback: typeof nativeCallback, display?: string): Promise<{ readonly wm: OWM.WM, readonly xcb: OWM.XCB }>;
+    export function stop(): void;
 }
 
 export default Native;
