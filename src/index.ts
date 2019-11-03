@@ -1,6 +1,7 @@
 import * as xdgBaseDir from "xdg-basedir";
 import { default as Options } from "@jhanssen/options";
-import { default as native, Data as OwmData, Event as OwmEvent, XCB } from "../native";
+import { default as native, OWM, XCB } from "../native";
+import { OWMLib } from "../lib/owm";
 import * as path from "path";
 
 const options = Options("owm");
@@ -16,11 +17,13 @@ xdgBaseDir.configDirs.forEach(dir => { loadConfig(dir) });
 
 console.log("faff", native);
 
-let owm: OwmData;
+let owm: { wm: OWM.WM, xcb: OWM.XCB };
+let lib: OWMLib;
 
-function event(e: OwmEvent) {
-    console.log("got event", e);
+function event(e: OWM.Event) {
+    //console.log("got event2", e);
 
+    /*
     if (e.type == "xcb" && e.xcb) {
         if (e.xcb.type === owm.xcb.event.BUTTON_PRESS) {
             const press = e.xcb as XCB.ButtonPress;
@@ -36,11 +39,21 @@ function event(e: OwmEvent) {
             }
         }
     }
+    */
+    if (e.type == "windows" && e.windows) {
+        const windows = e.windows as XCB.Window[];
+        //console.log("got wins", windows);
+        for (const window of windows) {
+            if (!window.override_redirect)
+                lib.addClient(window);
+        }
+    }
 }
 
-native.start(event).then((data: OwmData) => {
+native.start(event).then((data: { wm: OWM.WM, xcb: OWM.XCB }) => {
     console.log("started", data);
     owm = data;
+    lib = new OWMLib(data.wm);
 }).catch((err: Error) => {
     console.log("error", err);
 });

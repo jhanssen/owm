@@ -199,15 +199,6 @@ declare type XCB_Type =
     XCB.PropertyNotify |
     XCB.ClientMessage;
 
-
-export interface Event {
-    readonly type: string;
-    readonly windows?: XCB.Window[];
-    readonly xcb?: XCB_Type;
-}
-
-declare function owmCallback(data: Event) : void;
-
 declare interface ConfigureWindowArgs {
     readonly x?: number;
     readonly y?: number;
@@ -233,30 +224,32 @@ declare interface ReparentWindowArgs {
     readonly y?: number;
 }
 
-declare interface WMData {}
-
-declare interface XCBData {
-    readonly atom: {[key: string]: number};
-    readonly event: {[key: string]: number};
-    intern_atom(name: string, onlyIfExists?: boolean): number;
-    configure_window(wm: WMData, args: ConfigureWindowArgs): void;
-    create_window(wm: WMData, args: CreateWindowArgs): number;
-    reparent_window(wm: WMData, args: ReparentWindowArgs): void;
-    map_window(wm: WMData, window: number): void;
-    unmap_window(wm: WMData, window: number): void;
-    flush(wm: WMData): void;
+export namespace OWM {
+    export interface WM {}
+    export interface XCB {
+        readonly atom: {[key: string]: number};
+        readonly event: {[key: string]: number};
+        intern_atom(name: string, onlyIfExists?: boolean): number;
+        configure_window(wm: OWM.WM, args: ConfigureWindowArgs): void;
+        create_window(wm: OWM.WM, args: CreateWindowArgs): number;
+        reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
+        map_window(wm: OWM.WM, window: number): void;
+        unmap_window(wm: OWM.WM, window: number): void;
+        flush(wm: OWM.WM): void;
+    }
+    export interface Event {
+        readonly type: string;
+        readonly windows?: XCB.Window[];
+        readonly xcb?: XCB_Type;
+    }
 }
 
-export interface Data
-{
-    readonly wm: WMData;
-    readonly xcb: XCBData;
-}
+declare function nativeCallback(data: OWM.Event) : void;
 
-declare namespace OWM
+declare namespace Native
 {
-    export function start(callback: typeof owmCallback, display?: string) : Promise<Data>;
+    export function start(callback: typeof nativeCallback, display?: string) : Promise<{ readonly wm: OWM.WM, readonly xcb: OWM.XCB }>;
     export function stop() : void;
 }
 
-export default OWM;
+export default Native;
