@@ -44,6 +44,26 @@ static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* eve
     return obj;
 }
 
+static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event)
+{
+    Napi::Object obj = Napi::Object::New(env);
+
+    obj.Set("type", event->response_type & ~0x80);
+    obj.Set("detail", event->detail);
+    obj.Set("root_x", event->root_x);
+    obj.Set("root_y", event->root_y);
+    obj.Set("event_x", event->event_x);
+    obj.Set("event_y", event->event_y);
+    obj.Set("time", event->time);
+    obj.Set("root", event->root);
+    obj.Set("event", event->event);
+    obj.Set("child", event->child);
+    obj.Set("state", event->state);
+    obj.Set("same_screen", event->same_screen);
+
+    return obj;
+}
+
 // appears to be the same structure as xcb_button_press_event_t?
 static Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t* event)
 {
@@ -285,6 +305,10 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
             break; }
         case XCB_MOTION_NOTIFY: {
             value = makeMotionNotify(env, reinterpret_cast<xcb_motion_notify_event_t*>(xcb));
+            break; }
+        case XCB_KEY_PRESS:
+        case XCB_KEY_RELEASE: {
+            value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb));
             break; }
         case XCB_ENTER_NOTIFY:
         case XCB_LEAVE_NOTIFY: {

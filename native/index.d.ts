@@ -134,6 +134,21 @@ export namespace XCB {
         readonly same_screen: number;
     }
 
+    export interface KeyPress {
+        readonly type: number;
+        readonly detail: number;
+        readonly time: number;
+        readonly root_x: number;
+        readonly root_y: number;
+        readonly event_x: number;
+        readonly event_y: number;
+        readonly root: number;
+        readonly event: number;
+        readonly child: number;
+        readonly state: number;
+        readonly same_screen: number;
+    }
+
     export interface EnterNotify {
         readonly type: number;
         readonly detail: number;
@@ -271,6 +286,7 @@ export namespace XCB {
 declare type XCB_Type =
     XCB.ButtonPress |
     XCB.MotionNotify |
+    XCB.KeyPress |
     XCB.EnterNotify |
     XCB.FocusIn |
     XCB.KeymapNotify |
