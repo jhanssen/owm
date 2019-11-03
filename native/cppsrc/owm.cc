@@ -603,6 +603,149 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("configure_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "configure_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t window;
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "configure_window requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        uint32_t values[7];
+        uint16_t mask = 0;
+        uint32_t off = 0;
+
+        if (arg.Has("x")) {
+            mask |= XCB_CONFIG_WINDOW_X;
+            values[off++] = arg.Get("x").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("y")) {
+            mask |= XCB_CONFIG_WINDOW_Y;
+            values[off++] = arg.Get("y").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("width")) {
+            mask |= XCB_CONFIG_WINDOW_WIDTH;
+            values[off++] = arg.Get("width").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("height")) {
+            mask |= XCB_CONFIG_WINDOW_HEIGHT;
+            values[off++] = arg.Get("height").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("border_width")) {
+            mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
+            values[off++] = arg.Get("border_width").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("sibling")) {
+            mask |= XCB_CONFIG_WINDOW_SIBLING;
+            values[off++] = arg.Get("sibling").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("stack_mode")) {
+            mask |= XCB_CONFIG_WINDOW_STACK_MODE;
+            values[off++] = arg.Get("stack_mode").As<Napi::Number>().Uint32Value();
+        }
+
+        if (off) {
+            xcb_configure_window(wm->conn, window, mask, values);
+        }
+
+        return env.Undefined();
+    }));
+    xcb.Set("change_window_attributes", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "change_window_attributes requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t window;
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "change_window_attributes requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        uint32_t values[15];
+        uint16_t mask = 0;
+        uint32_t off = 0;
+
+        if (arg.Has("back_pixmap")) {
+            mask |= XCB_CW_BACK_PIXMAP;
+            values[off++] = arg.Get("back_pixmap").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("back_pixel")) {
+            mask |= XCB_CW_BACK_PIXEL;
+            values[off++] = arg.Get("back_pixel").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("border_pixmap")) {
+            mask |= XCB_CW_BORDER_PIXMAP;
+            values[off++] = arg.Get("border_pixmap").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("border_pixel")) {
+            mask |= XCB_CW_BORDER_PIXEL;
+            values[off++] = arg.Get("border_pixel").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("bit_gravity")) {
+            mask |= XCB_CW_BIT_GRAVITY;
+            values[off++] = arg.Get("bit_gravity").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("win_gravity")) {
+            mask |= XCB_CW_WIN_GRAVITY;
+            values[off++] = arg.Get("win_gravity").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("backing_store")) {
+            mask |= XCB_CW_BACKING_STORE;
+            values[off++] = arg.Get("backing_store").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("backing_planes")) {
+            mask |= XCB_CW_BACKING_PLANES;
+            values[off++] = arg.Get("backing_planes").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("backing_pixel")) {
+            mask |= XCB_CW_BACKING_PIXEL;
+            values[off++] = arg.Get("backing_pixel").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("override_redirect")) {
+            mask |= XCB_CW_OVERRIDE_REDIRECT;
+            values[off++] = arg.Get("override_redirect").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("save_under")) {
+            mask |= XCB_CW_SAVE_UNDER;
+            values[off++] = arg.Get("save_under").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("event_mask")) {
+            mask |= XCB_CW_EVENT_MASK;
+            values[off++] = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("dont_propagate")) {
+            mask |= XCB_CW_DONT_PROPAGATE;
+            values[off++] = arg.Get("dont_propagate").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("colormap")) {
+            mask |= XCB_CW_COLORMAP;
+            values[off++] = arg.Get("colormap").As<Napi::Number>().Uint32Value();
+        }
+        if (arg.Has("cursor")) {
+            mask |= XCB_CW_CURSOR;
+            values[off++] = arg.Get("cursor").As<Napi::Number>().Uint32Value();
+        }
+
+        if (off) {
+            xcb_change_window_attributes(wm->conn, window, mask, values);
+        }
+
+        return env.Undefined();
+    }));
+
     xcb.Set("intern_atom", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

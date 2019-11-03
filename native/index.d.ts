@@ -313,6 +313,25 @@ declare interface ReparentWindowArgs {
     readonly y?: number;
 }
 
+declare interface ChangeWindowAttributesArgs {
+    readonly window: number;
+    readonly back_pixmap?: number;
+    readonly back_pixel?: number;
+    readonly border_pixmap?: number;
+    readonly border_pixel?: number;
+    readonly bit_gravity?: number;
+    readonly win_gravity?: number;
+    readonly backing_store?: number;
+    readonly backing_planes?: number;
+    readonly backing_pixel?: number;
+    readonly override_redirect?: number;
+    readonly save_under?: number;
+    readonly event_mask?: number;
+    readonly dont_propagate?: number;
+    readonly colormap?: number;
+    readonly cursor?: number;
+}
+
 export namespace OWM {
     export interface WM {}
     export interface XCB {
@@ -320,6 +339,7 @@ export namespace OWM {
         readonly event: {[key: string]: number};
         intern_atom(name: string, onlyIfExists?: boolean): number;
         configure_window(wm: OWM.WM, args: ConfigureWindowArgs): void;
+        change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
         map_window(wm: OWM.WM, window: number): void;

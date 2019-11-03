@@ -94,6 +94,7 @@ export class OWMLib {
                                                          width: win.geometry.width + (border * 2),
                                                          height: win.geometry.height + (border * 2),
                                                          parent: win.geometry.root });
+        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1 });
         this.xcb.reparent_window(this.wm, { window: win.window, parent: parent, x: border, y: border });
         this.xcb.map_window(this.wm, parent);
         this.xcb.flush(this.wm);
