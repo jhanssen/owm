@@ -1,6 +1,6 @@
 import * as xdgBaseDir from "xdg-basedir";
 import { default as Options } from "@jhanssen/options";
-import { default as native, OWM, XCB } from "../native";
+import { default as native, OWM, XCB } from "native";
 import { OWMLib } from "../lib/owm";
 import * as path from "path";
 

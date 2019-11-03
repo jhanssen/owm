@@ -13,7 +13,7 @@ function event(e) {
         const xcb = e.xcb;
         if (xcb.type === owm.xcb.event.BUTTON_PRESS) {
             const config = {
-                window: 0x400007,
+                window: 0x20000d,
                 x: xcb.root_x,
                 y: xcb.root_y
             };
