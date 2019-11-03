@@ -7,6 +7,7 @@ export class Client
     private readonly wm: OWM.WM;
     private readonly xcb: OWM.XCB;
     private readonly border: number;
+    private geometry: { x: number, y: number, width: number, height: number };
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
         this.wm = owm.wm;
@@ -14,6 +15,12 @@ export class Client
         this.parent = parent;
         this.window = window;
         this.border = border;
+        this.geometry = {
+            x: window.geometry.x,
+            y: window.geometry.y,
+            width: window.geometry.width,
+            height: window.geometry.height
+        };
     }
 
     move(x: number, y: number) {
@@ -22,6 +29,8 @@ export class Client
             x: x,
             y: y
         });
+        this.geometry.x = x + this.border;
+        this.geometry.y = y + this.border;
         this.xcb.flush(this.wm);
     }
 
@@ -34,12 +43,12 @@ export class Client
             width: width,
             height: height
         });
-        this.window.width = width - (this.border * 2);
-        this.window.height = height - (this.border * 2);
+        this.geometry.width = width - (this.border * 2);
+        this.geometry.height = height - (this.border * 2);
         this.xcb.configure_window(this.wm, {
             window: this.window.window,
-            width: this.window.width,
-            height: this.window.height
+            width: this.geometry.width,
+            height: this.geometry.height
         });
         this.xcb.flush(this.wm);
     }
@@ -81,10 +90,10 @@ export class OWMLib {
     addClient(win: XCB.Window) {
         // reparent to new window
         const border = 10;
-        const parent = this.xcb.create_window(this.wm, { x: win.x, y: win.y,
-                                                         width: win.width + (border * 2),
-                                                         height: win.height + (border * 2),
-                                                         parent: win.root });
+        const parent = this.xcb.create_window(this.wm, { x: win.geometry.x, y: win.geometry.y,
+                                                         width: win.geometry.width + (border * 2),
+                                                         height: win.geometry.height + (border * 2),
+                                                         parent: win.geometry.root });
         this.xcb.reparent_window(this.wm, { window: win.window, parent: parent, x: border, y: border });
         this.xcb.map_window(this.wm, parent);
         this.xcb.flush(this.wm);
@@ -97,13 +106,26 @@ export class OWMLib {
         this._screens = screens;
     }
 
+    buttonPress(event: XCB.ButtonPress) {
+        console.log("press", event);
+    }
+
+    buttonRelease(event: XCB.ButtonPress) {
+    }
+
+    enterNotify(event: XCB.EnterNotify) {
+    }
+
+    leaveNotify(event: XCB.EnterNotify) {
+    }
+
     cleanup() {
         for (const client of this._clients) {
             this.xcb.reparent_window(this.wm, {
                 window: ((client as unknown) as ClientInternal).window.window,
-                parent: ((client as unknown) as ClientInternal).window.root,
-                x: ((client as unknown) as ClientInternal).window.x,
-                y: ((client as unknown) as ClientInternal).window.y
+                parent: ((client as unknown) as ClientInternal).window.geometry.root,
+                x: ((client as unknown) as ClientInternal).window.geometry.x,
+                y: ((client as unknown) as ClientInternal).window.geometry.y
             });
             this.xcb.flush(this.wm);
         }

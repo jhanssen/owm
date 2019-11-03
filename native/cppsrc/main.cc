@@ -28,6 +28,201 @@ struct Data
 
 static Data data;
 
+static inline void initAtoms(std::shared_ptr<owm::WM>& wm)
+{
+    auto& atoms = wm->atoms;
+
+    atoms["NONE"] = XCB_ATOM_NONE;
+    atoms["ANY"] = XCB_ATOM_ANY;
+    atoms["PRIMARY"] = XCB_ATOM_PRIMARY;
+    atoms["SECONDARY"] = XCB_ATOM_SECONDARY;
+    atoms["ARC"] = XCB_ATOM_ARC;
+    atoms["ATOM"] = XCB_ATOM_ATOM;
+    atoms["BITMAP"] = XCB_ATOM_BITMAP;
+    atoms["CARDINAL"] = XCB_ATOM_CARDINAL;
+    atoms["COLORMAP"] = XCB_ATOM_COLORMAP;
+    atoms["CURSOR"] = XCB_ATOM_CURSOR;
+    atoms["CUT_BUFFER0"] = XCB_ATOM_CUT_BUFFER0;
+    atoms["CUT_BUFFER1"] = XCB_ATOM_CUT_BUFFER1;
+    atoms["CUT_BUFFER2"] = XCB_ATOM_CUT_BUFFER2;
+    atoms["CUT_BUFFER3"] = XCB_ATOM_CUT_BUFFER3;
+    atoms["CUT_BUFFER4"] = XCB_ATOM_CUT_BUFFER4;
+    atoms["CUT_BUFFER5"] = XCB_ATOM_CUT_BUFFER5;
+    atoms["CUT_BUFFER6"] = XCB_ATOM_CUT_BUFFER6;
+    atoms["CUT_BUFFER7"] = XCB_ATOM_CUT_BUFFER7;
+    atoms["DRAWABLE"] = XCB_ATOM_DRAWABLE;
+    atoms["FONT"] = XCB_ATOM_FONT;
+    atoms["INTEGER"] = XCB_ATOM_INTEGER;
+    atoms["PIXMAP"] = XCB_ATOM_PIXMAP;
+    atoms["POINT"] = XCB_ATOM_POINT;
+    atoms["RECTANGLE"] = XCB_ATOM_RECTANGLE;
+    atoms["RESOURCE_MANAGER"] = XCB_ATOM_RESOURCE_MANAGER;
+    atoms["RGB_COLOR_MAP"] = XCB_ATOM_RGB_COLOR_MAP;
+    atoms["RGB_BEST_MAP"] = XCB_ATOM_RGB_BEST_MAP;
+    atoms["RGB_BLUE_MAP"] = XCB_ATOM_RGB_BLUE_MAP;
+    atoms["RGB_DEFAULT_MAP"] = XCB_ATOM_RGB_DEFAULT_MAP;
+    atoms["RGB_GRAY_MAP"] = XCB_ATOM_RGB_GRAY_MAP;
+    atoms["RGB_GREEN_MAP"] = XCB_ATOM_RGB_GREEN_MAP;
+    atoms["RGB_RED_MAP"] = XCB_ATOM_RGB_RED_MAP;
+    atoms["STRING"] = XCB_ATOM_STRING;
+    atoms["VISUALID"] = XCB_ATOM_VISUALID;
+    atoms["WINDOW"] = XCB_ATOM_WINDOW;
+    atoms["WM_COMMAND"] = XCB_ATOM_WM_COMMAND;
+    atoms["WM_HINTS"] = XCB_ATOM_WM_HINTS;
+    atoms["WM_CLIENT_MACHINE"] = XCB_ATOM_WM_CLIENT_MACHINE;
+    atoms["WM_ICON_NAME"] = XCB_ATOM_WM_ICON_NAME;
+    atoms["WM_ICON_SIZE"] = XCB_ATOM_WM_ICON_SIZE;
+    atoms["WM_NAME"] = XCB_ATOM_WM_NAME;
+    atoms["WM_NORMAL_HINTS"] = XCB_ATOM_WM_NORMAL_HINTS;
+    atoms["WM_SIZE_HINTS"] = XCB_ATOM_WM_SIZE_HINTS;
+    atoms["WM_ZOOM_HINTS"] = XCB_ATOM_WM_ZOOM_HINTS;
+    atoms["MIN_SPACE"] = XCB_ATOM_MIN_SPACE;
+    atoms["NORM_SPACE"] = XCB_ATOM_NORM_SPACE;
+    atoms["MAX_SPACE"] = XCB_ATOM_MAX_SPACE;
+    atoms["END_SPACE"] = XCB_ATOM_END_SPACE;
+    atoms["SUPERSCRIPT_X"] = XCB_ATOM_SUPERSCRIPT_X;
+    atoms["SUPERSCRIPT_Y"] = XCB_ATOM_SUPERSCRIPT_Y;
+    atoms["SUBSCRIPT_X"] = XCB_ATOM_SUBSCRIPT_X;
+    atoms["SUBSCRIPT_Y"] = XCB_ATOM_SUBSCRIPT_Y;
+    atoms["UNDERLINE_POSITION"] = XCB_ATOM_UNDERLINE_POSITION;
+    atoms["UNDERLINE_THICKNESS"] = XCB_ATOM_UNDERLINE_THICKNESS;
+    atoms["STRIKEOUT_ASCENT"] = XCB_ATOM_STRIKEOUT_ASCENT;
+    atoms["STRIKEOUT_DESCENT"] = XCB_ATOM_STRIKEOUT_DESCENT;
+    atoms["ITALIC_ANGLE"] = XCB_ATOM_ITALIC_ANGLE;
+    atoms["X_HEIGHT"] = XCB_ATOM_X_HEIGHT;
+    atoms["QUAD_WIDTH"] = XCB_ATOM_QUAD_WIDTH;
+    atoms["WEIGHT"] = XCB_ATOM_WEIGHT;
+    atoms["POINT_SIZE"] = XCB_ATOM_POINT_SIZE;
+    atoms["RESOLUTION"] = XCB_ATOM_RESOLUTION;
+    atoms["COPYRIGHT"] = XCB_ATOM_COPYRIGHT;
+    atoms["NOTICE"] = XCB_ATOM_NOTICE;
+    atoms["FONT_NAME"] = XCB_ATOM_FONT_NAME;
+    atoms["FAMILY_NAME"] = XCB_ATOM_FAMILY_NAME;
+    atoms["FULL_NAME"] = XCB_ATOM_FULL_NAME;
+    atoms["CAP_HEIGHT"] = XCB_ATOM_CAP_HEIGHT;
+    atoms["WM_CLASS"] = XCB_ATOM_WM_CLASS;
+    atoms["WM_TRANSIENT_FOR"] = XCB_ATOM_WM_TRANSIENT_FOR;
+
+    // ewmh atoms
+    for (int s = 0; s < wm->ewmh->nb_screens; ++s) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "_NET_WM_CM_S%d", s);
+        atoms[buf] = wm->ewmh->_NET_WM_CM_Sn[s];
+    }
+    atoms["_NET_SUPPORTED"] = wm->ewmh->_NET_SUPPORTED;
+    atoms["_NET_CLIENT_LIST"] = wm->ewmh->_NET_CLIENT_LIST;
+    atoms["_NET_CLIENT_LIST_STACKING"] = wm->ewmh->_NET_CLIENT_LIST_STACKING;
+    atoms["_NET_NUMBER_OF_DESKTOPS"] = wm->ewmh->_NET_NUMBER_OF_DESKTOPS;
+    atoms["_NET_DESKTOP_GEOMETRY"] = wm->ewmh->_NET_DESKTOP_GEOMETRY;
+    atoms["_NET_DESKTOP_VIEWPORT"] = wm->ewmh->_NET_DESKTOP_VIEWPORT;
+    atoms["_NET_CURRENT_DESKTOP"] = wm->ewmh->_NET_CURRENT_DESKTOP;
+    atoms["_NET_DESKTOP_NAMES"] = wm->ewmh->_NET_DESKTOP_NAMES;
+    atoms["_NET_ACTIVE_WINDOW"] = wm->ewmh->_NET_ACTIVE_WINDOW;
+    atoms["_NET_WORKAREA"] = wm->ewmh->_NET_WORKAREA;
+    atoms["_NET_SUPPORTING_WM_CHECK"] = wm->ewmh->_NET_SUPPORTING_WM_CHECK;
+    atoms["_NET_VIRTUAL_ROOTS"] = wm->ewmh->_NET_VIRTUAL_ROOTS;
+    atoms["_NET_DESKTOP_LAYOUT"] = wm->ewmh->_NET_DESKTOP_LAYOUT;
+    atoms["_NET_SHOWING_DESKTOP"] = wm->ewmh->_NET_SHOWING_DESKTOP;
+    atoms["_NET_CLOSE_WINDOW"] = wm->ewmh->_NET_CLOSE_WINDOW;
+    atoms["_NET_MOVERESIZE_WINDOW"] = wm->ewmh->_NET_MOVERESIZE_WINDOW;
+    atoms["_NET_WM_MOVERESIZE"] = wm->ewmh->_NET_WM_MOVERESIZE;
+    atoms["_NET_RESTACK_WINDOW"] = wm->ewmh->_NET_RESTACK_WINDOW;
+    atoms["_NET_REQUEST_FRAME_EXTENTS"] = wm->ewmh->_NET_REQUEST_FRAME_EXTENTS;
+    atoms["_NET_WM_NAME"] = wm->ewmh->_NET_WM_NAME;
+    atoms["_NET_WM_VISIBLE_NAME"] = wm->ewmh->_NET_WM_VISIBLE_NAME;
+    atoms["_NET_WM_ICON_NAME"] = wm->ewmh->_NET_WM_ICON_NAME;
+    atoms["_NET_WM_VISIBLE_ICON_NAME"] = wm->ewmh->_NET_WM_VISIBLE_ICON_NAME;
+    atoms["_NET_WM_DESKTOP"] = wm->ewmh->_NET_WM_DESKTOP;
+    atoms["_NET_WM_WINDOW_TYPE"] = wm->ewmh->_NET_WM_WINDOW_TYPE;
+    atoms["_NET_WM_STATE"] = wm->ewmh->_NET_WM_STATE;
+    atoms["_NET_WM_ALLOWED_ACTIONS"] = wm->ewmh->_NET_WM_ALLOWED_ACTIONS;
+    atoms["_NET_WM_STRUT"] = wm->ewmh->_NET_WM_STRUT;
+    atoms["_NET_WM_STRUT_PARTIAL"] = wm->ewmh->_NET_WM_STRUT_PARTIAL;
+    atoms["_NET_WM_ICON_GEOMETRY"] = wm->ewmh->_NET_WM_ICON_GEOMETRY;
+    atoms["_NET_WM_ICON"] = wm->ewmh->_NET_WM_ICON;
+    atoms["_NET_WM_PID"] = wm->ewmh->_NET_WM_PID;
+    atoms["_NET_WM_HANDLED_ICONS"] = wm->ewmh->_NET_WM_HANDLED_ICONS;
+    atoms["_NET_WM_USER_TIME"] = wm->ewmh->_NET_WM_USER_TIME;
+    atoms["_NET_WM_USER_TIME_WINDOW"] = wm->ewmh->_NET_WM_USER_TIME_WINDOW;
+    atoms["_NET_FRAME_EXTENTS"] = wm->ewmh->_NET_FRAME_EXTENTS;
+    atoms["_NET_WM_PING"] = wm->ewmh->_NET_WM_PING;
+    atoms["_NET_WM_SYNC_REQUEST"] = wm->ewmh->_NET_WM_SYNC_REQUEST;
+    atoms["_NET_WM_SYNC_REQUEST_COUNTER"] = wm->ewmh->_NET_WM_SYNC_REQUEST_COUNTER;
+    atoms["_NET_WM_FULLSCREEN_MONITORS"] = wm->ewmh->_NET_WM_FULLSCREEN_MONITORS;
+    atoms["_NET_WM_FULL_PLACEMENT"] = wm->ewmh->_NET_WM_FULL_PLACEMENT;
+    atoms["UTF8_STRING"] = wm->ewmh->UTF8_STRING;
+    atoms["WM_PROTOCOLS"] = wm->ewmh->WM_PROTOCOLS;
+    atoms["MANAGER"] = wm->ewmh->MANAGER;
+    atoms["_NET_WM_WINDOW_TYPE_DESKTOP"] = wm->ewmh->_NET_WM_WINDOW_TYPE_DESKTOP;
+    atoms["_NET_WM_WINDOW_TYPE_DOCK"] = wm->ewmh->_NET_WM_WINDOW_TYPE_DOCK;
+    atoms["_NET_WM_WINDOW_TYPE_TOOLBAR"] = wm->ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR;
+    atoms["_NET_WM_WINDOW_TYPE_MENU"] = wm->ewmh->_NET_WM_WINDOW_TYPE_MENU;
+    atoms["_NET_WM_WINDOW_TYPE_UTILITY"] = wm->ewmh->_NET_WM_WINDOW_TYPE_UTILITY;
+    atoms["_NET_WM_WINDOW_TYPE_SPLASH"] = wm->ewmh->_NET_WM_WINDOW_TYPE_SPLASH;
+    atoms["_NET_WM_WINDOW_TYPE_DIALOG"] = wm->ewmh->_NET_WM_WINDOW_TYPE_DIALOG;
+    atoms["_NET_WM_WINDOW_TYPE_DROPDOWN_MENU"] = wm->ewmh->_NET_WM_WINDOW_TYPE_DROPDOWN_MENU;
+    atoms["_NET_WM_WINDOW_TYPE_POPUP_MENU"] = wm->ewmh->_NET_WM_WINDOW_TYPE_POPUP_MENU;
+    atoms["_NET_WM_WINDOW_TYPE_TOOLTIP"] = wm->ewmh->_NET_WM_WINDOW_TYPE_TOOLTIP;
+    atoms["_NET_WM_WINDOW_TYPE_NOTIFICATION"] = wm->ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION;
+    atoms["_NET_WM_WINDOW_TYPE_COMBO"] = wm->ewmh->_NET_WM_WINDOW_TYPE_COMBO;
+    atoms["_NET_WM_WINDOW_TYPE_DND"] = wm->ewmh->_NET_WM_WINDOW_TYPE_DND;
+    atoms["_NET_WM_WINDOW_TYPE_NORMAL"] = wm->ewmh->_NET_WM_WINDOW_TYPE_NORMAL;
+    atoms["_NET_WM_STATE_MODAL"] = wm->ewmh->_NET_WM_STATE_MODAL;
+    atoms["_NET_WM_STATE_STICKY"] = wm->ewmh->_NET_WM_STATE_STICKY;
+    atoms["_NET_WM_STATE_MAXIMIZED_VERT"] = wm->ewmh->_NET_WM_STATE_MAXIMIZED_VERT;
+    atoms["_NET_WM_STATE_MAXIMIZED_HORZ"] = wm->ewmh->_NET_WM_STATE_MAXIMIZED_HORZ;
+    atoms["_NET_WM_STATE_SHADED"] = wm->ewmh->_NET_WM_STATE_SHADED;
+    atoms["_NET_WM_STATE_SKIP_TASKBAR"] = wm->ewmh->_NET_WM_STATE_SKIP_TASKBAR;
+    atoms["_NET_WM_STATE_SKIP_PAGER"] = wm->ewmh->_NET_WM_STATE_SKIP_PAGER;
+    atoms["_NET_WM_STATE_HIDDEN"] = wm->ewmh->_NET_WM_STATE_HIDDEN;
+    atoms["_NET_WM_STATE_FULLSCREEN"] = wm->ewmh->_NET_WM_STATE_FULLSCREEN;
+    atoms["_NET_WM_STATE_ABOVE"] = wm->ewmh->_NET_WM_STATE_ABOVE;
+    atoms["_NET_WM_STATE_BELOW"] = wm->ewmh->_NET_WM_STATE_BELOW;
+    atoms["_NET_WM_STATE_DEMANDS_ATTENTION"] = wm->ewmh->_NET_WM_STATE_DEMANDS_ATTENTION;
+    atoms["_NET_WM_ACTION_MOVE"] = wm->ewmh->_NET_WM_ACTION_MOVE;
+    atoms["_NET_WM_ACTION_RESIZE"] = wm->ewmh->_NET_WM_ACTION_RESIZE;
+    atoms["_NET_WM_ACTION_MINIMIZE"] = wm->ewmh->_NET_WM_ACTION_MINIMIZE;
+    atoms["_NET_WM_ACTION_SHADE"] = wm->ewmh->_NET_WM_ACTION_SHADE;
+    atoms["_NET_WM_ACTION_STICK"] = wm->ewmh->_NET_WM_ACTION_STICK;
+    atoms["_NET_WM_ACTION_MAXIMIZE_HORZ"] = wm->ewmh->_NET_WM_ACTION_MAXIMIZE_HORZ;
+    atoms["_NET_WM_ACTION_MAXIMIZE_VERT"] = wm->ewmh->_NET_WM_ACTION_MAXIMIZE_VERT;
+    atoms["_NET_WM_ACTION_FULLSCREEN"] = wm->ewmh->_NET_WM_ACTION_FULLSCREEN;
+    atoms["_NET_WM_ACTION_CHANGE_DESKTOP"] = wm->ewmh->_NET_WM_ACTION_CHANGE_DESKTOP;
+    atoms["_NET_WM_ACTION_CLOSE"] = wm->ewmh->_NET_WM_ACTION_CLOSE;
+    atoms["_NET_WM_ACTION_ABOVE"] = wm->ewmh->_NET_WM_ACTION_ABOVE;
+    atoms["_NET_WM_ACTION_BELOW"] = wm->ewmh->_NET_WM_ACTION_BELOW;
+
+    // some extra atoms we might want to know about
+    struct ExtraAtom {
+        size_t size;
+        const char* name;
+    };
+    const ExtraAtom extraAtoms[] = {
+        { 16, "WM_DELETE_WINDOW" },
+        {  8, "WM_STATE" },
+        { 15, "WM_CHANGE_STATE" },
+        { 14, "WM_WINDOW_ROLE" },
+        { 16, "WM_CLIENT_LEADER" },
+        { 13, "WM_TAKE_FOCUS" },
+        { 23, "_NET_SYSTEM_TRAY_OPCODE" },
+        { 28, "_NET_SYSTEM_TRAY_ORIENTATION" },
+        { 22, "_NET_WM_WINDOW_OPACITY" },
+        { 16, "_XKB_RULES_NAMES" }
+    };
+    const size_t extraCount = sizeof(extraAtoms) / sizeof(extraAtoms[0]);
+
+    std::vector<xcb_intern_atom_cookie_t> cookies;
+    cookies.reserve(extraCount);
+    for (size_t i = 0; i < extraCount; ++i) {
+        cookies.push_back(xcb_intern_atom_unchecked(wm->conn, 0, extraAtoms[i].size, extraAtoms[i].name));
+    }
+    for (size_t i = 0; i < extraCount; ++i) {
+        xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[i], nullptr);
+        atoms[extraAtoms[i].name] = reply->atom;
+        free(reply);
+    }
+}
+
 Napi::Value Start(const Napi::CallbackInfo& info)
 {
     auto env = info.Env();
@@ -128,11 +323,24 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             return;
         }
 
-        std::shared_ptr<std::vector<owm::Window> > windows = std::make_shared<std::vector<owm::Window> >();
-        auto queryWindows = [&windows](xcb_connection_t* conn, xcb_window_t root) {
+        initAtoms(wm);
 
+        std::shared_ptr<std::vector<owm::Window> > windows = std::make_shared<std::vector<owm::Window> >();
+        auto queryWindows = [&windows](xcb_connection_t* conn, xcb_ewmh_connection_t* ewmh, const owm::Atoms& atoms, xcb_window_t root) {
             std::vector<xcb_get_window_attributes_cookie_t> attribCookies;
             std::vector<xcb_get_geometry_cookie_t> geomCookies;
+            std::vector<xcb_get_property_cookie_t> leaderCookies;
+            std::vector<xcb_get_property_cookie_t> normalHintsCookies;
+            std::vector<xcb_get_property_cookie_t> transientCookies;
+            std::vector<xcb_get_property_cookie_t> hintsCookies;
+            std::vector<xcb_get_property_cookie_t> classCookies;
+            std::vector<xcb_get_property_cookie_t> nameCookies;
+            std::vector<xcb_get_property_cookie_t> protocolsCookies;
+            std::vector<xcb_get_property_cookie_t> strutCookies;
+            std::vector<xcb_get_property_cookie_t> partialStrutCookies;
+            std::vector<xcb_get_property_cookie_t> stateCookies;
+            std::vector<xcb_get_property_cookie_t> typeCookies;
+            std::vector<xcb_get_property_cookie_t> pidCookies;
 
             xcb_query_tree_cookie_t cookie = xcb_query_tree_unchecked(conn, root);
             xcb_query_tree_reply_t *tree = xcb_query_tree_reply(conn, cookie, nullptr);
@@ -140,11 +348,102 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
             attribCookies.reserve(tree->children_len);
             geomCookies.reserve(tree->children_len);
+            leaderCookies.reserve(tree->children_len);
+            normalHintsCookies.reserve(tree->children_len);
+            transientCookies.reserve(tree->children_len);
+            hintsCookies.reserve(tree->children_len);
+            classCookies.reserve(tree->children_len);
+            nameCookies.reserve(tree->children_len);
+            protocolsCookies.reserve(tree->children_len);
+            strutCookies.reserve(tree->children_len);
+            partialStrutCookies.reserve(tree->children_len);
+            stateCookies.reserve(tree->children_len);
+            typeCookies.reserve(tree->children_len);
+            pidCookies.reserve(tree->children_len);
+
+            const auto wm_client_leader = atoms.at("WM_CLIENT_LEADER");
+            const auto wm_protocols = atoms.at("WM_PROTOCOLS");
 
             for (unsigned int i = 0; i < tree->children_len; ++i) {
                 attribCookies.push_back(xcb_get_window_attributes_unchecked(conn, wins[i]));
                 geomCookies.push_back(xcb_get_geometry_unchecked(conn, wins[i]));
+                leaderCookies.push_back(xcb_get_property(conn, 0, wins[i], wm_client_leader, XCB_ATOM_WINDOW, 0, 1));
+                normalHintsCookies.push_back(xcb_icccm_get_wm_normal_hints(conn, wins[i]));
+                transientCookies.push_back(xcb_icccm_get_wm_transient_for(conn, wins[i]));
+                hintsCookies.push_back(xcb_icccm_get_wm_hints(conn, wins[i]));
+                classCookies.push_back(xcb_icccm_get_wm_class(conn, wins[i]));
+                nameCookies.push_back(xcb_icccm_get_wm_name(conn, wins[i]));
+                protocolsCookies.push_back(xcb_icccm_get_wm_protocols(conn, wins[i], wm_protocols));
+                strutCookies.push_back(xcb_ewmh_get_wm_strut(ewmh, wins[i]));
+                partialStrutCookies.push_back(xcb_ewmh_get_wm_strut_partial(ewmh, wins[i]));
+                stateCookies.push_back(xcb_ewmh_get_wm_state(ewmh, wins[i]));
+                typeCookies.push_back(xcb_ewmh_get_wm_window_type(ewmh, wins[i]));
+                pidCookies.push_back(xcb_ewmh_get_wm_pid(ewmh, wins[i]));
             }
+
+            xcb_size_hints_t normalHints;
+            xcb_icccm_wm_hints_t wmHints;
+            xcb_icccm_get_wm_class_reply_t wmClass;
+            xcb_icccm_get_text_property_reply_t wmName;
+            xcb_window_t transientWin, leaderWin;
+            xcb_icccm_get_wm_protocols_reply_t wmProtocols;
+            xcb_ewmh_get_extents_reply_t ewmhStrut;
+            xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
+            xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
+            uint32_t pid;
+
+            auto makeSizeHint = [](const xcb_size_hints_t& in) -> owm::Window::SizeHints {
+                owm::Window::SizeHints out;
+                static_assert(sizeof(in) == sizeof(out));
+                memcpy(&out, &in, sizeof(in));
+                return out;
+            };
+
+            auto makeWMHints = [](const xcb_icccm_wm_hints_t& in) -> owm::Window::WMHints {
+                owm::Window::WMHints out;
+                static_assert(sizeof(in) == sizeof(out));
+                memcpy(&out, &in, sizeof(in));
+                return out;
+            };
+
+            auto makeWMClass = [](const xcb_icccm_get_wm_class_reply_t& in) -> owm::Window::WMClass {
+                owm::Window::WMClass out;
+                if (in.instance_name)
+                    out.instance_name = in.instance_name;
+                if (in.class_name)
+                    out.class_name = in.class_name;
+                return out;
+            };
+
+            auto makeString = [](const xcb_icccm_get_text_property_reply_t& in) -> std::string {
+                if (in.format == 8 && in.name && in.name_len > 0) {
+                    return std::string(in.name, in.name_len);
+                }
+                return std::string();
+            };
+
+            auto makeAtoms = [](const auto& in) -> std::vector<xcb_atom_t> {
+                std::vector<xcb_atom_t> out;
+                out.reserve(in.atoms_len);
+                for (uint32_t i = 0; i < in.atoms_len; ++i) {
+                    out.push_back(in.atoms[i]);
+                }
+                return out;
+            };
+
+            auto makeExtents = [](const xcb_ewmh_get_extents_reply_t& in) -> owm::Window::EWMHExtents {
+                owm::Window::EWMHExtents out;
+                static_assert(sizeof(in) == sizeof(out));
+                memcpy(&out, &in, sizeof(in));
+                return out;
+            };
+
+            auto makeStrutPartial = [](const xcb_ewmh_wm_strut_partial_t& in) -> owm::Window::EWMHStrutPartial {
+                owm::Window::EWMHStrutPartial out;
+                static_assert(sizeof(in) == sizeof(out));
+                memcpy(&out, &in, sizeof(in));
+                return out;
+            };
 
             for (unsigned int i = 0; i < tree->children_len; ++i) {
                 xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(conn, attribCookies[i], nullptr);
@@ -159,21 +458,98 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                     free(geom);
                     continue;
                 }
-                windows->emplace_back(
-                    wins[i],
-                    attrib->bit_gravity,
-                    attrib->win_gravity,
-                    attrib->map_state,
-                    attrib->override_redirect,
-                    attrib->all_event_masks,
-                    attrib->your_event_mask,
-                    attrib->do_not_propagate_mask,
-                    geom->root,
-                    geom->x,
-                    geom->y,
-                    geom->width,
-                    geom->height,
-                    geom->border_width);
+                xcb_get_property_reply_t* leader = xcb_get_property_reply(conn, leaderCookies[i], nullptr);
+                if (!leader) {
+                    leaderWin = XCB_NONE;
+                } else {
+                    if (leader->type != XCB_ATOM_WINDOW || leader->format != 32 || !leader->length) {
+                        leaderWin = XCB_NONE;
+                    } else {
+                        leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leader));
+                    }
+                    free(leader);
+                }
+                if (!xcb_icccm_get_wm_normal_hints_reply(conn, normalHintsCookies[i], &normalHints, nullptr)) {
+                    memset(&normalHints, 0, sizeof(normalHints));
+                }
+                if (!xcb_icccm_get_wm_transient_for_reply(conn, transientCookies[i], &transientWin, nullptr)) {
+                    transientWin = XCB_NONE;
+                }
+                if (!xcb_icccm_get_wm_hints_reply(conn, hintsCookies[i], &wmHints, nullptr)) {
+                    memset(&wmHints, 0, sizeof(wmHints));
+                }
+                if (!xcb_icccm_get_wm_class_reply(conn, classCookies[i], &wmClass, nullptr)) {
+                    memset(&wmClass, 0, sizeof(wmClass));
+                }
+                if (!xcb_icccm_get_wm_name_reply(conn, nameCookies[i], &wmName, nullptr)) {
+                    memset(&wmName, 0, sizeof(wmName));
+                }
+                if (!xcb_icccm_get_wm_protocols_reply(conn, protocolsCookies[i], &wmProtocols, nullptr)) {
+                    memset(&wmProtocols, 0, sizeof(wmProtocols));
+                }
+                if (!xcb_ewmh_get_wm_strut_reply(ewmh, strutCookies[i], &ewmhStrut, nullptr)) {
+                    memset(&ewmhStrut, 0, sizeof(ewmhStrut));
+                }
+                if (!xcb_ewmh_get_wm_strut_partial_reply(ewmh, partialStrutCookies[i], &ewmhStrutPartial, nullptr)) {
+                    memset(&ewmhStrutPartial, 0, sizeof(ewmhStrutPartial));
+                }
+                if (!xcb_ewmh_get_wm_state_reply(ewmh, stateCookies[i], &ewmhState, nullptr)) {
+                    memset(&ewmhState, 0, sizeof(ewmhState));
+                }
+                if (!xcb_ewmh_get_wm_window_type_reply(ewmh, typeCookies[i], &ewmhWindowType, nullptr)) {
+                    memset(&ewmhWindowType, 0, sizeof(ewmhWindowType));
+                }
+                if (!xcb_ewmh_get_wm_pid_reply(ewmh, pidCookies[i], &pid, nullptr)) {
+                    pid = 0;
+                }
+
+                windows->push_back({
+                        wins[i],
+                        {
+                            attrib->bit_gravity,
+                            attrib->win_gravity,
+                            attrib->map_state,
+                            attrib->override_redirect,
+                            attrib->all_event_masks,
+                            attrib->your_event_mask,
+                            attrib->do_not_propagate_mask
+                        }, {
+                            geom->root,
+                            geom->x,
+                            geom->y,
+                            geom->width,
+                            geom->height,
+                            geom->border_width
+                        },
+                        makeSizeHint(normalHints),
+                        makeWMHints(wmHints),
+                        makeWMClass(wmClass),
+                        makeString(wmName),
+                        makeAtoms(wmProtocols),
+                        makeAtoms(ewmhState),
+                        makeAtoms(ewmhWindowType),
+                        makeExtents(ewmhStrut),
+                        makeStrutPartial(ewmhStrutPartial),
+                        pid, transientWin, leaderWin
+                });
+
+
+                if (wmName.name && wmName.name_len) {
+                    xcb_icccm_get_text_property_reply_wipe(&wmName);
+                }
+                if (wmClass.instance_name || wmClass.class_name) {
+                    xcb_icccm_get_wm_class_reply_wipe(&wmClass);
+                }
+                if (wmProtocols.atoms && wmProtocols.atoms_len) {
+                    xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
+                }
+                if (ewmhState.atoms && ewmhState.atoms_len) {
+                    xcb_ewmh_get_atoms_reply_wipe(&ewmhState);
+                }
+                if (ewmhWindowType.atoms && ewmhWindowType.atoms_len) {
+                    xcb_ewmh_get_atoms_reply_wipe(&ewmhWindowType);
+                }
+
                 free(attrib);
                 free(geom);
             }
@@ -192,7 +568,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                                         | XCB_EVENT_MASK_PROPERTY_CHANGE };
             for (auto s : wm->screens) {
                 xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, s.screen->root, XCB_CW_EVENT_MASK, values);
-                queryWindows(wm->conn, s.screen->root);
+                queryWindows(wm->conn, wm->ewmh, wm->atoms, s.screen->root);
                 err.reset(xcb_request_check(wm->conn, cookie));
                 if (err) {
                     deferred->Reject("Unable to change attributes on one of the root windows");
@@ -241,25 +617,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             obj.Set("type", "windows");
             Napi::Array arr = Napi::Array::New(env, windows->size());
             for (size_t i = 0; i < windows->size(); ++i) {
-                const auto& nwin = (*windows)[i];
-                Napi::Object win = Napi::Object::New(env);
-
-                win.Set("window", nwin.window);
-                win.Set("bit_gravity", nwin.bit_gravity);
-                win.Set("win_gravity", nwin.win_gravity);
-                win.Set("map_state", nwin.map_state);
-                win.Set("override_redirect", nwin.override_redirect);
-                win.Set("all_event_masks", nwin.all_event_masks);
-                win.Set("your_event_mask", nwin.your_event_mask);
-                win.Set("do_not_propagate_mask", nwin.do_not_propagate_mask);
-                win.Set("root", nwin.root);
-                win.Set("x", nwin.x);
-                win.Set("y", nwin.y);
-                win.Set("width", nwin.width);
-                win.Set("height", nwin.height);
-                win.Set("border_width", nwin.border_width);
-
-                arr.Set(i, win);
+                arr.Set(i, owm::makeWindow(env, (*windows)[i]));
             }
             obj.Set("windows", arr);
 
@@ -270,6 +628,16 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         };
 
         data.tsfn.BlockingCall(windowsCallback);
+
+        auto settledCallback = [](Napi::Env env, Napi::Function js) {
+            Napi::Object obj = Napi::Object::New(env);
+            obj.Set("type", "settled");
+
+            napi_value nvalue = obj;
+            js.Call(1, &nvalue);
+        };
+
+        data.tsfn.BlockingCall(settledCallback);
 
         enum { MaxEvents = 5 };
         epoll_event events[MaxEvents];

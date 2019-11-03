@@ -6,14 +6,20 @@ import * as path from "path";
 
 const options = Options("owm");
 
-function loadConfig(dir: string)
+function loadConfig(dir: string, lib: OWMLib)
 {
     import(path.join(dir, "owm")).then(cfg => {
-        cfg({});
-    }).catch(() => {});
-}
+        cfg.default(lib);
+    }).catch(err => {
+        if (err.code !== "MODULE_NOT_FOUND") {
+            console.error("error loading module", dir);
+            console.error(err);
 
-xdgBaseDir.configDirs.forEach(dir => { loadConfig(dir) });
+            native.stop();
+            process.exit();
+        }
+    });
+}
 
 let owm: { wm: OWM.WM, xcb: OWM.XCB };
 let lib: OWMLib;
@@ -21,32 +27,36 @@ let lib: OWMLib;
 function event(e: OWM.Event) {
     //console.log("got event2", e);
 
-    /*
     if (e.type == "xcb" && e.xcb) {
-        if (e.xcb.type === owm.xcb.event.BUTTON_PRESS) {
-            const press = e.xcb as XCB.ButtonPress;
-            const config = {
-                window: 0x20000d,
-                x: press.root_x,
-                y: press.root_y
-            };
-            try {
-                owm.xcb.configure_window(owm.wm, config);
-            } catch (err) {
-                console.error(err);
-            }
+        switch (e.xcb.type) {
+            case owm.xcb.event.BUTTON_PRESS:
+                lib.buttonPress(e.xcb as XCB.ButtonPress);
+                break;
+            case owm.xcb.event.BUTTON_RELEASE:
+                lib.buttonRelease(e.xcb as XCB.ButtonPress);
+                break;
+            case owm.xcb.event.ENTER_NOTIFY:
+                lib.enterNotify(e.xcb as XCB.EnterNotify);
+                break;
+            case owm.xcb.event.LEAVE_NOTIFY:
+                lib.leaveNotify(e.xcb as XCB.EnterNotify);
+                break;
         }
-    }
-    */
-    if (e.type == "windows" && e.windows) {
+    } else if (e.type == "windows" && e.windows) {
         const windows = e.windows as XCB.Window[];
         //console.log("got wins", windows);
         for (const window of windows) {
-            if (!window.override_redirect)
+            if (!window.attributes.override_redirect)
                 lib.addClient(window);
         }
     } else if (e.type == "screens" && e.screens) {
         lib.updateScreens(e.screens);
+    } else if (e.type === "settled") {
+        const configDirs = xdgBaseDir.configDirs.slice(0);
+        // not sure about cwd() but ok for now
+        configDirs.push(path.join(process.cwd(), "config"));
+
+        configDirs.forEach(dir => { loadConfig(dir, lib) });
     }
 }
 

@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include <xcb/xcb.h>
 #include <xcb/xcb_ewmh.h>
+#include <xcb/xcb_icccm.h>
 #include <xcb/xcb_aux.h>
 #include <assert.h>
 #include <array>
@@ -15,6 +16,7 @@
 #include <memory>
 #include <thread>
 #include <variant>
+#include <unordered_map>
 #include <type_traits>
 
 namespace owm {
@@ -43,34 +45,86 @@ struct Screen
 
 struct Window
 {
-    Window(xcb_window_t w, uint8_t bg, uint8_t wg, uint8_t ms, uint8_t ore,
-           uint32_t aem, uint32_t yem, uint16_t dnpm,
-           xcb_window_t r, int16_t xx, int16_t yy, uint16_t wd, uint16_t hg, uint16_t bw)
-        : window(w), bit_gravity(bg), win_gravity(wg), map_state(ms), override_redirect(ore),
-          all_event_masks(aem), your_event_mask(yem), do_not_propagate_mask(dnpm),
-          root(r), x(xx), y(yy), width(wd), height(hg), border_width(bw)
-    {
-    }
-
     xcb_window_t window;
 
-    // attributes
-    uint8_t bit_gravity;
-    uint8_t win_gravity;
-    uint8_t map_state;
-    uint8_t override_redirect;
-    uint32_t all_event_masks;
-    uint32_t your_event_mask;
-    uint16_t do_not_propagate_mask;
+    struct Attributes
+    {
+        uint8_t bit_gravity;
+        uint8_t win_gravity;
+        uint8_t map_state;
+        uint8_t override_redirect;
+        uint32_t all_event_masks;
+        uint32_t your_event_mask;
+        uint16_t do_not_propagate_mask;
+    } attributes;
 
-    // geometry
-    xcb_window_t root;
-    int16_t x;
-    int16_t y;
-    uint16_t width;
-    uint16_t height;
-    uint16_t border_width;
+    struct Geometry
+    {
+        xcb_window_t root;
+        int16_t x;
+        int16_t y;
+        uint16_t width;
+        uint16_t height;
+        uint16_t border_width;
+    } geometry;
+
+    struct SizeHints
+    {
+        uint32_t flags;
+        int32_t x, y, width, height;
+        int32_t min_width, min_height;
+        int32_t max_width, max_height;
+        int32_t width_inc, height_inc;
+        int32_t min_aspect_num, min_aspect_den;
+        int32_t max_aspect_num, max_aspect_den;
+        int32_t base_width, base_height;
+        uint32_t win_gravity;
+    } normalHints;
+
+    struct WMHints
+    {
+        int32_t flags;
+        uint32_t input;
+        int32_t initial_state;
+        xcb_pixmap_t icon_pixmap;
+        xcb_window_t icon_window;
+        int32_t icon_x, icon_y;
+        xcb_pixmap_t icon_mask;
+        xcb_window_t window_group;
+    } wmHints;
+
+    struct WMClass
+    {
+        std::string instance_name;
+        std::string class_name;
+    } wmClass;
+
+    std::string wmName;
+
+    std::vector<xcb_atom_t> wmProtocols, ewmhState, ewmhWindowType;
+
+    struct EWMHExtents
+    {
+        uint32_t left, right;
+        uint32_t top, bottom;
+    } ewmhStrut;
+
+    struct EWMHStrutPartial
+    {
+        uint32_t left, right;
+        uint32_t top, bottom;
+        uint32_t left_start_y, left_end_y;
+        uint32_t right_start_y, right_end_y;
+        uint32_t top_start_x, top_end_x;
+        uint32_t bottom_start_x, bottom_end_x;
+    } ewmhStrutPartial;
+
+    uint32_t pid;
+
+    xcb_window_t transientFor, leader;
 };
+
+typedef std::unordered_map<std::string, xcb_atom_t> Atoms;
 
 struct Request
 {
@@ -107,6 +161,7 @@ struct WM
     xcb_connection_t* conn { nullptr };
     xcb_ewmh_connection_t* ewmh { nullptr };
     std::vector<Screen> screens;
+    Atoms atoms;
 
     Stack<Response> responsePool;
     std::vector<Response*> responses;
@@ -114,6 +169,7 @@ struct WM
 
 void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
 Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm);
+Napi::Value makeWindow(napi_env env, const Window& win);
 
 template<typename T, size_t Count>
 T* Stack<T, Count>::acquire()

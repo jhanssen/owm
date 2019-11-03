@@ -365,197 +365,115 @@ static Napi::Object initAtoms(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object atoms = Napi::Object::New(env);
 
-    atoms.Set("NONE", Napi::Number::New(env, XCB_ATOM_NONE));
-    atoms.Set("ANY", Napi::Number::New(env, XCB_ATOM_ANY));
-    atoms.Set("PRIMARY", Napi::Number::New(env, XCB_ATOM_PRIMARY));
-    atoms.Set("SECONDARY", Napi::Number::New(env, XCB_ATOM_SECONDARY));
-    atoms.Set("ARC", Napi::Number::New(env, XCB_ATOM_ARC));
-    atoms.Set("ATOM", Napi::Number::New(env, XCB_ATOM_ATOM));
-    atoms.Set("BITMAP", Napi::Number::New(env, XCB_ATOM_BITMAP));
-    atoms.Set("CARDINAL", Napi::Number::New(env, XCB_ATOM_CARDINAL));
-    atoms.Set("COLORMAP", Napi::Number::New(env, XCB_ATOM_COLORMAP));
-    atoms.Set("CURSOR", Napi::Number::New(env, XCB_ATOM_CURSOR));
-    atoms.Set("CUT_BUFFER0", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER0));
-    atoms.Set("CUT_BUFFER1", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER1));
-    atoms.Set("CUT_BUFFER2", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER2));
-    atoms.Set("CUT_BUFFER3", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER3));
-    atoms.Set("CUT_BUFFER4", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER4));
-    atoms.Set("CUT_BUFFER5", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER5));
-    atoms.Set("CUT_BUFFER6", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER6));
-    atoms.Set("CUT_BUFFER7", Napi::Number::New(env, XCB_ATOM_CUT_BUFFER7));
-    atoms.Set("DRAWABLE", Napi::Number::New(env, XCB_ATOM_DRAWABLE));
-    atoms.Set("FONT", Napi::Number::New(env, XCB_ATOM_FONT));
-    atoms.Set("INTEGER", Napi::Number::New(env, XCB_ATOM_INTEGER));
-    atoms.Set("PIXMAP", Napi::Number::New(env, XCB_ATOM_PIXMAP));
-    atoms.Set("POINT", Napi::Number::New(env, XCB_ATOM_POINT));
-    atoms.Set("RECTANGLE", Napi::Number::New(env, XCB_ATOM_RECTANGLE));
-    atoms.Set("RESOURCE_MANAGER", Napi::Number::New(env, XCB_ATOM_RESOURCE_MANAGER));
-    atoms.Set("RGB_COLOR_MAP", Napi::Number::New(env, XCB_ATOM_RGB_COLOR_MAP));
-    atoms.Set("RGB_BEST_MAP", Napi::Number::New(env, XCB_ATOM_RGB_BEST_MAP));
-    atoms.Set("RGB_BLUE_MAP", Napi::Number::New(env, XCB_ATOM_RGB_BLUE_MAP));
-    atoms.Set("RGB_DEFAULT_MAP", Napi::Number::New(env, XCB_ATOM_RGB_DEFAULT_MAP));
-    atoms.Set("RGB_GRAY_MAP", Napi::Number::New(env, XCB_ATOM_RGB_GRAY_MAP));
-    atoms.Set("RGB_GREEN_MAP", Napi::Number::New(env, XCB_ATOM_RGB_GREEN_MAP));
-    atoms.Set("RGB_RED_MAP", Napi::Number::New(env, XCB_ATOM_RGB_RED_MAP));
-    atoms.Set("STRING", Napi::Number::New(env, XCB_ATOM_STRING));
-    atoms.Set("VISUALID", Napi::Number::New(env, XCB_ATOM_VISUALID));
-    atoms.Set("WINDOW", Napi::Number::New(env, XCB_ATOM_WINDOW));
-    atoms.Set("WM_COMMAND", Napi::Number::New(env, XCB_ATOM_WM_COMMAND));
-    atoms.Set("WM_HINTS", Napi::Number::New(env, XCB_ATOM_WM_HINTS));
-    atoms.Set("WM_CLIENT_MACHINE", Napi::Number::New(env, XCB_ATOM_WM_CLIENT_MACHINE));
-    atoms.Set("WM_ICON_NAME", Napi::Number::New(env, XCB_ATOM_WM_ICON_NAME));
-    atoms.Set("WM_ICON_SIZE", Napi::Number::New(env, XCB_ATOM_WM_ICON_SIZE));
-    atoms.Set("WM_NAME", Napi::Number::New(env, XCB_ATOM_WM_NAME));
-    atoms.Set("WM_NORMAL_HINTS", Napi::Number::New(env, XCB_ATOM_WM_NORMAL_HINTS));
-    atoms.Set("WM_SIZE_HINTS", Napi::Number::New(env, XCB_ATOM_WM_SIZE_HINTS));
-    atoms.Set("WM_ZOOM_HINTS", Napi::Number::New(env, XCB_ATOM_WM_ZOOM_HINTS));
-    atoms.Set("MIN_SPACE", Napi::Number::New(env, XCB_ATOM_MIN_SPACE));
-    atoms.Set("NORM_SPACE", Napi::Number::New(env, XCB_ATOM_NORM_SPACE));
-    atoms.Set("MAX_SPACE", Napi::Number::New(env, XCB_ATOM_MAX_SPACE));
-    atoms.Set("END_SPACE", Napi::Number::New(env, XCB_ATOM_END_SPACE));
-    atoms.Set("SUPERSCRIPT_X", Napi::Number::New(env, XCB_ATOM_SUPERSCRIPT_X));
-    atoms.Set("SUPERSCRIPT_Y", Napi::Number::New(env, XCB_ATOM_SUPERSCRIPT_Y));
-    atoms.Set("SUBSCRIPT_X", Napi::Number::New(env, XCB_ATOM_SUBSCRIPT_X));
-    atoms.Set("SUBSCRIPT_Y", Napi::Number::New(env, XCB_ATOM_SUBSCRIPT_Y));
-    atoms.Set("UNDERLINE_POSITION", Napi::Number::New(env, XCB_ATOM_UNDERLINE_POSITION));
-    atoms.Set("UNDERLINE_THICKNESS", Napi::Number::New(env, XCB_ATOM_UNDERLINE_THICKNESS));
-    atoms.Set("STRIKEOUT_ASCENT", Napi::Number::New(env, XCB_ATOM_STRIKEOUT_ASCENT));
-    atoms.Set("STRIKEOUT_DESCENT", Napi::Number::New(env, XCB_ATOM_STRIKEOUT_DESCENT));
-    atoms.Set("ITALIC_ANGLE", Napi::Number::New(env, XCB_ATOM_ITALIC_ANGLE));
-    atoms.Set("X_HEIGHT", Napi::Number::New(env, XCB_ATOM_X_HEIGHT));
-    atoms.Set("QUAD_WIDTH", Napi::Number::New(env, XCB_ATOM_QUAD_WIDTH));
-    atoms.Set("WEIGHT", Napi::Number::New(env, XCB_ATOM_WEIGHT));
-    atoms.Set("POINT_SIZE", Napi::Number::New(env, XCB_ATOM_POINT_SIZE));
-    atoms.Set("RESOLUTION", Napi::Number::New(env, XCB_ATOM_RESOLUTION));
-    atoms.Set("COPYRIGHT", Napi::Number::New(env, XCB_ATOM_COPYRIGHT));
-    atoms.Set("NOTICE", Napi::Number::New(env, XCB_ATOM_NOTICE));
-    atoms.Set("FONT_NAME", Napi::Number::New(env, XCB_ATOM_FONT_NAME));
-    atoms.Set("FAMILY_NAME", Napi::Number::New(env, XCB_ATOM_FAMILY_NAME));
-    atoms.Set("FULL_NAME", Napi::Number::New(env, XCB_ATOM_FULL_NAME));
-    atoms.Set("CAP_HEIGHT", Napi::Number::New(env, XCB_ATOM_CAP_HEIGHT));
-    atoms.Set("WM_CLASS", Napi::Number::New(env, XCB_ATOM_WM_CLASS));
-    atoms.Set("WM_TRANSIENT_FOR", Napi::Number::New(env, XCB_ATOM_WM_TRANSIENT_FOR));
-
-    // ewmh atoms
-    for (int s = 0; s < wm->ewmh->nb_screens; ++s) {
-        char buf[32];
-        snprintf(buf, sizeof(buf), "_NET_WM_CM_S%d", s);
-        atoms.Set(buf, Napi::Number::New(env, wm->ewmh->_NET_WM_CM_Sn[s]));
-    }
-    atoms.Set("_NET_SUPPORTED", Napi::Number::New(env, wm->ewmh->_NET_SUPPORTED));
-    atoms.Set("_NET_CLIENT_LIST", Napi::Number::New(env, wm->ewmh->_NET_CLIENT_LIST));
-    atoms.Set("_NET_CLIENT_LIST_STACKING", Napi::Number::New(env, wm->ewmh->_NET_CLIENT_LIST_STACKING));
-    atoms.Set("_NET_NUMBER_OF_DESKTOPS", Napi::Number::New(env, wm->ewmh->_NET_NUMBER_OF_DESKTOPS));
-    atoms.Set("_NET_DESKTOP_GEOMETRY", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_GEOMETRY));
-    atoms.Set("_NET_DESKTOP_VIEWPORT", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_VIEWPORT));
-    atoms.Set("_NET_CURRENT_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_CURRENT_DESKTOP));
-    atoms.Set("_NET_DESKTOP_NAMES", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_NAMES));
-    atoms.Set("_NET_ACTIVE_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_ACTIVE_WINDOW));
-    atoms.Set("_NET_WORKAREA", Napi::Number::New(env, wm->ewmh->_NET_WORKAREA));
-    atoms.Set("_NET_SUPPORTING_WM_CHECK", Napi::Number::New(env, wm->ewmh->_NET_SUPPORTING_WM_CHECK));
-    atoms.Set("_NET_VIRTUAL_ROOTS", Napi::Number::New(env, wm->ewmh->_NET_VIRTUAL_ROOTS));
-    atoms.Set("_NET_DESKTOP_LAYOUT", Napi::Number::New(env, wm->ewmh->_NET_DESKTOP_LAYOUT));
-    atoms.Set("_NET_SHOWING_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_SHOWING_DESKTOP));
-    atoms.Set("_NET_CLOSE_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_CLOSE_WINDOW));
-    atoms.Set("_NET_MOVERESIZE_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_MOVERESIZE_WINDOW));
-    atoms.Set("_NET_WM_MOVERESIZE", Napi::Number::New(env, wm->ewmh->_NET_WM_MOVERESIZE));
-    atoms.Set("_NET_RESTACK_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_RESTACK_WINDOW));
-    atoms.Set("_NET_REQUEST_FRAME_EXTENTS", Napi::Number::New(env, wm->ewmh->_NET_REQUEST_FRAME_EXTENTS));
-    atoms.Set("_NET_WM_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_NAME));
-    atoms.Set("_NET_WM_VISIBLE_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_VISIBLE_NAME));
-    atoms.Set("_NET_WM_ICON_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_ICON_NAME));
-    atoms.Set("_NET_WM_VISIBLE_ICON_NAME", Napi::Number::New(env, wm->ewmh->_NET_WM_VISIBLE_ICON_NAME));
-    atoms.Set("_NET_WM_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_WM_DESKTOP));
-    atoms.Set("_NET_WM_WINDOW_TYPE", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE));
-    atoms.Set("_NET_WM_STATE", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE));
-    atoms.Set("_NET_WM_ALLOWED_ACTIONS", Napi::Number::New(env, wm->ewmh->_NET_WM_ALLOWED_ACTIONS));
-    atoms.Set("_NET_WM_STRUT", Napi::Number::New(env, wm->ewmh->_NET_WM_STRUT));
-    atoms.Set("_NET_WM_STRUT_PARTIAL", Napi::Number::New(env, wm->ewmh->_NET_WM_STRUT_PARTIAL));
-    atoms.Set("_NET_WM_ICON_GEOMETRY", Napi::Number::New(env, wm->ewmh->_NET_WM_ICON_GEOMETRY));
-    atoms.Set("_NET_WM_ICON", Napi::Number::New(env, wm->ewmh->_NET_WM_ICON));
-    atoms.Set("_NET_WM_PID", Napi::Number::New(env, wm->ewmh->_NET_WM_PID));
-    atoms.Set("_NET_WM_HANDLED_ICONS", Napi::Number::New(env, wm->ewmh->_NET_WM_HANDLED_ICONS));
-    atoms.Set("_NET_WM_USER_TIME", Napi::Number::New(env, wm->ewmh->_NET_WM_USER_TIME));
-    atoms.Set("_NET_WM_USER_TIME_WINDOW", Napi::Number::New(env, wm->ewmh->_NET_WM_USER_TIME_WINDOW));
-    atoms.Set("_NET_FRAME_EXTENTS", Napi::Number::New(env, wm->ewmh->_NET_FRAME_EXTENTS));
-    atoms.Set("_NET_WM_PING", Napi::Number::New(env, wm->ewmh->_NET_WM_PING));
-    atoms.Set("_NET_WM_SYNC_REQUEST", Napi::Number::New(env, wm->ewmh->_NET_WM_SYNC_REQUEST));
-    atoms.Set("_NET_WM_SYNC_REQUEST_COUNTER", Napi::Number::New(env, wm->ewmh->_NET_WM_SYNC_REQUEST_COUNTER));
-    atoms.Set("_NET_WM_FULLSCREEN_MONITORS", Napi::Number::New(env, wm->ewmh->_NET_WM_FULLSCREEN_MONITORS));
-    atoms.Set("_NET_WM_FULL_PLACEMENT", Napi::Number::New(env, wm->ewmh->_NET_WM_FULL_PLACEMENT));
-    atoms.Set("UTF8_STRING", Napi::Number::New(env, wm->ewmh->UTF8_STRING));
-    atoms.Set("WM_PROTOCOLS", Napi::Number::New(env, wm->ewmh->WM_PROTOCOLS));
-    atoms.Set("MANAGER", Napi::Number::New(env, wm->ewmh->MANAGER));
-    atoms.Set("_NET_WM_WINDOW_TYPE_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DESKTOP));
-    atoms.Set("_NET_WM_WINDOW_TYPE_DOCK", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DOCK));
-    atoms.Set("_NET_WM_WINDOW_TYPE_TOOLBAR", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_TOOLBAR));
-    atoms.Set("_NET_WM_WINDOW_TYPE_MENU", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_MENU));
-    atoms.Set("_NET_WM_WINDOW_TYPE_UTILITY", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_UTILITY));
-    atoms.Set("_NET_WM_WINDOW_TYPE_SPLASH", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_SPLASH));
-    atoms.Set("_NET_WM_WINDOW_TYPE_DIALOG", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DIALOG));
-    atoms.Set("_NET_WM_WINDOW_TYPE_DROPDOWN_MENU", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DROPDOWN_MENU));
-    atoms.Set("_NET_WM_WINDOW_TYPE_POPUP_MENU", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_POPUP_MENU));
-    atoms.Set("_NET_WM_WINDOW_TYPE_TOOLTIP", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_TOOLTIP));
-    atoms.Set("_NET_WM_WINDOW_TYPE_NOTIFICATION", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_NOTIFICATION));
-    atoms.Set("_NET_WM_WINDOW_TYPE_COMBO", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_COMBO));
-    atoms.Set("_NET_WM_WINDOW_TYPE_DND", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_DND));
-    atoms.Set("_NET_WM_WINDOW_TYPE_NORMAL", Napi::Number::New(env, wm->ewmh->_NET_WM_WINDOW_TYPE_NORMAL));
-    atoms.Set("_NET_WM_STATE_MODAL", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_MODAL));
-    atoms.Set("_NET_WM_STATE_STICKY", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_STICKY));
-    atoms.Set("_NET_WM_STATE_MAXIMIZED_VERT", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_MAXIMIZED_VERT));
-    atoms.Set("_NET_WM_STATE_MAXIMIZED_HORZ", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_MAXIMIZED_HORZ));
-    atoms.Set("_NET_WM_STATE_SHADED", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_SHADED));
-    atoms.Set("_NET_WM_STATE_SKIP_TASKBAR", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_SKIP_TASKBAR));
-    atoms.Set("_NET_WM_STATE_SKIP_PAGER", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_SKIP_PAGER));
-    atoms.Set("_NET_WM_STATE_HIDDEN", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_HIDDEN));
-    atoms.Set("_NET_WM_STATE_FULLSCREEN", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_FULLSCREEN));
-    atoms.Set("_NET_WM_STATE_ABOVE", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_ABOVE));
-    atoms.Set("_NET_WM_STATE_BELOW", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_BELOW));
-    atoms.Set("_NET_WM_STATE_DEMANDS_ATTENTION", Napi::Number::New(env, wm->ewmh->_NET_WM_STATE_DEMANDS_ATTENTION));
-    atoms.Set("_NET_WM_ACTION_MOVE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MOVE));
-    atoms.Set("_NET_WM_ACTION_RESIZE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_RESIZE));
-    atoms.Set("_NET_WM_ACTION_MINIMIZE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MINIMIZE));
-    atoms.Set("_NET_WM_ACTION_SHADE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_SHADE));
-    atoms.Set("_NET_WM_ACTION_STICK", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_STICK));
-    atoms.Set("_NET_WM_ACTION_MAXIMIZE_HORZ", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MAXIMIZE_HORZ));
-    atoms.Set("_NET_WM_ACTION_MAXIMIZE_VERT", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_MAXIMIZE_VERT));
-    atoms.Set("_NET_WM_ACTION_FULLSCREEN", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_FULLSCREEN));
-    atoms.Set("_NET_WM_ACTION_CHANGE_DESKTOP", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_CHANGE_DESKTOP));
-    atoms.Set("_NET_WM_ACTION_CLOSE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_CLOSE));
-    atoms.Set("_NET_WM_ACTION_ABOVE", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_ABOVE));
-    atoms.Set("_NET_WM_ACTION_BELOW", Napi::Number::New(env, wm->ewmh->_NET_WM_ACTION_BELOW));
-
-    // some extra atoms we might want to know about
-    struct ExtraAtom {
-        size_t size;
-        const char* name;
-    };
-    const ExtraAtom extraAtoms[] = {
-        { 16, "WM_DELETE_WINDOW" },
-        {  8, "WM_STATE" },
-        { 15, "WM_CHANGE_STATE" },
-        { 14, "WM_WINDOW_ROLE" },
-        { 16, "WM_CLIENT_LEADER" },
-        { 13, "WM_TAKE_FOCUS" },
-        { 23, "_NET_SYSTEM_TRAY_OPCODE" },
-        { 28, "_NET_SYSTEM_TRAY_ORIENTATION" },
-        { 22, "_NET_WM_WINDOW_OPACITY" },
-        { 16, "_XKB_RULES_NAMES" }
-    };
-    const size_t extraCount = sizeof(extraAtoms) / sizeof(extraAtoms[0]);
-
-    std::vector<xcb_intern_atom_cookie_t> cookies;
-    cookies.reserve(extraCount);
-    for (size_t i = 0; i < extraCount; ++i) {
-        cookies.push_back(xcb_intern_atom_unchecked(wm->conn, 0, extraAtoms[i].size, extraAtoms[i].name));
-    }
-    for (size_t i = 0; i < extraCount; ++i) {
-        xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[i], nullptr);
-        atoms.Set(extraAtoms[i].name, Napi::Number::New(env, reply->atom));
-        free(reply);
+    for (const auto& a : wm->atoms) {
+        atoms.Set(a.first, Napi::Number::New(env, a.second));
     }
 
     return atoms;
+}
+
+Napi::Value makeWindow(napi_env env, const Window& win)
+{
+    Napi::Object nwin = Napi::Object::New(env);
+
+    auto makeAtomArray = [&env](const std::vector<xcb_atom_t>& atoms) -> Napi::Array {
+        const size_t sz = atoms.size();
+        Napi::Array arr = Napi::Array::New(env, sz);
+        for (size_t i = 0; i < sz; ++i) {
+            arr.Set(i, atoms[i]);
+        }
+        return arr;
+    };
+
+    nwin.Set("window", Napi::Number::New(env, win.window));
+    nwin.Set("pid", Napi::Number::New(env, win.pid));
+    nwin.Set("transientFor", Napi::Number::New(env, win.transientFor));
+    nwin.Set("leader", Napi::Number::New(env, win.leader));
+    nwin.Set("wmName", Napi::String::New(env, win.wmName));
+    nwin.Set("wmProtocols", makeAtomArray(win.wmProtocols));
+    nwin.Set("ewmhState", makeAtomArray(win.ewmhState));
+    nwin.Set("ewmhWindowType", makeAtomArray(win.ewmhWindowType));
+
+    Napi::Object nattributes = Napi::Object::New(env);
+    nattributes.Set("bit_gravity", Napi::Number::New(env, win.attributes.bit_gravity));
+    nattributes.Set("win_gravity", Napi::Number::New(env, win.attributes.win_gravity));
+    nattributes.Set("map_state", Napi::Number::New(env, win.attributes.map_state));
+    nattributes.Set("override_redirect", Napi::Number::New(env, win.attributes.override_redirect));
+    nattributes.Set("all_event_masks", Napi::Number::New(env, win.attributes.all_event_masks));
+    nattributes.Set("your_event_mask", Napi::Number::New(env, win.attributes.your_event_mask));
+    nattributes.Set("do_not_propagate_mask", Napi::Number::New(env, win.attributes.do_not_propagate_mask));
+    nwin.Set("attributes", nattributes);
+
+    Napi::Object ngeometry = Napi::Object::New(env);
+    ngeometry.Set("root", Napi::Number::New(env, win.geometry.root));
+    ngeometry.Set("x", Napi::Number::New(env, win.geometry.x));
+    ngeometry.Set("y", Napi::Number::New(env, win.geometry.y));
+    ngeometry.Set("width", Napi::Number::New(env, win.geometry.width));
+    ngeometry.Set("height", Napi::Number::New(env, win.geometry.height));
+    ngeometry.Set("border_width", Napi::Number::New(env, win.geometry.border_width));
+    nwin.Set("geometry", ngeometry);
+
+    Napi::Object nsizehints = Napi::Object::New(env);
+    nsizehints.Set("flags", Napi::Number::New(env, win.normalHints.flags));
+    nsizehints.Set("x", Napi::Number::New(env, win.normalHints.x));
+    nsizehints.Set("y", Napi::Number::New(env, win.normalHints.y));
+    nsizehints.Set("width", Napi::Number::New(env, win.normalHints.width));
+    nsizehints.Set("height", Napi::Number::New(env, win.normalHints.height));
+    nsizehints.Set("min_width", Napi::Number::New(env, win.normalHints.min_width));
+    nsizehints.Set("min_height", Napi::Number::New(env, win.normalHints.min_height));
+    nsizehints.Set("max_width", Napi::Number::New(env, win.normalHints.max_width));
+    nsizehints.Set("max_height", Napi::Number::New(env, win.normalHints.max_height));
+    nsizehints.Set("width_inc", Napi::Number::New(env, win.normalHints.width_inc));
+    nsizehints.Set("height_inc", Napi::Number::New(env, win.normalHints.height_inc));
+    nsizehints.Set("min_aspect_num", Napi::Number::New(env, win.normalHints.min_aspect_num));
+    nsizehints.Set("min_aspect_den", Napi::Number::New(env, win.normalHints.min_aspect_den));
+    nsizehints.Set("max_aspect_num", Napi::Number::New(env, win.normalHints.max_aspect_num));
+    nsizehints.Set("max_aspect_den", Napi::Number::New(env, win.normalHints.max_aspect_den));
+    nsizehints.Set("base_width", Napi::Number::New(env, win.normalHints.base_width));
+    nsizehints.Set("base_height", Napi::Number::New(env, win.normalHints.base_height));
+    nsizehints.Set("win_gravity", Napi::Number::New(env, win.normalHints.win_gravity));
+    nwin.Set("normalHints", nsizehints);
+
+    Napi::Object nwmhints = Napi::Object::New(env);
+    nwmhints.Set("flags", Napi::Number::New(env, win.wmHints.flags));
+    nwmhints.Set("input", Napi::Number::New(env, win.wmHints.input));
+    nwmhints.Set("initial_state", Napi::Number::New(env, win.wmHints.initial_state));
+    nwmhints.Set("icon_pixmap", Napi::Number::New(env, win.wmHints.icon_pixmap));
+    nwmhints.Set("icon_window", Napi::Number::New(env, win.wmHints.icon_window));
+    nwmhints.Set("icon_x", Napi::Number::New(env, win.wmHints.icon_x));
+    nwmhints.Set("icon_y", Napi::Number::New(env, win.wmHints.icon_y));
+    nwmhints.Set("icon_mask", Napi::Number::New(env, win.wmHints.icon_mask));
+    nwmhints.Set("window_group", Napi::Number::New(env, win.wmHints.window_group));
+    nwin.Set("wmHints", nwmhints);
+
+    Napi::Object nwmclass = Napi::Object::New(env);
+    nwmclass.Set("instance_name", Napi::String::New(env, win.wmClass.instance_name));
+    nwmclass.Set("class_name", Napi::String::New(env, win.wmClass.class_name));
+    nwin.Set("wmClass", nwmclass);
+
+    Napi::Object newmhexts = Napi::Object::New(env);
+    newmhexts.Set("left", Napi::Number::New(env, win.ewmhStrut.left));
+    newmhexts.Set("right", Napi::Number::New(env, win.ewmhStrut.right));
+    newmhexts.Set("top", Napi::Number::New(env, win.ewmhStrut.top));
+    newmhexts.Set("bottom", Napi::Number::New(env, win.ewmhStrut.bottom));
+    nwin.Set("ewmhStrut", newmhexts);
+
+    Napi::Object newmhstrutpartial = Napi::Object::New(env);
+    newmhstrutpartial.Set("left", Napi::Number::New(env, win.ewmhStrutPartial.left));
+    newmhstrutpartial.Set("right", Napi::Number::New(env, win.ewmhStrutPartial.right));
+    newmhstrutpartial.Set("top", Napi::Number::New(env, win.ewmhStrutPartial.top));
+    newmhstrutpartial.Set("bottom", Napi::Number::New(env, win.ewmhStrutPartial.bottom));
+    newmhstrutpartial.Set("left_start_y", Napi::Number::New(env, win.ewmhStrutPartial.left_start_y));
+    newmhstrutpartial.Set("left_end_y", Napi::Number::New(env, win.ewmhStrutPartial.left_end_y));
+    newmhstrutpartial.Set("right_start_y", Napi::Number::New(env, win.ewmhStrutPartial.right_start_y));
+    newmhstrutpartial.Set("right_end_y", Napi::Number::New(env, win.ewmhStrutPartial.right_end_y));
+    newmhstrutpartial.Set("top_start_x", Napi::Number::New(env, win.ewmhStrutPartial.top_start_x));
+    newmhstrutpartial.Set("top_end_x", Napi::Number::New(env, win.ewmhStrutPartial.top_end_x));
+    newmhstrutpartial.Set("bottom_start_x", Napi::Number::New(env, win.ewmhStrutPartial.bottom_start_x));
+    newmhstrutpartial.Set("bottom_end_x", Napi::Number::New(env, win.ewmhStrutPartial.bottom_end_x));
+    nwin.Set("ewmhStrutPartial", newmhstrutpartial);
+
+    return nwin;
 }
 
 static Napi::Object initEvents(napi_env env, const std::shared_ptr<WM>& wm)

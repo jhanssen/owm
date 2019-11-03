@@ -6,25 +6,102 @@ interface Geometry {
 }
 
 export namespace XCB {
+    export namespace WindowTypes {
+        export interface Attributes {
+            readonly bit_gravity: number;
+            readonly win_gravity: number;
+            readonly map_state: number;
+            readonly override_redirect: number;
+            readonly all_event_masks: number;
+            readonly your_event_mask: number;
+            readonly do_not_propagate_mask: number;
+        }
+
+        export interface Geometry {
+            readonly root: number;
+            readonly border_width: number;
+            readonly x: number;
+            readonly y: number;
+            readonly width: number;
+            readonly height: number;
+        }
+
+        export interface SizeHints {
+            readonly flags: number;
+            readonly x: number;
+            readonly y: number;
+            readonly min_width: number;
+            readonly min_height: number;
+            readonly max_width: number;
+            readonly max_height: number;
+            readonly width_inc: number;
+            readonly height_inc: number;
+            readonly min_aspect_num: number;
+            readonly min_aspect_den: number;
+            readonly max_aspect_num: number;
+            readonly max_aspect_den: number;
+            readonly base_width: number;
+            readonly base_height: number;
+            readonly win_gravity: number;
+        }
+
+        export interface WMHints {
+            readonly flags: number;
+            readonly input: number;
+            readonly initial_state: number;
+            readonly icon_pixmap: number;
+            readonly icon_window: number;
+            readonly icon_x: number;
+            readonly icon_y: number;
+            readonly icon_mask: number;
+            readonly window_group: number;
+        }
+
+        export interface WMClass {
+            readonly instance_name: string;
+            readonly class_name: string;
+        }
+
+        export interface EWMHExtents {
+            readonly left: number;
+            readonly right: number;
+            readonly top: number;
+            readonly bottom: number;
+        }
+
+        export interface EWMHStrutPartial {
+            readonly left: number;
+            readonly right: number;
+            readonly top: number;
+            readonly bottom: number;
+            readonly left_start_y: number;
+            readonly left_end_y: number;
+            readonly right_start_y: number;
+            readonly right_end_y: number;
+            readonly top_start_x: number;
+            readonly top_end_x: number;
+            readonly bottom_start_x: number;
+            readonly bottom_end_x: number;
+        }
+    }
+
     export interface Window {
         readonly window: number;
-        readonly bit_gravity: number;
-        readonly win_gravity: number;
-        readonly map_state: number;
-        readonly override_redirect: number;
-        readonly all_event_masks: number;
-        readonly your_event_mask: number;
-        readonly do_not_propagate_mask: number;
-        readonly root: number;
-        readonly border_width: number;
-        x: number;
-        y: number;
-        width: number;
-        height: number;
+        readonly attributes: WindowTypes.Attributes;
+        readonly normalHints: WindowTypes.SizeHints;
+        readonly wmHints: WindowTypes.WMHints;
+        readonly wmClass: WindowTypes.WMClass;
+        readonly wmName: string;
+        readonly wmProtocols: number[];
+        readonly ewmhState: number[];
+        readonly ewmhWindowType: number[];
+        readonly ewmhStrut: WindowTypes.EWMHExtents;
+        readonly ewmhStrutPartial: WindowTypes.EWMHStrutPartial;
+        readonly geometry: WindowTypes.Geometry;
     }
 
     export interface Screen {
-        geometry: Geometry;
+        readonly geometry: Geometry;
     }
 
     export interface ButtonPress {
