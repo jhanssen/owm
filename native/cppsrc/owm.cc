@@ -9,7 +9,6 @@ static Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event
 
     obj.Set("type", event->response_type & ~0x80);
     obj.Set("detail", event->detail);
-    obj.Set("time", event->time);
     obj.Set("root_x", event->root_x);
     obj.Set("root_y", event->root_y);
     obj.Set("event_x", event->event_x);
@@ -31,7 +30,6 @@ static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* eve
 
     obj.Set("type", event->response_type & ~0x80);
     obj.Set("detail", event->detail);
-    obj.Set("time", event->time);
     obj.Set("root_x", event->root_x);
     obj.Set("root_y", event->root_y);
     obj.Set("event_x", event->event_x);
@@ -53,7 +51,6 @@ static Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t* event
 
     obj.Set("type", event->response_type & ~0x80);
     obj.Set("detail", event->detail);
-    obj.Set("time", event->time);
     obj.Set("root_x", event->root_x);
     obj.Set("root_y", event->root_y);
     obj.Set("event_x", event->event_x);
@@ -258,7 +255,7 @@ static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* e
     obj.Set("type", event->response_type & ~0x80);
     obj.Set("window", event->window);
     obj.Set("format", event->format);
-    obj.Set("type", event->type);
+    obj.Set("messageType", event->type);
 
     uint8_t* ptr = new uint8_t[20];
     memcpy(ptr, event->data.data8, 20);
