@@ -45,6 +45,8 @@ function event(e: OWM.Event) {
             if (!window.override_redirect)
                 lib.addClient(window);
         }
+    } else if (e.type == "screens" && e.screens) {
+        lib.updateScreens(e.screens);
     }
 }
 

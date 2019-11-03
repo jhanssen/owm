@@ -101,7 +101,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         wm->screens.reserve(screenCount);
         xcb_screen_iterator_t it = xcb_setup_roots_iterator(setup);
         for (int i = 0; i < screenCount; ++i) {
-            wm->screens.push_back({ it.data, xcb_aux_get_visualtype(wm->conn, i, it.data->root_visual), {} });
+            wm->screens.push_back({ it.data, xcb_aux_get_visualtype(wm->conn, i, it.data->root_visual), { 0, 0, it.data->width_in_pixels, it.data->height_in_pixels } });
             xcb_screen_next(&it);
         }
 
@@ -209,6 +209,32 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             return obj;
         });
         deferred.reset();
+
+        std::vector<owm::Screen> screens = wm->screens;
+        auto screensCallback = [screens{std::move(screens)}](Napi::Env env, Napi::Function js) {
+            Napi::Object obj = Napi::Object::New(env);
+            obj.Set("type", "screens");
+
+            Napi::Array arr = Napi::Array::New(env, screens.size());
+            for (size_t i = 0; i < screens.size(); ++i) {
+                const auto& screen = screens[i];
+                Napi::Object s = Napi::Object::New(env);
+                Napi::Object g = Napi::Object::New(env);
+                g.Set("x", screen.rect.x);
+                g.Set("y", screen.rect.y);
+                g.Set("width", screen.rect.w);
+                g.Set("height", screen.rect.h);
+                s.Set("geometry", g);
+                arr.Set(i, s);
+            }
+
+            obj.Set("screens", arr);
+
+            napi_value nvalue = obj;
+            js.Call(1, &nvalue);
+        };
+
+        data.tsfn.BlockingCall(screensCallback);
 
         auto windowsCallback = [windows{std::move(windows)}](Napi::Env env, Napi::Function js) mutable {
             Napi::Object obj = Napi::Object::New(env);

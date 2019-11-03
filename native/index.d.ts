@@ -1,3 +1,10 @@
+interface Geometry {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+}
+
 export namespace XCB {
     export interface Window {
         readonly window: number;
@@ -9,11 +16,15 @@ export namespace XCB {
         readonly your_event_mask: number;
         readonly do_not_propagate_mask: number;
         readonly root: number;
-        readonly x: number;
-        readonly y: number;
-        readonly width: number;
-        readonly height: number;
         readonly border_width: number;
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+    }
+
+    export interface Screen {
+        geometry: Geometry;
     }
 
     export interface ButtonPress {
@@ -200,6 +211,7 @@ declare type XCB_Type =
     XCB.ClientMessage;
 
 declare interface ConfigureWindowArgs {
+    readonly window: number;
     readonly x?: number;
     readonly y?: number;
     readonly width?: number;
@@ -240,6 +252,7 @@ export namespace OWM {
     export interface Event {
         readonly type: string;
         readonly windows?: XCB.Window[];
+        readonly screens?: XCB.Screen[];
         readonly xcb?: XCB_Type;
     }
 }
