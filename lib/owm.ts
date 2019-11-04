@@ -213,6 +213,8 @@ export class OWMLib {
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, parent);
         this._clients.push(client);
+
+        this._policy.clientAdded(client);
     }
 
     updateScreens(screens: XCB.Screen[]) {
