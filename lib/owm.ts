@@ -1,4 +1,5 @@
 import { XCB, OWM } from "native";
+import { Policy } from "./policy";
 
 export class Client
 {
@@ -26,6 +27,10 @@ export class Client
         this.noinput = false;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
             this.noinput = window.wmHints.input === 0;
+    }
+
+    get root() {
+        return this.window.geometry.root;
     }
 
     move(x: number, y: number) {
@@ -90,6 +95,8 @@ export class Client
                                                     property: this.owm.xcb.atom._NET_ACTIVE_WINDOW, type: this.owm.xcb.atom.WINDOW,
                                                     format: 32, data: activeData });
         this.owm.xcb.flush(this.owm.wm);
+
+        this.owm.setFocused(this);
     }
 };
 
@@ -107,6 +114,8 @@ export class OWMLib {
     private _currentTime: number;
     private _clientsByWindow: Map<number, Client>;
     private _clientsByFrame: Map<number, Client>;
+    private _policy: Policy;
+    private _focused: Client | undefined;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB) {
         this.wm = wm;
@@ -116,6 +125,9 @@ export class OWMLib {
         this._clientsByWindow = new Map<number, Client>();
         this._clientsByFrame = new Map<number, Client>();
         this._currentTime = 0;
+        this._focused = undefined;
+
+        this._policy = new Policy(this);
     };
 
     get clients(): Client[] {
@@ -124,6 +136,18 @@ export class OWMLib {
 
     get currentTime(): number {
         return this._currentTime;
+    }
+
+    get policy(): Policy {
+        return this._policy;
+    }
+
+    findClient(window: number): Client | undefined {
+        let client = this._clientsByWindow.get(window);
+        if (!client) {
+            client = this._clientsByFrame.get(window);
+        }
+        return client;
     }
 
     addClient(win: XCB.Window) {
@@ -178,34 +202,53 @@ export class OWMLib {
     buttonPress(event: XCB.ButtonPress) {
         console.log("press", event);
         this._currentTime = event.time;
+        this._policy.buttonPress(event);
     }
 
     buttonRelease(event: XCB.ButtonPress) {
         this._currentTime = event.time;
+        this._policy.buttonRelease(event);
     }
 
     keyPress(event: XCB.KeyPress) {
         this._currentTime = event.time;
+        this._policy.keyPress(event);
     }
 
     keyRelease(event: XCB.KeyPress) {
         this._currentTime = event.time;
+        this._policy.keyRelease(event);
     }
 
     enterNotify(event: XCB.EnterNotify) {
         this._currentTime = event.time;
-
-        let client = this._clientsByWindow.get(event.child);
-        if (!client) {
-            client = this._clientsByFrame.get(event.event);
-            if (!client)
-                return;
-        }
-        client.focus();
+        this._policy.enterNotify(event);
     }
 
     leaveNotify(event: XCB.EnterNotify) {
         this._currentTime = event.time;
+        this._policy.leaveNotify(event);
+    }
+
+    setFocused(client: Client) {
+        this._focused = client;
+    }
+
+    revertFocus() {
+        if (!this._focused)
+            return;
+
+        const root = this._focused.root;
+        this._focused = undefined;
+
+        this.xcb.set_input_focus(this.wm, { window: root, revert_to: this.xcb.inputFocus.NONE, time: this.currentTime });
+
+        const activeData = new Uint32Array(1);
+        activeData[0] = root;
+        this.xcb.change_property(this.wm, { window: root, mode: this.xcb.propMode.REPLACE,
+                                            property: this.xcb.atom._NET_ACTIVE_WINDOW, type: this.xcb.atom.WINDOW,
+                                            format: 32, data: activeData });
+        this.xcb.flush(this.wm);
     }
 
     cleanup() {
