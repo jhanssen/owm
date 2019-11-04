@@ -86,7 +86,7 @@ native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XK
     console.log("owm started");
     owm = data;
 
-    let level = Logger.Level.Error;
+    let level = Logger.Level.Warning;
     const logLevel = stringOption("log");
     if (logLevel !== undefined) {
         switch (logLevel.toLowerCase()) {

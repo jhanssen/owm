@@ -1,3 +1,17 @@
+function timestamp() {
+    const d = new Date();
+    let h = d.getHours() + "";
+    let m = d.getMinutes() + "";
+    let s = d.getSeconds() + "";
+    if (h.length === 1)
+        h = "0" + h;
+    if (m.length === 1)
+        m = "0" + m;
+    if (s.length === 1)
+        s = "0" + s;
+    return `[${h}:${m}:${s}]`;
+}
+
 export class Logger
 {
     private _level: Logger.Level;
@@ -17,15 +31,15 @@ export class Logger
             return;
         if (level >= Logger.Level.Error) {
             if (this._prefix) {
-                console.error(this._prefix, ...args);
+                console.error(timestamp(), this._prefix, ...args);
             } else {
-                console.error(...args);
+                console.error(timestamp(), ...args);
             }
         } else {
             if (this._prefix) {
-                console.log(this._prefix, ...args);
+                console.log(timestamp(), this._prefix, ...args);
             } else {
-                console.log(...args);
+                console.log(timestamp(), ...args);
             }
         }
     }

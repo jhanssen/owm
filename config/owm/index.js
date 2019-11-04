@@ -1,8 +1,11 @@
+let logger;
+
 function init(owmlib) {
-    console.log("hello... adding ctrl-a");
+    logger = owmlib.logger.prefixed("config");
+    logger.info("hello... adding ctrl-a");
 
     owmlib.bindings.add("Ctrl+A", (bindings, binding) => {
-        console.log("got", binding);
+        logger.info("got", binding);
     });
 }
 
