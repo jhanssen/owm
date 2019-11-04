@@ -44,14 +44,19 @@ static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* eve
     return obj;
 }
 
-static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event, const WM::XKB& xkb)
+static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event, const std::shared_ptr<WM>& wm)
 {
     Napi::Object obj = Napi::Object::New(env);
 
-    const int col = 0;
-    const auto sym = xcb_key_press_lookup_keysym(xkb.syms.get(), event, col);
+    const auto type = event->response_type & ~0x80;
+    if (type == XCB_KEY_PRESS) {
+        const int col = 0;
+        const auto sym = xcb_key_press_lookup_keysym(wm->xkb.syms, event, col);
+        obj.Set("sym", sym);
+        obj.Set("is_modifier", xcb_is_modifier_key(sym));
+    }
 
-    obj.Set("type", event->response_type & ~0x80);
+    obj.Set("type", type);
     obj.Set("detail", event->detail);
     obj.Set("root_x", event->root_x);
     obj.Set("root_y", event->root_y);
@@ -62,8 +67,6 @@ static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event, cons
     obj.Set("event", event->event);
     obj.Set("child", event->child);
     obj.Set("state", event->state);
-    obj.Set("sym", sym);
-    obj.Set("is_modifier", xcb_is_modifier_key(sym));
     obj.Set("same_screen", event->same_screen);
 
     return obj;
@@ -298,7 +301,7 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
 {
     struct Data
     {
-        WM::XKB xkb;
+        std::shared_ptr<WM> wm;
         xcb_generic_event_t* event;
     };
 
@@ -320,7 +323,7 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
             break; }
         case XCB_KEY_PRESS:
         case XCB_KEY_RELEASE: {
-            value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb), data->xkb);
+            value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb), data->wm);
             break; }
         case XCB_ENTER_NOTIFY:
         case XCB_LEAVE_NOTIFY: {
@@ -396,7 +399,7 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
         }
     };
 
-    auto status = tsfn.BlockingCall(new Data{ wm->xkb, event }, callback);
+    auto status = tsfn.BlockingCall(new Data{ wm, event }, callback);
     if (status != napi_ok) {
         // error?
     }
@@ -419,7 +422,13 @@ void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsf
         case XCB_XKB_MAP_NOTIFY: {
             //auto map = reinterpret_cast<xcb_xkb_map_notify_event_t*>(event);
 
-            auto callback = [](Napi::Env env, Napi::Function js) {
+            auto cwm = wm;
+            auto callback = [cwm](Napi::Env env, Napi::Function js) mutable {
+                // do this in the callback so we can safely access this memory from the JS thread in other places
+                assert(cwm->xkb.syms);
+                xcb_key_symbols_free(cwm->xkb.syms);
+                cwm->xkb.syms = xcb_key_symbols_alloc(cwm->conn);
+
                 Napi::Object obj = Napi::Object::New(env);
                 obj.Set("type", "xkb");
                 obj.Set("xkb", Napi::String::New(env, "recreate"));
@@ -431,8 +440,6 @@ void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsf
                     printf("exception from js: %s\n", e.what());
                 }
             };
-
-            wm->xkb.syms = std::shared_ptr<xcb_key_symbols_t>(xcb_key_symbols_alloc(wm->conn), [](auto p) { xcb_key_symbols_free(p); });
 
             auto status = tsfn.BlockingCall(callback);
             if (status != napi_ok) {
@@ -734,6 +741,21 @@ static Napi::Object initGrabStatus(napi_env env, const std::shared_ptr<WM>& wm)
     return status;
 }
 
+static Napi::Object initAllows(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object allows = Napi::Object::New(env);
+
+    allows.Set("ASYNC_POINTER", Napi::Number::New(env, XCB_ALLOW_ASYNC_POINTER));
+    allows.Set("SYNC_POINTER", Napi::Number::New(env, XCB_ALLOW_SYNC_POINTER));
+    allows.Set("REPLAY_POINTER", Napi::Number::New(env, XCB_ALLOW_REPLAY_POINTER));
+    allows.Set("ASYNC_KEYBOARD", Napi::Number::New(env, XCB_ALLOW_ASYNC_KEYBOARD));
+    allows.Set("SYNC_KEYBOARD", Napi::Number::New(env, XCB_ALLOW_SYNC_KEYBOARD));
+    allows.Set("REPLAY_KEYBOARD", Napi::Number::New(env, XCB_ALLOW_REPLAY_KEYBOARD));
+    allows.Set("ASYNC_BOTH", Napi::Number::New(env, XCB_ALLOW_ASYNC_BOTH));
+    allows.Set("SYNC_BOTH", Napi::Number::New(env, XCB_ALLOW_SYNC_BOTH));
+
+    return allows;
+}
 
 static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
 {
@@ -1439,6 +1461,126 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("grab_keyboard", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "grab_keyboard requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "grab_keyboard requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("owner_events")) {
+            throw Napi::TypeError::New(env, "grab_keyboard requires a owner_events");
+        }
+        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("pointer_mode")) {
+            throw Napi::TypeError::New(env, "grab_keyboard requires a pointer_mode");
+        }
+        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("keyboard_mode")) {
+            throw Napi::TypeError::New(env, "grab_keyboard requires a keyboard_mode");
+        }
+        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+        uint32_t time = XCB_TIME_CURRENT_TIME;
+        if (arg.Has("time")) {
+            time = arg.Get("time").As<Napi::Number>().Uint32Value();
+        }
+
+        auto cookie = xcb_grab_keyboard(wm->conn, owner_events, window, time, pointer_mode, keyboard_mode);
+        auto reply = xcb_grab_keyboard_reply(wm->conn, cookie, nullptr);
+        if (!reply) {
+            throw Napi::TypeError::New(env, "grab_keyboard no reply");
+        }
+
+        const auto status = reply->status;
+
+        free(reply);
+
+        return Napi::Number::New(env, status);
+    }));
+
+    xcb.Set("ungrab_keyboard", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "ungrab_keyboard requires one argument");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uint32_t time = XCB_TIME_CURRENT_TIME;
+        if (info.Length() > 1 && info[1].IsNumber()) {
+            time = info[1].As<Napi::Number>().Uint32Value();
+        }
+
+        xcb_ungrab_keyboard(wm->conn, time);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("allow_events", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "allow_events requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("mode")) {
+            throw Napi::TypeError::New(env, "allow_events requires a mode");
+        }
+        const uint32_t mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
+
+        uint32_t time = XCB_TIME_CURRENT_TIME;
+        if (arg.Has("time")) {
+            time = arg.Get("time").As<Napi::Number>().Uint32Value();
+        }
+
+        xcb_allow_events(wm->conn, mode, time);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("key_symbols_get_keycode", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "key_symbols_get_keycode requires two argument");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        const uint32_t sym = info[1].As<Napi::Number>().Uint32Value();
+
+        Napi::Array array = Napi::Array::New(env);
+
+        xcb_keycode_t* keycodes = xcb_key_symbols_get_keycode(wm->xkb.syms, sym);
+        if (!keycodes) {
+            return array;
+        }
+
+        uint32_t idx = 0;
+        for (xcb_keycode_t* code = keycodes; *code; ++code, ++idx) {
+            array.Set(idx, *code);
+        }
+
+        free(keycodes);
+
+        return array;
+    }));
+
     xcb.Set("atom", initAtoms(env, wm));
     xcb.Set("event", initEvents(env, wm));
     xcb.Set("eventMask", initEventMasks(env, wm));
@@ -1449,6 +1591,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("buttonMask", initButtonMasks(env, wm));
     xcb.Set("grabMode", initGrabModes(env, wm));
     xcb.Set("grabStatus", initGrabStatus(env, wm));
+    xcb.Set("allow", initAllows(env, wm));
     xcb.Set("icccm", initIcccm(env, wm));
     xcb.Set("ewmh", initEwmh(env, wm));
     xcb.Set("currentTime", Napi::Number::New(env, XCB_TIME_CURRENT_TIME));
@@ -1457,6 +1600,29 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("cursorNone", Napi::Number::New(env, XCB_CURSOR_NONE));
 
     return xcb;
+}
+
+Napi::Value makeXkb(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object xkb = Napi::Object::New(env);
+
+    xkb.Set("keysym_from_name", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsString()) {
+            throw Napi::TypeError::New(env, "keysym_from_name requires one argument");
+        }
+
+        const std::string key = info[0].As<Napi::String>();
+        const xkb_keysym_t sym = xkb_keysym_from_name(key.c_str(), XKB_KEYSYM_CASE_INSENSITIVE);
+        if (sym == XKB_KEY_NoSymbol) {
+            return env.Undefined();
+        }
+
+        return Napi::Number::New(env, sym);
+    }));
+
+    return xkb;
 }
 
 } // namespace owm

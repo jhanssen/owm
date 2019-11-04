@@ -1,5 +1,6 @@
 import { XCB, OWM } from "native";
 import { Policy } from "./policy";
+import { Keybindings } from "./keybindings"
 
 export class Client
 {
@@ -109,6 +110,7 @@ interface ClientInternal
 export class OWMLib {
     public readonly wm: OWM.WM;
     public readonly xcb: OWM.XCB;
+    public readonly xkb: OWM.XKB;
     private _clients: Client[];
     private _screens: XCB.Screen[];
     private _currentTime: number;
@@ -116,16 +118,19 @@ export class OWMLib {
     private _clientsByFrame: Map<number, Client>;
     private _policy: Policy;
     private _focused: Client | undefined;
+    private _bindings: Keybindings;
 
-    constructor(wm: OWM.WM, xcb: OWM.XCB) {
+    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB) {
         this.wm = wm;
         this.xcb = xcb;
+        this.xkb = xkb;
         this._clients = [];
         this._screens = [];
         this._clientsByWindow = new Map<number, Client>();
         this._clientsByFrame = new Map<number, Client>();
         this._currentTime = 0;
         this._focused = undefined;
+        this._bindings = new Keybindings(this);
 
         this._policy = new Policy(this);
     };
@@ -140,6 +145,10 @@ export class OWMLib {
 
     get policy(): Policy {
         return this._policy;
+    }
+
+    get bindings() {
+        return this._bindings;
     }
 
     findClient(window: number): Client | undefined {
@@ -249,6 +258,16 @@ export class OWMLib {
                                             property: this.xcb.atom._NET_ACTIVE_WINDOW, type: this.xcb.atom.WINDOW,
                                             format: 32, data: activeData });
         this.xcb.flush(this.wm);
+    }
+
+    recreateKeyBindings() {
+        this._bindings.recreate();
+    }
+
+    forEachRoot(callback: (root: number) => void) {
+        for (let screen of this._screens) {
+            callback(screen.root);
+        }
     }
 
     cleanup() {

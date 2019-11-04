@@ -30,7 +30,7 @@ function loadConfig(dir: string, lib: OWMLib)
     });
 }
 
-let owm: { wm: OWM.WM, xcb: OWM.XCB };
+let owm: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB };
 let lib: OWMLib;
 
 function event(e: OWM.Event) {
@@ -72,15 +72,17 @@ function event(e: OWM.Event) {
         configDirs.push(path.join(process.cwd(), "config"));
 
         configDirs.forEach(dir => { loadConfig(dir, lib) });
+    } else if (e.type === "xkb" && e.xkb === "recreate") {
+        lib.recreateKeyBindings();
     }
 }
 
 const display = stringOption("display");
 
-native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB }) => {
+native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB }) => {
     console.log("started");
     owm = data;
-    lib = new OWMLib(data.wm, data.xcb);
+    lib = new OWMLib(data.wm, data.xcb, data.xkb);
 }).catch((err: Error) => {
     console.log("error", err);
     native.stop();

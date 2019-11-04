@@ -174,10 +174,10 @@ struct WM
     {
         uint8_t event { 0 };
         xkb_context* ctx { nullptr };
+        xcb_key_symbols_t* syms { nullptr };
         xkb_keymap* keymap { nullptr };
         xkb_state* state { nullptr };
         int32_t device { 0 };
-        std::shared_ptr<xcb_key_symbols_t> syms;
     } xkb;
 
     Stack<Response> responsePool;
@@ -186,6 +186,7 @@ struct WM
 
 void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
 Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm);
+Napi::Value makeXkb(napi_env env, const std::shared_ptr<WM>& wm);
 Napi::Value makeWindow(napi_env env, const Window& win);
 
 typedef union {

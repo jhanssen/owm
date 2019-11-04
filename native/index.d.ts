@@ -396,6 +396,20 @@ declare interface UngrabKeyArgs {
     readonly key: number;
 }
 
+declare interface GrabKeyboardArgs {
+    readonly window: number;
+    readonly owner_events: number;
+    readonly pointer_mode: number;
+    readonly keyboard_mode: number;
+    readonly time?: number;
+}
+
+declare interface AllowEventsArgs
+{
+    readonly mode: number;
+    readonly time?: number;
+}
+
 declare interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
@@ -424,6 +438,7 @@ export namespace OWM {
         readonly buttonMask: {[key: string]: number};
         readonly grabMode: {[key: string]: number};
         readonly grabStatus: {[key: string]: number};
+        readonly allows: {[key: string]: number};
         readonly currentTime: number;
         readonly grabAny: number;
         readonly windowNone: number;
@@ -438,17 +453,25 @@ export namespace OWM {
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
+        allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         grab_key(wm: OWM.WM, args: GrabKeyArgs): void;
         ungrab_key(wm: OWM.WM, args: UngrabKeyArgs): void;
+        grab_keyboard(wm: OWM.WM, args: GrabKeyboardArgs): void;
+        ungrab_keyboard(wm: OWM.WM, time?: number): void;
+        key_symbols_get_keycode(wm: OWM.WM, sym: number): number[];
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;
         flush(wm: OWM.WM): void;
+    }
+    export interface XKB {
+        keysym_from_name(key: string): number | undefined;
     }
     export interface Event {
         readonly type: string;
         readonly windows?: XCB.Window[];
         readonly screens?: XCB.Screen[];
         readonly xcb?: XCB_Type;
+        readonly xkb?: string;
     }
 }
 
@@ -456,7 +479,9 @@ declare function nativeCallback(data: OWM.Event): void;
 
 declare namespace Native
 {
-    export function start(callback: typeof nativeCallback, display?: string): Promise<{ readonly wm: OWM.WM, readonly xcb: OWM.XCB }>;
+    export function start(callback: typeof nativeCallback, display?: string): Promise<{ readonly wm: OWM.WM,
+                                                                                        readonly xcb: OWM.XCB
+                                                                                        readonly xkb: OWM.XKB }>;
     export function stop(): void;
 }
 

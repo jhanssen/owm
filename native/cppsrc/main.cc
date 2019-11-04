@@ -653,12 +653,13 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 return;
             }
 
-            wm->xkb = { reply->first_event, ctx, keymap, state, deviceId, std::shared_ptr<xcb_key_symbols_t>(xcb_key_symbols_alloc(wm->conn), [](auto p) { xcb_key_symbols_free(p); }) };
+            wm->xkb = { reply->first_event, ctx, xcb_key_symbols_alloc(wm->conn), keymap, state, deviceId };
         }
 
         deferred->Resolve([wm](napi_env env) -> Napi::Value {
             Napi::Object obj = Napi::Object::New(env);
             obj.Set("xcb", owm::makeXcb(env, wm));
+            obj.Set("xkb", owm::makeXkb(env, wm));
             obj.Set("wm", owm::Wrap<std::shared_ptr<owm::WM> >::wrap(env, wm));
             return obj;
         });
