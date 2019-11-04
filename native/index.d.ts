@@ -373,6 +373,12 @@ declare interface ChangePropertyArgs {
     readonly data: ArrayBuffer | XCB_TypedArray;
 }
 
+declare interface SetInputFocusArgs {
+    readonly window: number;
+    readonly revert_to: number;
+    readonly time?: number;
+}
+
 declare interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
@@ -395,6 +401,8 @@ export namespace OWM {
         readonly event: {[key: string]: number};
         readonly eventMask: {[key: string]: number};
         readonly propMode: {[key: string]: number};
+        readonly inputFocus: {[key: string]: number};
+        readonly currentTime: number;
         readonly icccm: ICCCMEnums;
         readonly ewmh: EWMHEnums;
         intern_atom(name: string, onlyIfExists?: boolean): number;
@@ -403,6 +411,7 @@ export namespace OWM {
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
+        set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;

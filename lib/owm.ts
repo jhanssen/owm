@@ -79,14 +79,17 @@ export class Client
             data[0] = takeFocus;
             data[1] = this.owm.currentTime;
             this.owm.xcb.send_client_message(this.owm.wm, { window: this.window.window, type: this.owm.xcb.atom.WM_PROTOCOLS, data: data });
-            this.owm.xcb.flush(this.owm.wm);
         }
+
+        this.owm.xcb.set_input_focus(this.owm.wm, { window: this.window.window, revert_to: this.owm.xcb.inputFocus.FOCUS_PARENT,
+                                                    time: this.owm.currentTime });
 
         const activeData = new Uint32Array(1);
         activeData[0] = this.window.window;
         this.owm.xcb.change_property(this.owm.wm, { window: this.window.geometry.root, mode: this.owm.xcb.propMode.REPLACE,
                                                     property: this.owm.xcb.atom._NET_ACTIVE_WINDOW, type: this.owm.xcb.atom.WINDOW,
                                                     format: 32, data: activeData });
+        this.owm.xcb.flush(this.owm.wm);
     }
 };
 

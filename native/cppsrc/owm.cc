@@ -590,6 +590,18 @@ static Napi::Object initPropModes(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
+static Napi::Object initInputFocus(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object focus = Napi::Object::New(env);
+
+    focus.Set("NONE", Napi::Number::New(env, XCB_INPUT_FOCUS_NONE));
+    focus.Set("POINTER_ROOT", Napi::Number::New(env, XCB_INPUT_FOCUS_POINTER_ROOT));
+    focus.Set("FOCUS_PARENT", Napi::Number::New(env, XCB_INPUT_FOCUS_PARENT));
+    focus.Set("FOLLOWS_KEYBOARD", Napi::Number::New(env, XCB_INPUT_FOCUS_FOLLOW_KEYBOARD));
+
+    return focus;
+}
+
 static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object icccm = Napi::Object::New(env);
@@ -1158,6 +1170,37 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("set_input_focus", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "set_input_focus requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t window, revert_to, time = XCB_TIME_CURRENT_TIME;
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "set_input_focus requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("revert_to")) {
+            throw Napi::TypeError::New(env, "set_input_focus requires a revert_to");
+        }
+        revert_to = arg.Get("revert_to").As<Napi::Number>().Uint32Value();
+
+        if (arg.Has("time")) {
+            time = arg.Get("time").As<Napi::Number>().Uint32Value();
+        }
+
+        xcb_set_input_focus(wm->conn, revert_to, window, time);
+
+        return env.Undefined();
+    }));
+
     xcb.Set("map_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -1192,8 +1235,10 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("event", initEvents(env, wm));
     xcb.Set("eventMask", initEventMasks(env, wm));
     xcb.Set("propMode", initPropModes(env, wm));
+    xcb.Set("inputFocus", initInputFocus(env, wm));
     xcb.Set("icccm", initIcccm(env, wm));
     xcb.Set("ewmh", initEwmh(env, wm));
+    xcb.Set("currentTime", Napi::Number::New(env, XCB_TIME_CURRENT_TIME));
 
     return xcb;
 }
