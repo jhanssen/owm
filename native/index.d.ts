@@ -364,6 +364,15 @@ declare interface SendClientMessageArgs {
     readonly data: ArrayBuffer | XCB_TypedArray;
 }
 
+declare interface ChangePropertyArgs {
+    readonly window: number;
+    readonly mode: number;
+    readonly property: number;
+    readonly type: number;
+    readonly format: number;
+    readonly data: ArrayBuffer | XCB_TypedArray;
+}
+
 declare interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
@@ -385,6 +394,7 @@ export namespace OWM {
         readonly atom: {[key: string]: number};
         readonly event: {[key: string]: number};
         readonly eventMask: {[key: string]: number};
+        readonly propMode: {[key: string]: number};
         readonly icccm: ICCCMEnums;
         readonly ewmh: EWMHEnums;
         intern_atom(name: string, onlyIfExists?: boolean): number;
@@ -392,6 +402,7 @@ export namespace OWM {
         change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
+        change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;

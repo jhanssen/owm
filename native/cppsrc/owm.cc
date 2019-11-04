@@ -375,8 +375,12 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
         obj.Set("type", "xcb");
         obj.Set("xcb", value);
 
-        napi_value nvalue = obj;
-        js.Call(1, &nvalue);
+        try {
+            napi_value nvalue = obj;
+            js.Call(1, &nvalue);
+        } catch (const Napi::Error& e) {
+            printf("exception from js: %s\n", e.what());
+        }
     };
 
     auto status = tsfn.BlockingCall(event, callback);
@@ -573,6 +577,17 @@ static Napi::Object initEventMasks(napi_env env, const std::shared_ptr<WM>& wm)
     masks.Set("OWNER_GRAB_BUTTON", Napi::Number::New(env, XCB_EVENT_MASK_OWNER_GRAB_BUTTON));
 
     return masks;
+}
+
+static Napi::Object initPropModes(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object modes = Napi::Object::New(env);
+
+    modes.Set("REPLACE", Napi::Number::New(env, XCB_PROP_MODE_REPLACE));
+    modes.Set("PREPEND", Napi::Number::New(env, XCB_PROP_MODE_PREPEND));
+    modes.Set("APPEND", Napi::Number::New(env, XCB_PROP_MODE_APPEND));
+
+    return modes;
 }
 
 static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
@@ -1047,6 +1062,67 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("change_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "configure_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "change_property requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("mode")) {
+            throw Napi::TypeError::New(env, "change_property requires a mode");
+        }
+        const uint32_t mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("type")) {
+            throw Napi::TypeError::New(env, "change_property requires a type");
+        }
+        const uint32_t type = arg.Get("type").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("property")) {
+            throw Napi::TypeError::New(env, "change_property requires a property");
+        }
+        const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("format")) {
+            throw Napi::TypeError::New(env, "change_property requires a format");
+        }
+        const uint32_t format = arg.Get("format").As<Napi::Number>().Uint32Value();
+
+        if (format != 8 && format != 16 && format != 32) {
+            throw Napi::TypeError::New(env, "change_property format needs to be 8/16/32");
+        }
+
+        const uint32_t bpe = format / 8;
+
+        Napi::ArrayBuffer data;
+        const auto ndata = arg.Get("data");
+        if (ndata.IsArrayBuffer()) {
+            data = ndata.As<Napi::ArrayBuffer>();
+        } else if (ndata.IsTypedArray()) {
+            data = ndata.As<Napi::TypedArray>().ArrayBuffer();
+        } else {
+            throw Napi::TypeError::New(env, "change_property data must be an arraybuffer or typedarray");
+        }
+        if (data.ByteLength() % bpe) {
+            throw Napi::TypeError::New(env, "change_property data must be divisible by format/8");
+        }
+
+        const uint32_t elems = data.ByteLength() / bpe;
+
+        xcb_change_property(wm->conn, mode, window, property, type, format, elems, data.Data());
+
+        return env.Undefined();
+    }));
+
     xcb.Set("reparent_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -1115,6 +1191,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("atom", initAtoms(env, wm));
     xcb.Set("event", initEvents(env, wm));
     xcb.Set("eventMask", initEventMasks(env, wm));
+    xcb.Set("propMode", initPropModes(env, wm));
     xcb.Set("icccm", initIcccm(env, wm));
     xcb.Set("ewmh", initEwmh(env, wm));
 

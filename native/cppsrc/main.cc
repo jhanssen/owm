@@ -608,8 +608,12 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
             obj.Set("screens", arr);
 
-            napi_value nvalue = obj;
-            js.Call(1, &nvalue);
+            try {
+                napi_value nvalue = obj;
+                js.Call(1, &nvalue);
+            } catch (const Napi::Error& e) {
+                printf("exception from js: %s\n", e.what());
+            }
         };
 
         data.tsfn.BlockingCall(screensCallback);
@@ -623,8 +627,12 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             }
             obj.Set("windows", arr);
 
-            napi_value nvalue = obj;
-            js.Call(1, &nvalue);
+            try {
+                napi_value nvalue = obj;
+                js.Call(1, &nvalue);
+            } catch (const Napi::Error& e) {
+                printf("exception from js: %s\n", e.what());
+            }
 
             windows.reset();
         };
@@ -635,8 +643,12 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             Napi::Object obj = Napi::Object::New(env);
             obj.Set("type", "settled");
 
-            napi_value nvalue = obj;
-            js.Call(1, &nvalue);
+            try {
+                napi_value nvalue = obj;
+                js.Call(1, &nvalue);
+            } catch (const Napi::Error& e) {
+                printf("exception from js: %s\n", e.what());
+            }
         };
 
         data.tsfn.BlockingCall(settledCallback);
