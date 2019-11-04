@@ -575,6 +575,96 @@ static Napi::Object initEventMasks(napi_env env, const std::shared_ptr<WM>& wm)
     return masks;
 }
 
+static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object icccm = Napi::Object::New(env);
+
+    Napi::Object hint = Napi::Object::New(env);
+    hint.Set("INPUT", Napi::Number::New(env, XCB_ICCCM_WM_HINT_INPUT));
+    hint.Set("STATE", Napi::Number::New(env, XCB_ICCCM_WM_HINT_STATE));
+    hint.Set("ICON_PIXMAP", Napi::Number::New(env, XCB_ICCCM_WM_HINT_ICON_PIXMAP));
+    hint.Set("ICON_WINDOW", Napi::Number::New(env, XCB_ICCCM_WM_HINT_ICON_WINDOW));
+    hint.Set("ICON_POSITION", Napi::Number::New(env, XCB_ICCCM_WM_HINT_ICON_POSITION));
+    hint.Set("ICON_MASK", Napi::Number::New(env, XCB_ICCCM_WM_HINT_ICON_MASK));
+    hint.Set("WINDOW_GROUP", Napi::Number::New(env, XCB_ICCCM_WM_HINT_WINDOW_GROUP));
+    hint.Set("X_URGENCY", Napi::Number::New(env, XCB_ICCCM_WM_HINT_X_URGENCY));
+    icccm.Set("hint", hint);
+
+    Napi::Object sizeHint = Napi::Object::New(env);
+    sizeHint.Set("US_POSITION", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_US_POSITION));
+    sizeHint.Set("US_SIZE", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_US_SIZE));
+    sizeHint.Set("P_POSITION", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_P_POSITION));
+    sizeHint.Set("P_SIZE", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_P_SIZE));
+    sizeHint.Set("P_MIN_SIZE", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_P_MIN_SIZE));
+    sizeHint.Set("P_MAX_SIZE", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_P_MAX_SIZE));
+    sizeHint.Set("P_RESIZE_INC", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_P_RESIZE_INC));
+    sizeHint.Set("P_ASPECT", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_P_ASPECT));
+    sizeHint.Set("BASE_SIZE", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_BASE_SIZE));
+    sizeHint.Set("P_WIN_GRAVITY", Napi::Number::New(env, XCB_ICCCM_SIZE_HINT_P_WIN_GRAVITY));
+    icccm.Set("sizeHint", sizeHint);
+
+    Napi::Object state = Napi::Object::New(env);
+    state.Set("WITHDRAWN", Napi::Number::New(env, XCB_ICCCM_WM_STATE_WITHDRAWN));
+    state.Set("NORMAL", Napi::Number::New(env, XCB_ICCCM_WM_STATE_NORMAL));
+    state.Set("ICONIC", Napi::Number::New(env, XCB_ICCCM_WM_STATE_ICONIC));
+    icccm.Set("state", state);
+
+    return icccm;
+}
+
+static Napi::Object initEwmh(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object ewmh = Napi::Object::New(env);
+
+    Napi::Object clientSourceType = Napi::Object::New(env);
+    clientSourceType.Set("NONE", Napi::Number::New(env, XCB_EWMH_CLIENT_SOURCE_TYPE_NONE));
+    clientSourceType.Set("NORMAL", Napi::Number::New(env, XCB_EWMH_CLIENT_SOURCE_TYPE_NORMAL));
+    clientSourceType.Set("OTHER", Napi::Number::New(env, XCB_EWMH_CLIENT_SOURCE_TYPE_OTHER));
+    ewmh.Set("clientSourceType", clientSourceType);
+
+    Napi::Object desktopLayoutOrientation = Napi::Object::New(env);
+    desktopLayoutOrientation.Set("HORZ", Napi::Number::New(env, XCB_EWMH_WM_ORIENTATION_HORZ));
+    desktopLayoutOrientation.Set("VERT", Napi::Number::New(env, XCB_EWMH_WM_ORIENTATION_VERT));
+    ewmh.Set("desktopLayoutOrientation", desktopLayoutOrientation);
+
+    Napi::Object desktopLayoutStartingCorner = Napi::Object::New(env);
+    desktopLayoutStartingCorner.Set("TOPLEFT", Napi::Number::New(env, XCB_EWMH_WM_TOPLEFT));
+    desktopLayoutStartingCorner.Set("TOPRIGHT", Napi::Number::New(env, XCB_EWMH_WM_TOPRIGHT));
+    desktopLayoutStartingCorner.Set("BOTTOMRIGHT", Napi::Number::New(env, XCB_EWMH_WM_BOTTOMRIGHT));
+    desktopLayoutStartingCorner.Set("BOTTOMLEFT", Napi::Number::New(env, XCB_EWMH_WM_BOTTOMLEFT));
+    ewmh.Set("desktopLayoutStartingCorner", desktopLayoutStartingCorner);
+
+    Napi::Object moveResizeWindow = Napi::Object::New(env);
+    moveResizeWindow.Set("X", Napi::Number::New(env, XCB_EWMH_MOVERESIZE_WINDOW_X));
+    moveResizeWindow.Set("Y", Napi::Number::New(env, XCB_EWMH_MOVERESIZE_WINDOW_Y));
+    moveResizeWindow.Set("WIDTH", Napi::Number::New(env, XCB_EWMH_MOVERESIZE_WINDOW_WIDTH));
+    moveResizeWindow.Set("HEIGHT", Napi::Number::New(env, XCB_EWMH_MOVERESIZE_WINDOW_HEIGHT));
+    ewmh.Set("moveResizeWindow", moveResizeWindow);
+
+    Napi::Object moveResizeDirection = Napi::Object::New(env);
+    moveResizeDirection.Set("SIZE_TOPLEFT", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_TOPLEFT));
+    moveResizeDirection.Set("SIZE_TOP", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_TOP));
+    moveResizeDirection.Set("SIZE_TOPRIGHT", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_TOPRIGHT));
+    moveResizeDirection.Set("SIZE_RIGHT", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_RIGHT));
+    moveResizeDirection.Set("SIZE_BOTTOMRIGHT", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_BOTTOMRIGHT));
+    moveResizeDirection.Set("SIZE_BOTTOM", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_BOTTOM));
+    moveResizeDirection.Set("SIZE_BOTTOMLEFT", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_BOTTOMLEFT));
+    moveResizeDirection.Set("SIZE_LEFT", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_LEFT));
+    moveResizeDirection.Set("MOVE", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_MOVE));
+    moveResizeDirection.Set("SIZE_KEYBOARD", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_SIZE_KEYBOARD));
+    moveResizeDirection.Set("MOVE_KEYBOARD", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_MOVE_KEYBOARD));
+    moveResizeDirection.Set("CANCEL", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_CANCEL));
+    ewmh.Set("moveResizeDirection", moveResizeDirection);
+
+    Napi::Object wmState = Napi::Object::New(env);
+    wmState.Set("REMOVE", Napi::Number::New(env, XCB_EWMH_WM_STATE_REMOVE));
+    wmState.Set("ADD", Napi::Number::New(env, XCB_EWMH_WM_STATE_ADD));
+    wmState.Set("TOGGLE", Napi::Number::New(env, XCB_EWMH_WM_STATE_TOGGLE));
+    ewmh.Set("state", wmState);
+
+    return ewmh;
+}
+
 static inline const Screen* screenForWindow(const std::shared_ptr<WM>& wm, xcb_window_t win)
 {
     // first, see if this window is a root window
@@ -1025,6 +1115,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("atom", initAtoms(env, wm));
     xcb.Set("event", initEvents(env, wm));
     xcb.Set("eventMask", initEventMasks(env, wm));
+    xcb.Set("icccm", initIcccm(env, wm));
+    xcb.Set("ewmh", initEwmh(env, wm));
 
     return xcb;
 }

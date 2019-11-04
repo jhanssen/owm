@@ -364,12 +364,29 @@ declare interface SendClientMessageArgs {
     readonly data: ArrayBuffer | XCB_TypedArray;
 }
 
+declare interface ICCCMEnums {
+    readonly hint: {[key: string]: number};
+    readonly sizeHint: {[key: string]: number};
+    readonly state: {[key: string]: number};
+}
+
+declare interface EWMHEnums {
+    readonly clientSourceType: {[key: string]: number};
+    readonly desktopLayoutOrientation: {[key: string]: number};
+    readonly desktopLayoutStartingCorner: {[key: string]: number};
+    readonly moveResizeWindow: {[key: string]: number};
+    readonly moveResizeDirection: {[key: string]: number};
+    readonly state: {[key: string]: number};
+}
+
 export namespace OWM {
     export interface WM {}
     export interface XCB {
         readonly atom: {[key: string]: number};
         readonly event: {[key: string]: number};
         readonly eventMask: {[key: string]: number};
+        readonly icccm: ICCCMEnums;
+        readonly ewmh: EWMHEnums;
         intern_atom(name: string, onlyIfExists?: boolean): number;
         configure_window(wm: OWM.WM, args: ConfigureWindowArgs): void;
         change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
