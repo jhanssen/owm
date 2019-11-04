@@ -17,11 +17,11 @@ export class Policy
         return this._owm;
     }
 
-    get input() {
+    get focus() {
         return this._focus;
     }
 
-    set input(arg: FocusPolicy) {
+    set focus(arg: FocusPolicy) {
         this._focus = arg;
     }
 
