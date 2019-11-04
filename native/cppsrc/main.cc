@@ -578,6 +578,84 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             }
         }
 
+        {
+            // xkb stuffs
+            xcb_prefetch_extension_data(wm->conn, &xcb_xkb_id);
+            const int ret = xkb_x11_setup_xkb_extension(wm->conn,
+                                                        XKB_X11_MIN_MAJOR_XKB_VERSION,
+                                                        XKB_X11_MIN_MINOR_XKB_VERSION,
+                                                        XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
+                                                        nullptr, nullptr, nullptr, nullptr);
+            if (!ret) {
+                deferred->Reject("Unable to setup xkb");
+                return;
+            }
+
+            xkb_context* ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+            if (!ctx) {
+                deferred->Reject("Unable create new xkb context");
+                return;
+            }
+
+            const int32_t deviceId = xkb_x11_get_core_keyboard_device_id(wm->conn);
+            if (!deviceId) {
+                xkb_context_unref(ctx);
+                deferred->Reject("Unable get core xkb device id");
+                return;
+            }
+
+            xkb_keymap* keymap = xkb_x11_keymap_new_from_device(ctx, wm->conn, deviceId, XKB_KEYMAP_COMPILE_NO_FLAGS);
+            if (!keymap) {
+                xkb_context_unref(ctx);
+                deferred->Reject("Unable get xkb keymap from device");
+                return;
+            }
+
+            xkb_state* state = xkb_x11_state_new_from_device(keymap, wm->conn, deviceId);
+            if (!state) {
+                xkb_keymap_unref(keymap);
+                xkb_context_unref(ctx);
+                deferred->Reject("Unable get xkb state from device");
+                return;
+            }
+
+            const xcb_query_extension_reply_t *reply = xcb_get_extension_data(wm->conn, &xcb_xkb_id);
+            if (!reply || !reply->present) {
+                xkb_state_unref(state);
+                xkb_keymap_unref(keymap);
+                xkb_context_unref(ctx);
+                deferred->Reject("Unable get xkb extension reply");
+                return;
+            }
+
+
+            unsigned int affectMap, map;
+            affectMap = map = XCB_XKB_MAP_PART_KEY_TYPES
+            | XCB_XKB_MAP_PART_KEY_SYMS
+            | XCB_XKB_MAP_PART_MODIFIER_MAP
+            | XCB_XKB_MAP_PART_EXPLICIT_COMPONENTS
+            | XCB_XKB_MAP_PART_KEY_ACTIONS
+            | XCB_XKB_MAP_PART_KEY_BEHAVIORS
+            | XCB_XKB_MAP_PART_VIRTUAL_MODS
+            | XCB_XKB_MAP_PART_VIRTUAL_MOD_MAP;
+
+            xcb_void_cookie_t select = xcb_xkb_select_events_checked(wm->conn, XCB_XKB_ID_USE_CORE_KBD,
+                                                                     XCB_XKB_EVENT_TYPE_STATE_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY,
+                                                                     0,
+                                                                     XCB_XKB_EVENT_TYPE_STATE_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY,
+                                                                     affectMap, map, nullptr);
+            err.reset(xcb_request_check(wm->conn, select));
+            if (err) {
+                xkb_state_unref(state);
+                xkb_keymap_unref(keymap);
+                xkb_context_unref(ctx);
+                deferred->Reject("Unable get select xkb events");
+                return;
+            }
+
+            wm->xkb = { reply->first_event, xcb_key_symbols_alloc(wm->conn), ctx, keymap, state, deviceId };
+        }
+
         deferred->Resolve([wm](napi_env env) -> Napi::Value {
             Napi::Object obj = Napi::Object::New(env);
             obj.Set("xcb", owm::makeXcb(env, wm));

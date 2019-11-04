@@ -9,6 +9,13 @@
 #include <xcb/xcb_ewmh.h>
 #include <xcb/xcb_icccm.h>
 #include <xcb/xcb_aux.h>
+#include <xcb/xcb_keysyms.h>
+#include <xkbcommon/xkbcommon.h>
+#include <xkbcommon/xkbcommon-x11.h>
+// uuuugh
+#define explicit _explicit
+#include <xcb/xkb.h>
+#undef explicit
 #include <assert.h>
 #include <array>
 #include <vector>
@@ -162,6 +169,16 @@ struct WM
     xcb_ewmh_connection_t* ewmh { nullptr };
     std::vector<Screen> screens;
     Atoms atoms;
+
+    struct XKB
+    {
+        uint8_t event { 0 };
+        xcb_key_symbols_t* syms { nullptr };
+        xkb_context* ctx { nullptr };
+        xkb_keymap* keymap { nullptr };
+        xkb_state* state { nullptr };
+        int32_t device { 0 };
+    } xkb;
 
     Stack<Response> responsePool;
     std::vector<Response*> responses;
