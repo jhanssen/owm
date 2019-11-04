@@ -44,9 +44,12 @@ static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* eve
     return obj;
 }
 
-static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event)
+static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event, const WM::XKB& xkb)
 {
     Napi::Object obj = Napi::Object::New(env);
+
+    const int col = 0;
+    const auto sym = xcb_key_press_lookup_keysym(xkb.syms.get(), event, col);
 
     obj.Set("type", event->response_type & ~0x80);
     obj.Set("detail", event->detail);
@@ -59,6 +62,8 @@ static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event)
     obj.Set("event", event->event);
     obj.Set("child", event->child);
     obj.Set("state", event->state);
+    obj.Set("sym", sym);
+    obj.Set("is_modifier", xcb_is_modifier_key(sym));
     obj.Set("same_screen", event->same_screen);
 
     return obj;
@@ -291,9 +296,16 @@ static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* e
 
 void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event)
 {
-    auto callback = [](Napi::Env env, Napi::Function js, xcb_generic_event_t* xcb) {
+    struct Data
+    {
+        WM::XKB xkb;
+        xcb_generic_event_t* event;
+    };
+
+    auto callback = [](Napi::Env env, Napi::Function js, Data* data) {
         Napi::Value value;
 
+        auto xcb = data->event;
         const auto type = xcb->response_type & ~0x80;
 
         bool log = true;
@@ -308,7 +320,7 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
             break; }
         case XCB_KEY_PRESS:
         case XCB_KEY_RELEASE: {
-            value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb));
+            value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb), data->xkb);
             break; }
         case XCB_ENTER_NOTIFY:
         case XCB_LEAVE_NOTIFY: {
@@ -363,7 +375,8 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
             log = false;
             break;
         }
-        free(xcb);
+        free(data->event);
+        delete data;
 
         if (value.IsEmpty()) {
             if (log)
@@ -383,10 +396,54 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
         }
     };
 
-    auto status = tsfn.BlockingCall(event, callback);
+    auto status = tsfn.BlockingCall(new Data{ wm->xkb, event }, callback);
     if (status != napi_ok) {
         // error?
     }
+}
+
+void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsfn, _xkb_event* event)
+{
+    if (event->any.deviceID == wm->xkb.device) {
+        switch (event->any.xkbType) {
+        case XCB_XKB_STATE_NOTIFY: {
+            auto state = reinterpret_cast<xcb_xkb_state_notify_event_t*>(event);
+            xkb_state_update_mask(wm->xkb.state,
+                                  state->baseMods,
+                                  state->latchedMods,
+                                  state->lockedMods,
+                                  state->baseGroup,
+                                  state->latchedGroup,
+                                  state->lockedGroup);
+            break; }
+        case XCB_XKB_MAP_NOTIFY: {
+            //auto map = reinterpret_cast<xcb_xkb_map_notify_event_t*>(event);
+
+            auto callback = [](Napi::Env env, Napi::Function js) {
+                Napi::Object obj = Napi::Object::New(env);
+                obj.Set("type", "xkb");
+                obj.Set("xkb", Napi::String::New(env, "recreate"));
+
+                try {
+                    napi_value nvalue = obj;
+                    js.Call(1, &nvalue);
+                } catch (const Napi::Error& e) {
+                    printf("exception from js: %s\n", e.what());
+                }
+            };
+
+            wm->xkb.syms = std::shared_ptr<xcb_key_symbols_t>(xcb_key_symbols_alloc(wm->conn), [](auto p) { xcb_key_symbols_free(p); });
+
+            auto status = tsfn.BlockingCall(callback);
+            if (status != napi_ok) {
+                // error?
+            }
+
+            break; }
+        }
+    }
+
+    free(event);
 }
 
 static Napi::Object initAtoms(napi_env env, const std::shared_ptr<WM>& wm)

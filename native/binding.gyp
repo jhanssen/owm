@@ -24,7 +24,10 @@
 	    "-lxcb-ewmh",
 	    "-lxcb-icccm",
 	    "-lxcb-util",
-	    "-lxcb-xkb"
+	    "-lxcb-xkb",
+	    "-lxcb-keysyms",
+	    "-lxkbcommon",
+	    "-lxkbcommon-x11"
 	],
 	'dependencies': [
 	    "<!(node -p \"require('node-addon-api').gyp\")"

@@ -148,6 +148,8 @@ export namespace XCB {
         readonly event: number;
         readonly child: number;
         readonly state: number;
+        readonly sym: number;
+        readonly sym_is_modifier: number;
         readonly same_screen: number;
     }
 

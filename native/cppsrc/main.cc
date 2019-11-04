@@ -653,7 +653,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 return;
             }
 
-            wm->xkb = { reply->first_event, xcb_key_symbols_alloc(wm->conn), ctx, keymap, state, deviceId };
+            wm->xkb = { reply->first_event, ctx, keymap, state, deviceId, std::shared_ptr<xcb_key_symbols_t>(xcb_key_symbols_alloc(wm->conn), [](auto p) { xcb_key_symbols_free(p); }) };
         }
 
         deferred->Resolve([wm](napi_env env) -> Napi::Value {
@@ -734,6 +734,8 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         enum { MaxEvents = 5 };
         epoll_event events[MaxEvents];
 
+        const auto xkbevent = wm->xkb.event;
+
         for (;;) {
             const int count = epoll_wait(epoll, events, MaxEvents, -1);
             if (count <= 0) {
@@ -754,7 +756,11 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                         xcb_generic_event_t *event = xcb_poll_for_event(wm->conn);
                         if (!event)
                             break;
-                        owm::handleXcb(wm, data.tsfn, event);
+                        if ((event->response_type & ~0x80) == xkbevent) {
+                            owm::handleXkb(wm, data.tsfn, reinterpret_cast<owm::_xkb_event*>(event));
+                        } else {
+                            owm::handleXcb(wm, data.tsfn, event);
+                        }
                     }
                 } else if (events[i].data.fd == wakeupfd) {
                     // wakeup!

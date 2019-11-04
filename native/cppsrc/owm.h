@@ -173,11 +173,11 @@ struct WM
     struct XKB
     {
         uint8_t event { 0 };
-        xcb_key_symbols_t* syms { nullptr };
         xkb_context* ctx { nullptr };
         xkb_keymap* keymap { nullptr };
         xkb_state* state { nullptr };
         int32_t device { 0 };
+        std::shared_ptr<xcb_key_symbols_t> syms;
     } xkb;
 
     Stack<Response> responsePool;
@@ -187,6 +187,20 @@ struct WM
 void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
 Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm);
 Napi::Value makeWindow(napi_env env, const Window& win);
+
+typedef union {
+    /* All XKB events share these fields. */
+    struct {
+        uint8_t response_type;
+        uint8_t xkbType;
+        uint16_t sequence;
+        xcb_timestamp_t time;
+        uint8_t deviceID;
+    } any;
+    xcb_xkb_map_notify_event_t map_notify;
+    xcb_xkb_state_notify_event_t state_notify;
+} _xkb_event;
+void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsfn, _xkb_event* event);
 
 template<typename T, size_t Count>
 T* Stack<T, Count>::acquire()
