@@ -1,16 +1,22 @@
 import { Client } from "../owm";
+import { Logger } from "../logger";
 import { LayoutPolicy } from "./layout";
 import { Policy } from ".";
 
 export class TilingLayoutPolicy implements LayoutPolicy
 {
     private _policy: Policy;
+    private _direction: TilingLayoutPolicy.Direction;
+    private _log: Logger;
 
-    constructor(policy: Policy) {
+    constructor(policy: Policy, direction: TilingLayoutPolicy.Direction) {
         this._policy = policy;
+        this._direction = direction;
+        this._log = policy.owm.logger.prefixed("TilingLayout");
     }
 
     clientAdded(client: Client) {
+        this._log.info("client added");
     }
 
     clientRemoved(client: Client) {
@@ -23,5 +29,13 @@ export class TilingLayoutPolicy implements LayoutPolicy
     }
 
     relayout() {
+    }
+}
+
+export namespace TilingLayoutPolicy
+{
+    export enum Direction {
+        Horizontal,
+        Vertical
     }
 }

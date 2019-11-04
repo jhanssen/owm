@@ -5,116 +5,124 @@ import { Logger } from "./logger";
 
 export class Client
 {
-    private readonly parent: number;
-    private readonly window: XCB.Window;
-    private readonly owm: OWMLib;
-    private readonly border: number;
-    private screen: number;
-    private geometry: { x: number, y: number, width: number, height: number };
-    private noinput: boolean;
+    private readonly _parent: number;
+    private readonly _window: XCB.Window;
+    private readonly _owm: OWMLib;
+    private readonly _border: number;
+    private _screen: number;
+    private _geometry: { x: number, y: number, width: number, height: number };
+    private _noinput: boolean;
     private _log: Logger;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, screen: number, border: number) {
-        this.owm = owm;
-        this.parent = parent;
-        this.window = window;
-        this.border = border;
-        this.screen = screen;
-        this.geometry = {
+        this._owm = owm;
+        this._parent = parent;
+        this._window = window;
+        this._border = border;
+        this._screen = screen;
+        this._geometry = {
             x: window.geometry.x,
             y: window.geometry.y,
             width: window.geometry.width,
             height: window.geometry.height
         };
 
-        this.noinput = false;
+        this._noinput = false;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
-            this.noinput = window.wmHints.input === 0;
+            this._noinput = window.wmHints.input === 0;
 
         this._log = owm.logger.prefixed("Client");
     }
 
     get root() {
-        return this.window.geometry.root;
+        return this._window.geometry.root;
+    }
+
+    get geometry() {
+        return this._geometry;
+    }
+
+    get screen() {
+        return this._screen;
     }
 
     move(x: number, y: number) {
-        this.owm.xcb.configure_window(this.owm.wm, {
-            window: this.parent,
+        this._owm.xcb.configure_window(this._owm.wm, {
+            window: this._parent,
             x: x,
             y: y
         });
-        this.geometry.x = x + this.border;
-        this.geometry.y = y + this.border;
-        this.owm.xcb.flush(this.owm.wm);
+        this._geometry.x = x + this._border;
+        this._geometry.y = y + this._border;
+        this._owm.xcb.flush(this._owm.wm);
     }
 
     resize(width: number, height: number) {
-        if (width <= (this.border * 2) || height <= (this.border * 2)) {
+        if (width <= (this._border * 2) || height <= (this._border * 2)) {
             throw new Error("size too small");
         }
-        this.owm.xcb.configure_window(this.owm.wm, {
-            window: this.parent,
+        this._owm.xcb.configure_window(this._owm.wm, {
+            window: this._parent,
             width: width,
             height: height
         });
-        this.geometry.width = width - (this.border * 2);
-        this.geometry.height = height - (this.border * 2);
-        this.owm.xcb.configure_window(this.owm.wm, {
-            window: this.window.window,
-            width: this.geometry.width,
-            height: this.geometry.height
+        this._geometry.width = width - (this._border * 2);
+        this._geometry.height = height - (this._border * 2);
+        this._owm.xcb.configure_window(this._owm.wm, {
+            window: this._window.window,
+            width: this._geometry.width,
+            height: this._geometry.height
         });
-        this.owm.xcb.flush(this.owm.wm);
+        this._owm.xcb.flush(this._owm.wm);
     }
 
     map() {
-        this.owm.xcb.map_window(this.owm.wm, this.parent);
-        this.owm.xcb.flush(this.owm.wm);
+        this._owm.xcb.map_window(this._owm.wm, this._parent);
+        this._owm.xcb.flush(this._owm.wm);
     }
 
     unmap() {
-        this.owm.xcb.unmap_window(this.owm.wm, this.parent);
-        this.owm.xcb.flush(this.owm.wm);
+        this._owm.xcb.unmap_window(this._owm.wm, this._parent);
+        this._owm.xcb.flush(this._owm.wm);
     }
 
     focus() {
-        if (this.noinput)
+        if (this._noinput)
             return;
 
-        const takeFocus = this.owm.xcb.atom.WM_TAKE_FOCUS;
-        if (this.window.wmProtocols.includes(takeFocus)) {
+        const takeFocus = this._owm.xcb.atom.WM_TAKE_FOCUS;
+        if (this._window.wmProtocols.includes(takeFocus)) {
             this._log.info("sending client message");
             const data = new Uint32Array(2);
             data[0] = takeFocus;
-            data[1] = this.owm.currentTime;
-            this.owm.xcb.send_client_message(this.owm.wm, { window: this.window.window, type: this.owm.xcb.atom.WM_PROTOCOLS, data: data });
+            data[1] = this._owm.currentTime;
+            this._owm.xcb.send_client_message(this._owm.wm, { window: this._window.window, type: this._owm.xcb.atom.WM_PROTOCOLS, data: data });
         }
 
-        this.owm.xcb.set_input_focus(this.owm.wm, { window: this.window.window, revert_to: this.owm.xcb.inputFocus.FOCUS_PARENT,
-                                                    time: this.owm.currentTime });
+        this._owm.xcb.set_input_focus(this._owm.wm, { window: this._window.window, revert_to: this._owm.xcb.inputFocus.FOCUS_PARENT,
+                                                    time: this._owm.currentTime });
 
         const activeData = new Uint32Array(1);
-        activeData[0] = this.window.window;
-        this.owm.xcb.change_property(this.owm.wm, { window: this.window.geometry.root, mode: this.owm.xcb.propMode.REPLACE,
-                                                    property: this.owm.xcb.atom._NET_ACTIVE_WINDOW, type: this.owm.xcb.atom.WINDOW,
+        activeData[0] = this._window.window;
+        this._owm.xcb.change_property(this._owm.wm, { window: this._window.geometry.root, mode: this._owm.xcb.propMode.REPLACE,
+                                                    property: this._owm.xcb.atom._NET_ACTIVE_WINDOW, type: this._owm.xcb.atom.WINDOW,
                                                     format: 32, data: activeData });
-        this.owm.xcb.flush(this.owm.wm);
+        this._owm.xcb.flush(this._owm.wm);
 
-        this.owm.setFocused(this);
+        this._owm.setFocused(this);
     }
 };
 
 interface ClientInternal
 {
-    readonly parent: number;
-    readonly window: XCB.Window;
+    readonly _parent: number;
+    readonly _window: XCB.Window;
 };
 
 export class OWMLib {
-    public readonly wm: OWM.WM;
-    public readonly xcb: OWM.XCB;
-    public readonly xkb: OWM.XKB;
+    private readonly _wm: OWM.WM;
+    private readonly _xcb: OWM.XCB;
+    private readonly _xkb: OWM.XKB;
     private _clients: Client[];
     private _screens: XCB.Screen[];
     private _currentTime: number;
@@ -126,9 +134,9 @@ export class OWMLib {
     private _bindings: Keybindings;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, loglevel: Logger.Level) {
-        this.wm = wm;
-        this.xcb = xcb;
-        this.xkb = xkb;
+        this._wm = wm;
+        this._xcb = xcb;
+        this._xkb = xkb;
 
         this._log = new Logger(loglevel);
 
@@ -142,6 +150,18 @@ export class OWMLib {
 
         this._policy = new Policy(this);
     };
+
+    get wm() {
+        return this._wm;
+    }
+
+    get xcb() {
+        return this._xcb;
+    }
+
+    get xkb() {
+        return this._xkb;
+    }
 
     get clients(): Client[] {
         return this._clients;
@@ -161,6 +181,10 @@ export class OWMLib {
 
     get logger() {
         return this._log;
+    }
+
+    get screens() {
+        return this._screens;
     }
 
     findClient(window: number): Client | undefined {
@@ -288,10 +312,10 @@ export class OWMLib {
     cleanup() {
         for (const client of this._clients) {
             this.xcb.reparent_window(this.wm, {
-                window: ((client as unknown) as ClientInternal).window.window,
-                parent: ((client as unknown) as ClientInternal).window.geometry.root,
-                x: ((client as unknown) as ClientInternal).window.geometry.x,
-                y: ((client as unknown) as ClientInternal).window.geometry.y
+                window: ((client as unknown) as ClientInternal)._window.window,
+                parent: ((client as unknown) as ClientInternal)._window.geometry.root,
+                x: ((client as unknown) as ClientInternal)._window.geometry.x,
+                y: ((client as unknown) as ClientInternal)._window.geometry.y
             });
             this.xcb.flush(this.wm);
         }

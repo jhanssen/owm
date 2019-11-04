@@ -14,7 +14,7 @@ export class Policy
     constructor(owm: OWMLib) {
         this._owm = owm;
         this._focus = new FocusFollowsMousePolicy(this);
-        this._layout = new TilingLayoutPolicy(this);
+        this._layout = new TilingLayoutPolicy(this, TilingLayoutPolicy.Direction.Horizontal);
     }
 
     get owm() {
