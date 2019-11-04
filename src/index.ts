@@ -35,6 +35,12 @@ function event(e: OWM.Event) {
             case owm.xcb.event.BUTTON_RELEASE:
                 lib.buttonRelease(e.xcb as XCB.ButtonPress);
                 break;
+            case owm.xcb.event.KEY_PRESS:
+                lib.keyPress(e.xcb as XCB.KeyPress);
+                break;
+            case owm.xcb.event.KEY_RELEASE:
+                lib.keyRelease(e.xcb as XCB.KeyPress);
+                break;
             case owm.xcb.event.ENTER_NOTIFY:
                 lib.enterNotify(e.xcb as XCB.EnterNotify);
                 break;

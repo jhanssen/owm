@@ -4,17 +4,17 @@ export class Client
 {
     private readonly parent: number;
     private readonly window: XCB.Window;
-    private readonly wm: OWM.WM;
-    private readonly xcb: OWM.XCB;
+    private readonly owm: OWMLib;
     private readonly border: number;
+    private screen: number;
     private geometry: { x: number, y: number, width: number, height: number };
 
-    constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
-        this.wm = owm.wm;
-        this.xcb = owm.xcb;
+    constructor(owm: OWMLib, parent: number, window: XCB.Window, screen: number, border: number) {
+        this.owm = owm;
         this.parent = parent;
         this.window = window;
         this.border = border;
+        this.screen = screen;
         this.geometry = {
             x: window.geometry.x,
             y: window.geometry.y,
@@ -24,43 +24,55 @@ export class Client
     }
 
     move(x: number, y: number) {
-        this.xcb.configure_window(this.wm, {
+        this.owm.xcb.configure_window(this.owm.wm, {
             window: this.parent,
             x: x,
             y: y
         });
         this.geometry.x = x + this.border;
         this.geometry.y = y + this.border;
-        this.xcb.flush(this.wm);
+        this.owm.xcb.flush(this.owm.wm);
     }
 
     resize(width: number, height: number) {
         if (width <= (this.border * 2) || height <= (this.border * 2)) {
             throw new Error("size too small");
         }
-        this.xcb.configure_window(this.wm, {
+        this.owm.xcb.configure_window(this.owm.wm, {
             window: this.parent,
             width: width,
             height: height
         });
         this.geometry.width = width - (this.border * 2);
         this.geometry.height = height - (this.border * 2);
-        this.xcb.configure_window(this.wm, {
+        this.owm.xcb.configure_window(this.owm.wm, {
             window: this.window.window,
             width: this.geometry.width,
             height: this.geometry.height
         });
-        this.xcb.flush(this.wm);
+        this.owm.xcb.flush(this.owm.wm);
     }
 
     map() {
-        this.xcb.map_window(this.wm, this.parent);
-        this.xcb.flush(this.wm);
+        this.owm.xcb.map_window(this.owm.wm, this.parent);
+        this.owm.xcb.flush(this.owm.wm);
     }
 
     unmap() {
-        this.xcb.unmap_window(this.wm, this.parent);
-        this.xcb.flush(this.wm);
+        this.owm.xcb.unmap_window(this.owm.wm, this.parent);
+        this.owm.xcb.flush(this.owm.wm);
+    }
+
+    focus() {
+        const takeFocus = this.owm.xcb.atom.WM_TAKE_FOCUS;
+        if (this.window.wmProtocols.includes(takeFocus)) {
+            console.log("sending client message");
+            const data = new Uint32Array(2);
+            data[0] = takeFocus;
+            data[1] = this.owm.currentTime;
+            this.owm.xcb.send_client_message(this.owm.wm, { window: this.window.window, type: this.owm.xcb.atom.WM_PROTOCOLS, data: data });
+            this.owm.xcb.flush(this.owm.wm);
+        }
     }
 };
 
@@ -75,31 +87,70 @@ export class OWMLib {
     public readonly xcb: OWM.XCB;
     private _clients: Client[];
     private _screens: XCB.Screen[];
+    private _currentTime: number;
+    private _clientsByWindow: Map<number, Client>;
+    private _clientsByFrame: Map<number, Client>;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB) {
         this.wm = wm;
         this.xcb = xcb;
         this._clients = [];
         this._screens = [];
+        this._clientsByWindow = new Map<number, Client>();
+        this._clientsByFrame = new Map<number, Client>();
+        this._currentTime = 0;
     };
 
     get clients(): Client[] {
         return this._clients;
     }
 
+    get currentTime(): number {
+        return this._currentTime;
+    }
+
     addClient(win: XCB.Window) {
+        console.log("client", win);
+
         // reparent to new window
         const border = 10;
         const parent = this.xcb.create_window(this.wm, { x: win.geometry.x, y: win.geometry.y,
                                                          width: win.geometry.width + (border * 2),
                                                          height: win.geometry.height + (border * 2),
                                                          parent: win.geometry.root });
-        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1 });
+
+        const mask = this.xcb.eventMask.STRUCTURE_NOTIFY |
+            this.xcb.eventMask.ENTER_WINDOW |
+            this.xcb.eventMask.LEAVE_WINDOW |
+            this.xcb.eventMask.EXPOSURE |
+            this.xcb.eventMask.SUBSTRUCTURE_REDIRECT |
+            this.xcb.eventMask.POINTER_MOTION |
+            this.xcb.eventMask.BUTTON_PRESS |
+            this.xcb.eventMask.BUTTON_RELEASE;
+
+        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, event_mask: mask });
         this.xcb.reparent_window(this.wm, { window: win.window, parent: parent, x: border, y: border });
         this.xcb.map_window(this.wm, parent);
         this.xcb.flush(this.wm);
 
-        this._clients.push(new Client(this, parent, win, border));
+        // find the screen number of this client
+        let no: number | undefined = undefined;
+        for (let screen of this._screens) {
+            if (screen.root === win.geometry.root) {
+                no = screen.no;
+                break;
+            }
+        }
+
+        if (no === undefined) {
+            throw new Error("Couldn't find screen for client");
+        }
+
+        const client = new Client(this, parent, win, no, border);
+        this._clientsByWindow.set(win.window, client);
+        this._clientsByFrame.set(parent, client);
+        console.log("client", win.window, parent);
+        this._clients.push(client);
     }
 
     updateScreens(screens: XCB.Screen[]) {
@@ -109,15 +160,37 @@ export class OWMLib {
 
     buttonPress(event: XCB.ButtonPress) {
         console.log("press", event);
+        this._currentTime = event.time;
     }
 
     buttonRelease(event: XCB.ButtonPress) {
+        this._currentTime = event.time;
+    }
+
+    keyPress(event: XCB.KeyPress) {
+        this._currentTime = event.time;
+    }
+
+    keyRelease(event: XCB.KeyPress) {
+        this._currentTime = event.time;
     }
 
     enterNotify(event: XCB.EnterNotify) {
+        this._currentTime = event.time;
+
+        console.log("enter notify for", event);
+
+        let client = this._clientsByWindow.get(event.child);
+        if (!client) {
+            client = this._clientsByFrame.get(event.event);
+            if (!client)
+                return;
+        }
+        client.focus();
     }
 
     leaveNotify(event: XCB.EnterNotify) {
+        this._currentTime = event.time;
     }
 
     cleanup() {

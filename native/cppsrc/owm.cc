@@ -504,41 +504,75 @@ static Napi::Object initEvents(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object events = Napi::Object::New(env);
 
-    events.Set("KEY_PRESS", XCB_KEY_PRESS);
-    events.Set("KEY_RELEASE", XCB_KEY_RELEASE);
-    events.Set("BUTTON_PRESS", XCB_BUTTON_PRESS);
-    events.Set("BUTTON_RELEASE", XCB_BUTTON_RELEASE);
-    events.Set("MOTION_NOTIFY", XCB_MOTION_NOTIFY);
-    events.Set("ENTER_NOTIFY", XCB_ENTER_NOTIFY);
-    events.Set("LEAVE_NOTIFY", XCB_LEAVE_NOTIFY);
-    events.Set("FOCUS_IN", XCB_FOCUS_IN);
-    events.Set("FOCUS_OUT", XCB_FOCUS_OUT);
-    events.Set("KEYMAP_NOTIFY", XCB_KEYMAP_NOTIFY);
-    events.Set("EXPOSE", XCB_EXPOSE);
-    events.Set("GRAPHICS_EXPOSURE", XCB_GRAPHICS_EXPOSURE);
-    events.Set("NO_EXPOSURE", XCB_NO_EXPOSURE);
-    events.Set("VISIBILITY_NOTIFY", XCB_VISIBILITY_NOTIFY);
-    events.Set("CREATE_NOTIFY", XCB_CREATE_NOTIFY);
-    events.Set("DESTROY_NOTIFY", XCB_DESTROY_NOTIFY);
-    events.Set("UNMAP_NOTIFY", XCB_UNMAP_NOTIFY);
-    events.Set("MAP_NOTIFY", XCB_MAP_NOTIFY);
-    events.Set("MAP_REQUEST", XCB_MAP_REQUEST);
-    events.Set("REPARENT_NOTIFY", XCB_REPARENT_NOTIFY);
-    events.Set("CONFIGURE_NOTIFY", XCB_CONFIGURE_NOTIFY);
-    events.Set("CONFIGURE_REQUEST", XCB_CONFIGURE_REQUEST);
-    events.Set("GRAVITY_NOTIFY", XCB_GRAVITY_NOTIFY);
-    events.Set("RESIZE_REQUEST", XCB_RESIZE_REQUEST);
-    events.Set("CIRCULATE_NOTIFY", XCB_CIRCULATE_NOTIFY);
-    events.Set("CIRCULATE_REQUEST", XCB_CIRCULATE_REQUEST);
-    events.Set("PROPERTY_NOTIFY", XCB_PROPERTY_NOTIFY);
-    events.Set("SELECTION_CLEAR", XCB_SELECTION_CLEAR);
-    events.Set("SELECTION_REQUEST", XCB_SELECTION_REQUEST);
-    events.Set("SELECTION_NOTIFY", XCB_SELECTION_NOTIFY);
-    events.Set("COLORMAP_NOTIFY", XCB_COLORMAP_NOTIFY);
-    events.Set("CLIENT_MESSAGE", XCB_CLIENT_MESSAGE);
-    events.Set("MAPPING_NOTIFY", XCB_MAPPING_NOTIFY);
+    events.Set("KEY_PRESS", Napi::Number::New(env, XCB_KEY_PRESS));
+    events.Set("KEY_RELEASE", Napi::Number::New(env, XCB_KEY_RELEASE));
+    events.Set("BUTTON_PRESS", Napi::Number::New(env, XCB_BUTTON_PRESS));
+    events.Set("BUTTON_RELEASE", Napi::Number::New(env, XCB_BUTTON_RELEASE));
+    events.Set("MOTION_NOTIFY", Napi::Number::New(env, XCB_MOTION_NOTIFY));
+    events.Set("ENTER_NOTIFY", Napi::Number::New(env, XCB_ENTER_NOTIFY));
+    events.Set("LEAVE_NOTIFY", Napi::Number::New(env, XCB_LEAVE_NOTIFY));
+    events.Set("FOCUS_IN", Napi::Number::New(env, XCB_FOCUS_IN));
+    events.Set("FOCUS_OUT", Napi::Number::New(env, XCB_FOCUS_OUT));
+    events.Set("KEYMAP_NOTIFY", Napi::Number::New(env, XCB_KEYMAP_NOTIFY));
+    events.Set("EXPOSE", Napi::Number::New(env, XCB_EXPOSE));
+    events.Set("GRAPHICS_EXPOSURE", Napi::Number::New(env, XCB_GRAPHICS_EXPOSURE));
+    events.Set("NO_EXPOSURE", Napi::Number::New(env, XCB_NO_EXPOSURE));
+    events.Set("VISIBILITY_NOTIFY", Napi::Number::New(env, XCB_VISIBILITY_NOTIFY));
+    events.Set("CREATE_NOTIFY", Napi::Number::New(env, XCB_CREATE_NOTIFY));
+    events.Set("DESTROY_NOTIFY", Napi::Number::New(env, XCB_DESTROY_NOTIFY));
+    events.Set("UNMAP_NOTIFY", Napi::Number::New(env, XCB_UNMAP_NOTIFY));
+    events.Set("MAP_NOTIFY", Napi::Number::New(env, XCB_MAP_NOTIFY));
+    events.Set("MAP_REQUEST", Napi::Number::New(env, XCB_MAP_REQUEST));
+    events.Set("REPARENT_NOTIFY", Napi::Number::New(env, XCB_REPARENT_NOTIFY));
+    events.Set("CONFIGURE_NOTIFY", Napi::Number::New(env, XCB_CONFIGURE_NOTIFY));
+    events.Set("CONFIGURE_REQUEST", Napi::Number::New(env, XCB_CONFIGURE_REQUEST));
+    events.Set("GRAVITY_NOTIFY", Napi::Number::New(env, XCB_GRAVITY_NOTIFY));
+    events.Set("RESIZE_REQUEST", Napi::Number::New(env, XCB_RESIZE_REQUEST));
+    events.Set("CIRCULATE_NOTIFY", Napi::Number::New(env, XCB_CIRCULATE_NOTIFY));
+    events.Set("CIRCULATE_REQUEST", Napi::Number::New(env, XCB_CIRCULATE_REQUEST));
+    events.Set("PROPERTY_NOTIFY", Napi::Number::New(env, XCB_PROPERTY_NOTIFY));
+    events.Set("SELECTION_CLEAR", Napi::Number::New(env, XCB_SELECTION_CLEAR));
+    events.Set("SELECTION_REQUEST", Napi::Number::New(env, XCB_SELECTION_REQUEST));
+    events.Set("SELECTION_NOTIFY", Napi::Number::New(env, XCB_SELECTION_NOTIFY));
+    events.Set("COLORMAP_NOTIFY", Napi::Number::New(env, XCB_COLORMAP_NOTIFY));
+    events.Set("CLIENT_MESSAGE", Napi::Number::New(env, XCB_CLIENT_MESSAGE));
+    events.Set("MAPPING_NOTIFY", Napi::Number::New(env, XCB_MAPPING_NOTIFY));
 
     return events;
+}
+
+static Napi::Object initEventMasks(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object masks = Napi::Object::New(env);
+
+    masks.Set("NO_EVENT", Napi::Number::New(env, XCB_EVENT_MASK_NO_EVENT));
+    masks.Set("KEY_PRESS", Napi::Number::New(env, XCB_EVENT_MASK_KEY_PRESS));
+    masks.Set("KEY_RELEASE", Napi::Number::New(env, XCB_EVENT_MASK_KEY_RELEASE));
+    masks.Set("BUTTON_PRESS", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_PRESS));
+    masks.Set("BUTTON_RELEASE", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_RELEASE));
+    masks.Set("ENTER_WINDOW", Napi::Number::New(env, XCB_EVENT_MASK_ENTER_WINDOW));
+    masks.Set("LEAVE_WINDOW", Napi::Number::New(env, XCB_EVENT_MASK_LEAVE_WINDOW));
+    masks.Set("POINTER_MOTION", Napi::Number::New(env, XCB_EVENT_MASK_POINTER_MOTION));
+    masks.Set("POINTER_MOTION_HINT", Napi::Number::New(env, XCB_EVENT_MASK_POINTER_MOTION_HINT));
+    masks.Set("BUTTON_1_MOTION", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_1_MOTION));
+    masks.Set("BUTTON_2_MOTION", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_2_MOTION));
+    masks.Set("BUTTON_3_MOTION", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_3_MOTION));
+    masks.Set("BUTTON_4_MOTION", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_4_MOTION));
+    masks.Set("BUTTON_5_MOTION", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_5_MOTION));
+    masks.Set("BUTTON_MOTION", Napi::Number::New(env, XCB_EVENT_MASK_BUTTON_MOTION));
+    masks.Set("KEYMAP_STATE", Napi::Number::New(env, XCB_EVENT_MASK_KEYMAP_STATE));
+    masks.Set("EXPOSURE", Napi::Number::New(env, XCB_EVENT_MASK_EXPOSURE));
+    masks.Set("VISIBILITY_CHANGE", Napi::Number::New(env, XCB_EVENT_MASK_VISIBILITY_CHANGE));
+    masks.Set("STRUCTURE_NOTIFY", Napi::Number::New(env, XCB_EVENT_MASK_STRUCTURE_NOTIFY));
+    masks.Set("RESIZE_REDIRECT", Napi::Number::New(env, XCB_EVENT_MASK_RESIZE_REDIRECT));
+    masks.Set("SUBSTRUCTURE_NOTIFY", Napi::Number::New(env, XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY));
+    masks.Set("SUBSTRUCTURE_REDIRECT", Napi::Number::New(env, XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT));
+    masks.Set("FOCUS_CHANGE", Napi::Number::New(env, XCB_EVENT_MASK_FOCUS_CHANGE));
+    masks.Set("PROPERTY_CHANGE", Napi::Number::New(env, XCB_EVENT_MASK_PROPERTY_CHANGE));
+    masks.Set("COLOR_MAP_CHANGE", Napi::Number::New(env, XCB_EVENT_MASK_COLOR_MAP_CHANGE));
+    masks.Set("OWNER_GRAB_BUTTON", Napi::Number::New(env, XCB_EVENT_MASK_OWNER_GRAB_BUTTON));
+
+    return masks;
 }
 
 static inline const Screen* screenForWindow(const std::shared_ptr<WM>& wm, xcb_window_t win)
@@ -875,6 +909,54 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("send_client_message", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "send_client_message requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        xcb_client_message_event_t event;
+        memset(&event, 0, sizeof(event));
+        event.response_type = XCB_CLIENT_MESSAGE;
+        event.format = 32;
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "send_client_message requires a window");
+        }
+        event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("type")) {
+            throw Napi::TypeError::New(env, "retype_type requires a type");
+        }
+        event.type = arg.Get("type").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("data")) {
+            throw Napi::TypeError::New(env, "send_client_message requires a data");
+        }
+        Napi::ArrayBuffer data;
+        const auto ndata = arg.Get("data");
+        if (ndata.IsArrayBuffer()) {
+            data = ndata.As<Napi::ArrayBuffer>();
+        } else if (ndata.IsTypedArray()) {
+            data = ndata.As<Napi::TypedArray>().ArrayBuffer();
+        } else {
+            throw Napi::TypeError::New(env, "send_client_message data must be an arraybuffer or typedarray");
+        }
+        if (data.ByteLength() % 4) {
+            throw Napi::TypeError::New(env, "send_client_message data must be divisible by 4");
+        }
+        memcpy(&event.data.data8, data.Data(), data.ByteLength());
+
+        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
+                       reinterpret_cast<char*>(&event));
+
+        return env.Undefined();
+    }));
+
     xcb.Set("reparent_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -889,7 +971,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         uint32_t window, parent;
 
         if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "rewindow_window requires a window");
+            throw Napi::TypeError::New(env, "reparent_window requires a window");
         }
         window = arg.Get("window").As<Napi::Number>().Uint32Value();
 
@@ -942,6 +1024,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
     xcb.Set("atom", initAtoms(env, wm));
     xcb.Set("event", initEvents(env, wm));
+    xcb.Set("eventMask", initEventMasks(env, wm));
 
     return xcb;
 }

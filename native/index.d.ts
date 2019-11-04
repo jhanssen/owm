@@ -101,6 +101,8 @@ export namespace XCB {
     }
 
     export interface Screen {
+        readonly root: number;
+        readonly no: number;
         readonly geometry: Geometry;
     }
 
@@ -283,6 +285,14 @@ export namespace XCB {
     }
 }
 
+declare type XCB_TypedArray =
+    Int8Array |
+    Uint8Array |
+    Int16Array |
+    Uint16Array |
+    Int32Array |
+    Uint32Array;
+
 declare type XCB_Type =
     XCB.ButtonPress |
     XCB.MotionNotify |
@@ -348,16 +358,24 @@ declare interface ChangeWindowAttributesArgs {
     readonly cursor?: number;
 }
 
+declare interface SendClientMessageArgs {
+    readonly window: number;
+    readonly type: number;
+    readonly data: ArrayBuffer | XCB_TypedArray;
+}
+
 export namespace OWM {
     export interface WM {}
     export interface XCB {
         readonly atom: {[key: string]: number};
         readonly event: {[key: string]: number};
+        readonly eventMask: {[key: string]: number};
         intern_atom(name: string, onlyIfExists?: boolean): number;
         configure_window(wm: OWM.WM, args: ConfigureWindowArgs): void;
         change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
+        send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;
         flush(wm: OWM.WM): void;

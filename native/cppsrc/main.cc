@@ -601,6 +601,8 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 g.Set("width", screen.rect.w);
                 g.Set("height", screen.rect.h);
                 s.Set("geometry", g);
+                s.Set("root", Napi::Number::New(env, screen.screen->root));
+                s.Set("no", Napi::Number::New(env, i));
                 arr.Set(i, s);
             }
 
