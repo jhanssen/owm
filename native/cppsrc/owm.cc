@@ -659,6 +659,82 @@ static Napi::Object initInputFocus(napi_env env, const std::shared_ptr<WM>& wm)
     return focus;
 }
 
+static Napi::Object initModMasks(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object masks = Napi::Object::New(env);
+
+    masks.Set("SHIFT", Napi::Number::New(env, XCB_MOD_MASK_SHIFT));
+    masks.Set("LOCK", Napi::Number::New(env, XCB_MOD_MASK_LOCK));
+    masks.Set("CONTROL", Napi::Number::New(env, XCB_MOD_MASK_CONTROL));
+    masks.Set("1", Napi::Number::New(env, XCB_MOD_MASK_1));
+    masks.Set("2", Napi::Number::New(env, XCB_MOD_MASK_2));
+    masks.Set("3", Napi::Number::New(env, XCB_MOD_MASK_3));
+    masks.Set("4", Napi::Number::New(env, XCB_MOD_MASK_4));
+    masks.Set("5", Napi::Number::New(env, XCB_MOD_MASK_5));
+    masks.Set("ANY", Napi::Number::New(env, XCB_MOD_MASK_ANY));
+
+    return masks;
+}
+
+static Napi::Object initKeyButtonMasks(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object masks = Napi::Object::New(env);
+
+    masks.Set("SHIFT", Napi::Number::New(env, XCB_KEY_BUT_MASK_SHIFT));
+    masks.Set("LOCK", Napi::Number::New(env, XCB_KEY_BUT_MASK_LOCK));
+    masks.Set("CONTROL", Napi::Number::New(env, XCB_KEY_BUT_MASK_CONTROL));
+    masks.Set("MOD_1", Napi::Number::New(env, XCB_KEY_BUT_MASK_MOD_1));
+    masks.Set("MOD_2", Napi::Number::New(env, XCB_KEY_BUT_MASK_MOD_2));
+    masks.Set("MOD_3", Napi::Number::New(env, XCB_KEY_BUT_MASK_MOD_3));
+    masks.Set("MOD_4", Napi::Number::New(env, XCB_KEY_BUT_MASK_MOD_4));
+    masks.Set("MOD_5", Napi::Number::New(env, XCB_KEY_BUT_MASK_MOD_5));
+    masks.Set("BUTTON_1", Napi::Number::New(env, XCB_KEY_BUT_MASK_BUTTON_1));
+    masks.Set("BUTTON_2", Napi::Number::New(env, XCB_KEY_BUT_MASK_BUTTON_2));
+    masks.Set("BUTTON_3", Napi::Number::New(env, XCB_KEY_BUT_MASK_BUTTON_3));
+    masks.Set("BUTTON_4", Napi::Number::New(env, XCB_KEY_BUT_MASK_BUTTON_4));
+    masks.Set("BUTTON_5", Napi::Number::New(env, XCB_KEY_BUT_MASK_BUTTON_5));
+
+    return masks;
+}
+
+static Napi::Object initButtonMasks(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object masks = Napi::Object::New(env);
+
+    masks.Set("1", Napi::Number::New(env, XCB_BUTTON_MASK_1));
+    masks.Set("2", Napi::Number::New(env, XCB_BUTTON_MASK_2));
+    masks.Set("3", Napi::Number::New(env, XCB_BUTTON_MASK_3));
+    masks.Set("4", Napi::Number::New(env, XCB_BUTTON_MASK_4));
+    masks.Set("5", Napi::Number::New(env, XCB_BUTTON_MASK_5));
+    masks.Set("ANY", Napi::Number::New(env, XCB_BUTTON_MASK_ANY));
+
+    return masks;
+}
+
+static Napi::Object initGrabModes(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object modes = Napi::Object::New(env);
+
+    modes.Set("SYNC", Napi::Number::New(env, XCB_GRAB_MODE_SYNC));
+    modes.Set("ASYNC", Napi::Number::New(env, XCB_GRAB_MODE_ASYNC));
+
+    return modes;
+}
+
+static Napi::Object initGrabStatus(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object status = Napi::Object::New(env);
+
+    status.Set("SUCCESS", Napi::Number::New(env, XCB_GRAB_STATUS_SUCCESS));
+    status.Set("ALREADY_GRABBED", Napi::Number::New(env, XCB_GRAB_STATUS_ALREADY_GRABBED));
+    status.Set("INVALID_TIME", Napi::Number::New(env, XCB_GRAB_STATUS_INVALID_TIME));
+    status.Set("NOT_VIEWABLE", Napi::Number::New(env, XCB_GRAB_STATUS_NOT_VIEWABLE));
+    status.Set("FROZEN", Napi::Number::New(env, XCB_GRAB_STATUS_FROZEN));
+
+    return status;
+}
+
+
 static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object icccm = Napi::Object::New(env);
@@ -1288,14 +1364,97 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("grab_key", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "grab_key requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "grab_key requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("owner_events")) {
+            throw Napi::TypeError::New(env, "grab_key requires a owner_events");
+        }
+        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("modifiers")) {
+            throw Napi::TypeError::New(env, "grab_key requires a modifiers");
+        }
+        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("key")) {
+            throw Napi::TypeError::New(env, "grab_key requires a key");
+        }
+        const uint32_t key = arg.Get("key").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("pointer_mode")) {
+            throw Napi::TypeError::New(env, "grab_key requires a pointer_mode");
+        }
+        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("keyboard_mode")) {
+            throw Napi::TypeError::New(env, "grab_key requires a keyboard_mode");
+        }
+        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+        xcb_grab_key(wm->conn, owner_events, window, modifiers, key, pointer_mode, keyboard_mode);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("ungrab_key", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "ungrab_key requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "ungrab_key requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("modifiers")) {
+            throw Napi::TypeError::New(env, "grab_key requires a modifiers");
+        }
+        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("key")) {
+            throw Napi::TypeError::New(env, "grab_key requires a key");
+        }
+        const uint32_t key = arg.Get("key").As<Napi::Number>().Uint32Value();
+
+        xcb_ungrab_key(wm->conn, key, window, modifiers);
+
+        return env.Undefined();
+    }));
+
     xcb.Set("atom", initAtoms(env, wm));
     xcb.Set("event", initEvents(env, wm));
     xcb.Set("eventMask", initEventMasks(env, wm));
     xcb.Set("propMode", initPropModes(env, wm));
     xcb.Set("inputFocus", initInputFocus(env, wm));
+    xcb.Set("modMask", initModMasks(env, wm));
+    xcb.Set("keyButtonMask", initKeyButtonMasks(env, wm));
+    xcb.Set("buttonMask", initButtonMasks(env, wm));
+    xcb.Set("grabMode", initGrabModes(env, wm));
+    xcb.Set("grabStatus", initGrabStatus(env, wm));
     xcb.Set("icccm", initIcccm(env, wm));
     xcb.Set("ewmh", initEwmh(env, wm));
     xcb.Set("currentTime", Napi::Number::New(env, XCB_TIME_CURRENT_TIME));
+    xcb.Set("grabAny", Napi::Number::New(env, XCB_GRAB_ANY));
+    xcb.Set("windowNone", Napi::Number::New(env, XCB_WINDOW_NONE));
+    xcb.Set("cursorNone", Napi::Number::New(env, XCB_CURSOR_NONE));
 
     return xcb;
 }

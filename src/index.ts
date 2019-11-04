@@ -6,6 +6,15 @@ import * as path from "path";
 
 const options = Options("owm");
 
+function stringOption(key: string): string | undefined
+{
+    const value = options(key);
+    if (typeof value === "string") {
+        return value;
+    }
+    return undefined;
+}
+
 function loadConfig(dir: string, lib: OWMLib)
 {
     import(path.join(dir, "owm")).then(cfg => {
@@ -66,8 +75,10 @@ function event(e: OWM.Event) {
     }
 }
 
-native.start(event).then((data: { wm: OWM.WM, xcb: OWM.XCB }) => {
-    console.log("started", data);
+const display = stringOption("display");
+
+native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB }) => {
+    console.log("started");
     owm = data;
     lib = new OWMLib(data.wm, data.xcb);
 }).catch((err: Error) => {

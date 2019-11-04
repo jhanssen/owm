@@ -149,7 +149,7 @@ export namespace XCB {
         readonly child: number;
         readonly state: number;
         readonly sym: number;
-        readonly sym_is_modifier: number;
+        readonly is_modifier: number;
         readonly same_screen: number;
     }
 
@@ -381,6 +381,21 @@ declare interface SetInputFocusArgs {
     readonly time?: number;
 }
 
+declare interface GrabKeyArgs {
+    readonly window: number;
+    readonly owner_events: number;
+    readonly modifiers: number;
+    readonly key: number;
+    readonly pointer_mode: number;
+    readonly keyboard_mode: number;
+}
+
+declare interface UngrabKeyArgs {
+    readonly window: number;
+    readonly modifiers: number;
+    readonly key: number;
+}
+
 declare interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
@@ -404,7 +419,15 @@ export namespace OWM {
         readonly eventMask: {[key: string]: number};
         readonly propMode: {[key: string]: number};
         readonly inputFocus: {[key: string]: number};
+        readonly modMask: {[key: string]: number};
+        readonly keyButtonMask: {[key: string]: number};
+        readonly buttonMask: {[key: string]: number};
+        readonly grabMode: {[key: string]: number};
+        readonly grabStatus: {[key: string]: number};
         readonly currentTime: number;
+        readonly grabAny: number;
+        readonly windowNone: number;
+        readonly cursorNone: number;
         readonly icccm: ICCCMEnums;
         readonly ewmh: EWMHEnums;
         intern_atom(name: string, onlyIfExists?: boolean): number;
@@ -415,6 +438,8 @@ export namespace OWM {
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
+        grab_key(wm: OWM.WM, args: GrabKeyArgs): void;
+        ungrab_key(wm: OWM.WM, args: UngrabKeyArgs): void;
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;
         flush(wm: OWM.WM): void;
