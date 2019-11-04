@@ -8,6 +8,7 @@ export class Client
     private readonly border: number;
     private screen: number;
     private geometry: { x: number, y: number, width: number, height: number };
+    private noinput: boolean;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, screen: number, border: number) {
         this.owm = owm;
@@ -21,6 +22,10 @@ export class Client
             width: window.geometry.width,
             height: window.geometry.height
         };
+
+        this.noinput = false;
+        if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
+            this.noinput = window.wmHints.input === 0;
     }
 
     move(x: number, y: number) {
@@ -64,6 +69,9 @@ export class Client
     }
 
     focus() {
+        if (this.noinput)
+            return;
+
         const takeFocus = this.owm.xcb.atom.WM_TAKE_FOCUS;
         if (this.window.wmProtocols.includes(takeFocus)) {
             console.log("sending client message");
@@ -177,8 +185,6 @@ export class OWMLib {
 
     enterNotify(event: XCB.EnterNotify) {
         this._currentTime = event.time;
-
-        console.log("enter notify for", event);
 
         let client = this._clientsByWindow.get(event.child);
         if (!client) {
