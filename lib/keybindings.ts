@@ -1,4 +1,6 @@
 import { OWMLib } from "./owm";
+import { Logger } from "./logger";
+import { XCB } from "native";
 
 export class Keybinding
 {
@@ -39,6 +41,10 @@ export class Keybinding
         return this._mode;
     }
 
+    get sym() {
+        return this._sym;
+    }
+
     call(bindings: Keybindings) {
         this._callback(bindings, this._binding);
     }
@@ -61,31 +67,31 @@ export class Keybinding
         if (keys.length > 1) {
             const mask = this._owm.xcb.modMask;
             for (let i = 0; i < keys.length - 1; ++i) {
-                switch (keys[i]) {
-                    case "Shift":
+                switch (keys[i].toLowerCase()) {
+                    case "shift":
                         mods |= mask.SHIFT;
                         break;
-                    case "Ctrl":
-                    case "Control":
+                    case "ctrl":
+                    case "control":
                         mods |= mask.CONTROL;
                         break;
-                    case "Mod1":
-                    case "Alt":
+                    case "mod1":
+                    case "alt":
                         mods |= mask["1"];
                         break;
-                    case "Mod2":
+                    case "mod2":
                         mods |= mask["2"];
                         break;
-                    case "Mod3":
+                    case "mod3":
                         mods |= mask["3"];
                         break;
-                    case "Mod4":
+                    case "mod4":
                         mods |= mask["4"];
                         break;
-                    case "Mod5":
+                    case "mod5":
                         mods |= mask["5"];
                         break;
-                    case "Lock":
+                    case "lock":
                         mods |= mask.LOCK;
                         break;
                     default:
@@ -109,19 +115,25 @@ export class Keybindings
 {
     private _owm: OWMLib;
     private _parent: Keybindings | undefined;
-    private _children: Keybindings[];
+    private _child: Keybindings | undefined;
     private _bindings: Map<string, Keybinding>;
     private _enabled: boolean;
+    private _feeding: boolean;
+    private _log: Logger;
 
     constructor(owm: OWMLib, parent?: Keybindings) {
         this._owm = owm;
         this._parent = parent;
         this._bindings = new Map<string, Keybinding>();
-        this._children = [];
         this._enabled = false;
+        this._feeding = false;
+        this._log = owm.logger.prefixed("Keybindings");
 
         if (parent) {
-            parent._children.push(this);
+            if (parent._child) {
+                throw new Error("can only have one child of a keybindings");
+            }
+            parent._child = this;
         }
     }
 
@@ -130,15 +142,19 @@ export class Keybindings
 
         keybinding.recreate();
 
-        if (!this.has(binding)) {
+        this._log.debug("adding", binding, sync);
+
+        if (this._enabled && !this.has(binding)) {
             const codes = keybinding.codes;
             if (!codes.length)
                 return;
             const mods = keybinding.mods;
             const mode = keybinding.mode;
             const grabMode = this._owm.xcb.grabMode;
+            this._log.debug("codes", codes, mods, mode);
             this._owm.forEachRoot((root: number) => {
                 for (let code of codes) {
+                    this._log.debug("really add", root, code);
                     this._owm.xcb.grab_key(this._owm.wm, { window: root, owner_events: 1, modifiers: mods,
                                                            key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
                 }
@@ -151,8 +167,11 @@ export class Keybindings
     remove(binding: string) {
         if (!this._bindings.has(binding))
             return;
-        if (!this.has(binding)) {
-            const keybinding = this._bindings.get(binding);
+
+        const keybinding = this._bindings.get(binding);
+        this._bindings.delete(binding);
+
+        if (this._enabled && !this.has(binding)) {
             // silly typescript, I already checked up above
             if (!keybinding)
                 return;
@@ -166,7 +185,6 @@ export class Keybindings
                 }
             });
         }
-        this._bindings.delete(binding);
     }
 
     has(binding: string): boolean {
@@ -194,8 +212,8 @@ export class Keybindings
             return;
         }
         this._recreate();
-        for (const child of this._children) {
-            child._recreate();
+        if (this._child) {
+            this._child._recreate();
         }
         this._unbind();
         this._rebind();
@@ -209,14 +227,59 @@ export class Keybindings
         this._rebind();
     }
 
+    feed(key: XCB.KeyPress) {
+        if (!this._enabled)
+            return;
+
+        if (this._parent) {
+            throw new Error("can only feed the topmost keybindings");
+        }
+
+        if (this._feeding) {
+            this._feed(key);
+            return;
+        }
+
+        if (!this._child || !this._child._enabled) {
+            this._feed(key);
+            return;
+        }
+
+        let child = this._child;
+        while (child._child !== undefined && !child._feeding && child._child._enabled) {
+            child = child._child;
+        }
+
+        child._feed(key);
+    }
+
+    private _feed(key: XCB.KeyPress) {
+        // check if I match one of my bindings. if I don't, try my parent
+        if (!this._match(key)) {
+            if (this._parent)
+                this._parent._feed(key);
+        }
+    }
+
+    private _match(press: XCB.KeyPress) {
+        this._log.debug("match?", press);
+        for (const [key, keybinding] of this._bindings) {
+            //console.log("cand. binding", keybinding);
+            if (press.sym === keybinding.sym && press.state === keybinding.mods) {
+                keybinding.call(this);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private _has(binding: string): boolean {
         if (!this._enabled)
             return false;
         if (this._bindings.has(binding))
             return true;
-        for (const child of this._children) {
-            if (child._has(binding))
-                return true;
+        if (this._child && this._child._has(binding)) {
+            return true;
         }
         return false;
     }
@@ -229,6 +292,7 @@ export class Keybindings
 
     private _unbind() {
         this._owm.forEachRoot((root: number) => {
+            this._log.debug("unbind", root);
             this._owm.xcb.ungrab_key(this._owm.wm, { key: this._owm.xcb.grabAny, window: root, modifiers: this._owm.xcb.buttonMask.ANY });
         });
     }
@@ -242,6 +306,8 @@ export class Keybindings
         const bindings = new Map<string, Keybinding>();
         this._collect(bindings);
 
+        this._log.debug("rebind");
+
         for (const [key, keybinding] of bindings) {
             const codes = keybinding.codes;
             if (!codes.length)
@@ -250,6 +316,7 @@ export class Keybindings
             const mode = keybinding.mode;
             const grabMode = this._owm.xcb.grabMode;
             this._owm.forEachRoot((root: number) => {
+                this._log.debug("rebind root", root, codes);
                 //this._owm.xcb.grab_key(this._owm.wm,
                 for (let code of codes) {
                     this._owm.xcb.grab_key(this._owm.wm, { window: root, owner_events: 1, modifiers: mods,
@@ -268,8 +335,8 @@ export class Keybindings
                 bindings.set(key, keybinding);
             }
         }
-        for (const child of this._children) {
-            child._collect(bindings);
+        if (this._child) {
+            this._child._collect(bindings);
         }
     }
 }

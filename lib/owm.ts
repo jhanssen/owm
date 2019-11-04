@@ -1,6 +1,7 @@
 import { XCB, OWM } from "native";
 import { Policy } from "./policy";
-import { Keybindings } from "./keybindings"
+import { Keybindings } from "./keybindings";
+import { Logger } from "./logger";
 
 export class Client
 {
@@ -11,6 +12,7 @@ export class Client
     private screen: number;
     private geometry: { x: number, y: number, width: number, height: number };
     private noinput: boolean;
+    private _log: Logger;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, screen: number, border: number) {
         this.owm = owm;
@@ -28,6 +30,8 @@ export class Client
         this.noinput = false;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
             this.noinput = window.wmHints.input === 0;
+
+        this._log = owm.logger.prefixed("Client");
     }
 
     get root() {
@@ -80,7 +84,7 @@ export class Client
 
         const takeFocus = this.owm.xcb.atom.WM_TAKE_FOCUS;
         if (this.window.wmProtocols.includes(takeFocus)) {
-            console.log("sending client message");
+            this._log.info("sending client message");
             const data = new Uint32Array(2);
             data[0] = takeFocus;
             data[1] = this.owm.currentTime;
@@ -118,12 +122,16 @@ export class OWMLib {
     private _clientsByFrame: Map<number, Client>;
     private _policy: Policy;
     private _focused: Client | undefined;
+    private _log: Logger;
     private _bindings: Keybindings;
 
-    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB) {
+    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, loglevel: Logger.Level) {
         this.wm = wm;
         this.xcb = xcb;
         this.xkb = xkb;
+
+        this._log = new Logger(loglevel);
+
         this._clients = [];
         this._screens = [];
         this._clientsByWindow = new Map<number, Client>();
@@ -151,6 +159,10 @@ export class OWMLib {
         return this._bindings;
     }
 
+    get logger() {
+        return this._log;
+    }
+
     findClient(window: number): Client | undefined {
         let client = this._clientsByWindow.get(window);
         if (!client) {
@@ -160,7 +172,7 @@ export class OWMLib {
     }
 
     addClient(win: XCB.Window) {
-        console.log("client", win);
+        this._log.debug("client", win);
 
         // reparent to new window
         const border = 10;
@@ -199,17 +211,17 @@ export class OWMLib {
         const client = new Client(this, parent, win, no, border);
         this._clientsByWindow.set(win.window, client);
         this._clientsByFrame.set(parent, client);
-        console.log("client", win.window, parent);
+        this._log.info("client", win.window, parent);
         this._clients.push(client);
     }
 
     updateScreens(screens: XCB.Screen[]) {
-        console.log("screens", screens);
+        this._log.info("screens", screens);
         this._screens = screens;
     }
 
     buttonPress(event: XCB.ButtonPress) {
-        console.log("press", event);
+        this._log.info("press", event);
         this._currentTime = event.time;
         this._policy.buttonPress(event);
     }
@@ -222,6 +234,7 @@ export class OWMLib {
     keyPress(event: XCB.KeyPress) {
         this._currentTime = event.time;
         this._policy.keyPress(event);
+        this._bindings.feed(event);
     }
 
     keyRelease(event: XCB.KeyPress) {

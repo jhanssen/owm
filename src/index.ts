@@ -2,6 +2,7 @@ import * as xdgBaseDir from "xdg-basedir";
 import { default as Options } from "@jhanssen/options";
 import { default as native, OWM, XCB } from "native";
 import { OWMLib } from "../lib/owm";
+import { Logger } from "../lib/logger";
 import * as path from "path";
 
 const options = Options("owm");
@@ -72,6 +73,8 @@ function event(e: OWM.Event) {
         configDirs.push(path.join(process.cwd(), "config"));
 
         configDirs.forEach(dir => { loadConfig(dir, lib) });
+
+        lib.bindings.enable();
     } else if (e.type === "xkb" && e.xkb === "recreate") {
         lib.recreateKeyBindings();
     }
@@ -80,9 +83,38 @@ function event(e: OWM.Event) {
 const display = stringOption("display");
 
 native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB }) => {
-    console.log("started");
+    console.log("owm started");
     owm = data;
-    lib = new OWMLib(data.wm, data.xcb, data.xkb);
+
+    let level = Logger.Level.Error;
+    const logLevel = stringOption("log");
+    if (logLevel !== undefined) {
+        switch (logLevel.toLowerCase()) {
+        case "debug":
+            level = Logger.Level.Debug;
+            break;
+        case "info":
+            level = Logger.Level.Info;
+            break;
+        case "warn":
+        case "warning":
+            level = Logger.Level.Warning;
+            break;
+        case "error":
+            level = Logger.Level.Error;
+            break;
+        case "fatal":
+            level = Logger.Level.Fatal;
+            break;
+        default:
+            console.log("unrecognized log level", logLevel);
+            native.stop();
+            process.exit();
+            break;
+        }
+    }
+
+    lib = new OWMLib(data.wm, data.xcb, data.xkb, level);
 }).catch((err: Error) => {
     console.log("error", err);
     native.stop();
