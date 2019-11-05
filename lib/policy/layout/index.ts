@@ -1,5 +1,5 @@
-import { Client } from "../owm";
-import { Policy } from ".";
+import { Client } from "../../owm";
+import { Policy } from "..";
 
 export interface LayoutPolicy
 {

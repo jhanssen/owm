@@ -1,6 +1,6 @@
-import { Policy } from ".";
-import { FocusPolicy } from "./focus";
-import { OWMLib } from "../owm";
+import { Policy } from "..";
+import { FocusPolicy } from ".";
+import { OWMLib } from "../../owm";
 import { XCB } from "native";
 
 export class FocusFollowsMousePolicy implements FocusPolicy

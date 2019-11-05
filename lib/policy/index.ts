@@ -1,7 +1,7 @@
 import { FocusPolicy } from "./focus";
-import { FocusFollowsMousePolicy } from "./focus-follows-mouse";
+import { FocusFollowsMousePolicy } from "./focus/follows-mouse";
 import { LayoutPolicy } from "./layout";
-import { TilingLayoutPolicy } from "./tiling-layout";
+import { TilingLayoutPolicy } from "./layout/tiling";
 import { OWMLib, Client } from "../owm";
 import { XCB } from "native";
 

@@ -1,7 +1,7 @@
-import { Client } from "../owm";
-import { Logger } from "../logger";
-import { LayoutPolicy } from "./layout";
-import { Policy } from ".";
+import { Client } from "../../owm";
+import { Logger } from "../../logger";
+import { LayoutPolicy } from ".";
+import { Policy } from "..";
 
 export class TilingLayoutPolicy implements LayoutPolicy
 {
