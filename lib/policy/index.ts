@@ -2,7 +2,8 @@ import { FocusPolicy } from "./focus";
 import { FocusFollowsMousePolicy } from "./focus/follows-mouse";
 import { LayoutPolicy } from "./layout";
 import { TilingLayoutPolicy } from "./layout/tiling";
-import { OWMLib, Client } from "../owm";
+import { OWMLib } from "../owm";
+import { Client } from "../client";
 import { XCB } from "native";
 
 export class Policy
@@ -13,8 +14,10 @@ export class Policy
 
     constructor(owm: OWMLib) {
         this._owm = owm;
-        this._focus = new FocusFollowsMousePolicy(this);
-        this._layout = new TilingLayoutPolicy(this, TilingLayoutPolicy.Direction.Horizontal);
+        this._focus = new FocusFollowsMousePolicy;
+        this._focus.setPolicy(this);
+        this._layout = new TilingLayoutPolicy;
+        this._layout.setPolicy(this);
     }
 
     get owm() {
@@ -33,7 +36,19 @@ export class Policy
         return this._layout;
     }
 
-    set layout(arg: LayoutPolicy) {
+    set layout(arg: LayoutPolicy | string) {
+        console.log("does this happen", arg);
+        if (typeof arg === "string") {
+            switch (arg) {
+            case "tiling":
+                arg = new TilingLayoutPolicy;
+                break;
+            default:
+                throw new Error("invalid layout");
+            }
+        }
+
+        arg.setPolicy(this);
         arg.adopt(this);
 
         this._layout = arg;

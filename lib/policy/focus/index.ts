@@ -1,4 +1,5 @@
 import { XCB } from "native";
+import { Policy } from "..";
 
 export interface FocusPolicy
 {
@@ -8,4 +9,5 @@ export interface FocusPolicy
     keyRelease(event: XCB.KeyPress): void;
     enterNotify(event: XCB.EnterNotify): void;
     leaveNotify(event: XCB.EnterNotify): void;
+    setPolicy(policy: Policy): void;
 }

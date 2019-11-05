@@ -12,7 +12,37 @@ function timestamp() {
     return `[${h}:${m}:${s}]`;
 }
 
-export class Logger
+export interface Logger
+{
+    prefixed(prefix: string): Logger;
+    debug(...args: any): void;
+    info(...args: any): void;
+    warn(...args: any): void;
+    warning(...args: any): void;
+    error(...args: any): void;
+    fatal(...args: any): void;
+}
+
+export namespace Logger
+{
+    export enum Level {
+        Fatal,
+        Error,
+        Warning,
+        Info,
+        Debug
+    }
+
+    let _dummy: DummyLogger;
+    export function dummy() {
+        if (!_dummy) {
+            _dummy = new DummyLogger();
+        }
+        return _dummy;
+    }
+}
+
+export class ConsoleLogger implements Logger
 {
     private _level: Logger.Level;
     private _prefix: string | undefined;
@@ -23,7 +53,7 @@ export class Logger
     }
 
     prefixed(prefix: string) {
-        return new Logger(this._level, prefix + ":");
+        return new ConsoleLogger(this._level, prefix + ":");
     }
 
     log(level: Logger.Level, ...args: any) {
@@ -70,13 +100,27 @@ export class Logger
     }
 }
 
-export namespace Logger
+class DummyLogger implements Logger
 {
-    export enum Level {
-        Fatal,
-        Error,
-        Warning,
-        Info,
-        Debug
+    prefixed(prefix: string) {
+        return this;
+    }
+
+    debug(...args: any) {
+    }
+
+    info(...args: any) {
+    }
+
+    warn(...args: any) {
+    }
+
+    warning(...args: any) {
+    }
+
+    error(...args: any) {
+    }
+
+    fatal(...args: any) {
     }
 }
