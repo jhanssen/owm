@@ -2,8 +2,9 @@ import { XCB, OWM } from "native";
 import { Policy } from "./policy";
 import { Keybindings } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
-import { Workspace } from "./workspace";
+import { Workspace, Workspaces } from "./workspace";
 import { Client } from "./client";
+import { EventEmitter } from "events";
 
 interface ClientInternal
 {
@@ -16,7 +17,7 @@ export class OWMLib {
     private readonly _xcb: OWM.XCB;
     private readonly _xkb: OWM.XKB;
     private _clients: Client[];
-    private _workspaces: Workspace[];
+    private _workspaces: Workspaces;
     private _currentTime: number;
     private _clientsByWindow: Map<number, Client>;
     private _clientsByFrame: Map<number, Client>;
@@ -25,18 +26,26 @@ export class OWMLib {
     private _log: Logger;
     private _bindings: Keybindings;
     private _root: number;
+    private _events: EventEmitter;
+    private _settled: boolean;
+    private _onsettled: { (): void }[];
+
+    public readonly Workspace = Workspace;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, loglevel: Logger.Level) {
         this._wm = wm;
         this._xcb = xcb;
         this._xkb = xkb;
+        this._settled = false;
+        this._onsettled = [];
 
         this._log = new ConsoleLogger(loglevel);
 
         this._root = 0;
+        this._events = new EventEmitter();
 
         this._clients = [];
-        this._workspaces = [];
+        this._workspaces = new Workspaces(this);
         this._clientsByWindow = new Map<number, Client>();
         this._clientsByFrame = new Map<number, Client>();
         this._currentTime = 0;
@@ -86,6 +95,10 @@ export class OWMLib {
         return this._workspaces;
     }
 
+    get events() {
+        return this._events;
+    }
+
     findClient(window: number): Client | undefined {
         let client = this._clientsByWindow.get(window);
         if (!client) {
@@ -125,11 +138,14 @@ export class OWMLib {
         this._clients.push(client);
 
         this._policy.clientAdded(client);
+
+        this._events.emit("client", client);
     }
 
     updateScreens(screens: OWM.Screens) {
-        this._log.info("screens", screens, screens.entries[0].outputs);
+        this._log.info("screens", screens);
         this._root = screens.root;
+        this._workspaces.update(screens.entries);
     }
 
     buttonPress(event: XCB.ButtonPress) {
@@ -187,6 +203,22 @@ export class OWMLib {
 
     recreateKeyBindings() {
         this._bindings.recreate();
+    }
+
+    onsettled(func: () => void) {
+        if (this._settled) {
+            func();
+        } else {
+            this._onsettled.push(func);
+        }
+    }
+
+    settled() {
+        this._settled = true;
+        for (let func of this._onsettled) {
+            func();
+        }
+        this._onsettled = [];
     }
 
     cleanup() {

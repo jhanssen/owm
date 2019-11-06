@@ -18,16 +18,17 @@ function stringOption(key: string): string | undefined
 
 function loadConfig(dir: string, lib: OWMLib)
 {
-    import(path.join(dir, "owm")).then(cfg => {
-        cfg.default(lib);
-    }).catch(err => {
-        if (err.code !== "MODULE_NOT_FOUND") {
-            console.error("error loading module", dir);
-            console.error(err);
-
-            native.stop();
-            process.exit();
-        }
+    return new Promise<void>((resolve, reject) => {
+        import(path.join(dir, "owm")).then(cfg => {
+            cfg.default(lib);
+            resolve();
+        }).catch(err => {
+            if (err.code !== "MODULE_NOT_FOUND") {
+                reject({ path: dir, err: err });
+            } else {
+                resolve();
+            }
+        });
     });
 }
 
@@ -61,20 +62,37 @@ function event(e: OWM.Event) {
     } else if (e.type == "windows" && e.windows) {
         const windows = e.windows as XCB.Window[];
         //console.log("got wins", windows);
-        for (const window of windows) {
-            if (!window.attributes.override_redirect)
-                lib.addClient(window);
-        }
+        lib.onsettled(() => {
+            for (const window of windows) {
+                if (!window.attributes.override_redirect)
+                    lib.addClient(window);
+            }
+        });
     } else if (e.type == "screens" && e.screens) {
-        lib.updateScreens(e.screens);
+        const screens = e.screens;
+        lib.onsettled(() => {
+            lib.updateScreens(screens);
+        });
     } else if (e.type === "settled") {
         const configDirs = xdgBaseDir.configDirs.slice(0);
         // not sure about cwd() but ok for now
         configDirs.push(path.join(process.cwd(), "config"));
 
-        configDirs.forEach(dir => { loadConfig(dir, lib) });
+        const promises: Promise<void>[] = [];
+        configDirs.forEach(dir => { promises.push(loadConfig(dir, lib)); });
+        Promise.all(promises).then(() => {
+            lib.bindings.enable();
 
-        lib.bindings.enable();
+            process.nextTick(() => {
+                lib.settled();
+            });
+        }).catch(err => {
+            console.error("error loading module");
+            console.error(err);
+
+            native.stop();
+            process.exit();
+        });
     } else if (e.type === "xkb" && e.xkb === "recreate") {
         lib.recreateKeyBindings();
     }
