@@ -8,17 +8,15 @@ export class Client
     private readonly _window: XCB.Window;
     private readonly _owm: OWMLib;
     private readonly _border: number;
-    private _screen: number;
     private _geometry: { x: number, y: number, width: number, height: number };
     private _noinput: boolean;
     private _log: Logger;
 
-    constructor(owm: OWMLib, parent: number, window: XCB.Window, screen: number, border: number) {
+    constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
         this._owm = owm;
         this._parent = parent;
         this._window = window;
         this._border = border;
-        this._screen = screen;
         this._geometry = {
             x: window.geometry.x,
             y: window.geometry.y,
@@ -39,10 +37,6 @@ export class Client
 
     get geometry() {
         return this._geometry;
-    }
-
-    get screen() {
-        return this._screen;
     }
 
     move(x: number, y: number) {

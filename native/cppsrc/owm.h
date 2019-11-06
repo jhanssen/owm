@@ -16,6 +16,7 @@
 #define explicit _explicit
 #include <xcb/xkb.h>
 #undef explicit
+#include <xcb/randr.h>
 #include <assert.h>
 #include <array>
 #include <vector>
@@ -35,19 +36,18 @@ typedef std::variant<double, std::string, const char*, bool, UndefinedType> Vari
 Variant toVariant(Napi::Value value);
 Napi::Value fromVariant(napi_env env, const Variant& variant);
 
-struct Rect
-{
-    int x { 0 };
-    int y { 0 };
-    int w { 0 };
-    int h { 0 };
-};
-
 struct Screen
 {
-    xcb_screen_t* screen { nullptr };
-    xcb_visualtype_t* visual { nullptr };
-    Rect rect;
+    Screen(int16_t xx, int16_t yy, uint16_t ww, uint16_t hh, std::string&& nn)
+        : x(xx), y(yy), w(ww), h(hh), name(std::forward<std::string>(nn))
+    {
+    }
+
+    int16_t x { 0 };
+    int16_t y { 0 };
+    uint16_t w { 0 };
+    uint16_t h { 0 };
+    std::string name;
 };
 
 struct Window
@@ -168,6 +168,8 @@ struct WM
     xcb_connection_t* conn { nullptr };
     xcb_ewmh_connection_t* ewmh { nullptr };
     std::vector<Screen> screens;
+    int defaultScreenNo { 0 };
+    xcb_screen_t* defaultScreen;
     Atoms atoms;
 
     struct XKB
@@ -180,11 +182,18 @@ struct WM
         int32_t device { 0 };
     } xkb;
 
+    struct Randr
+    {
+        uint8_t event { 0 };
+    } randr;
+
     Stack<Response> responsePool;
     std::vector<Response*> responses;
 };
 
 void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
+void queryScreens(std::shared_ptr<WM>& wm);
+void sendScreens(const std::shared_ptr<WM>&wm, const Napi::ThreadSafeFunction& tsfn);
 Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm);
 Napi::Value makeXkb(napi_env env, const std::shared_ptr<WM>& wm);
 Napi::Value makeWindow(napi_env env, const Window& win);

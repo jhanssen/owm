@@ -6,6 +6,9 @@ try {
     module.exports = native;
     ok = true;
 } catch (e) {
+    if (e.code !== 'MODULE_NOT_FOUND') {
+        throw e;
+    }
 }
 
 if (!ok) {

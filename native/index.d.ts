@@ -1,10 +1,3 @@
-interface Geometry {
-    readonly x: number;
-    readonly y: number;
-    readonly width: number;
-    readonly height: number;
-}
-
 export namespace XCB {
     export namespace WindowTypes {
         export interface Attributes {
@@ -101,9 +94,11 @@ export namespace XCB {
     }
 
     export interface Screen {
-        readonly root: number;
-        readonly no: number;
-        readonly geometry: Geometry;
+        readonly name: string;
+        readonly x: number;
+        readonly y: number;
+        readonly width: number;
+        readonly height: number;
     }
 
     export interface ButtonPress {
@@ -466,10 +461,14 @@ export namespace OWM {
     export interface XKB {
         keysym_from_name(key: string): number | undefined;
     }
+    export interface Screens {
+        readonly root: number;
+        readonly data: XCB.Screen[];
+    }
     export interface Event {
         readonly type: string;
         readonly windows?: XCB.Window[];
-        readonly screens?: XCB.Screen[];
+        readonly screens?: Screens;
         readonly xcb?: XCB_Type;
         readonly xkb?: string;
     }

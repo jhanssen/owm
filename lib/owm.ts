@@ -2,7 +2,9 @@ import { XCB, OWM } from "native";
 import { Policy } from "./policy";
 import { Keybindings } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
-import { Client } from "./client"
+import { Screen } from "./screen";
+import { Workspace } from "./workspace";
+import { Client } from "./client";
 
 interface ClientInternal
 {
@@ -15,7 +17,7 @@ export class OWMLib {
     private readonly _xcb: OWM.XCB;
     private readonly _xkb: OWM.XKB;
     private _clients: Client[];
-    private _screens: XCB.Screen[];
+    private _screens: Screen[];
     private _currentTime: number;
     private _clientsByWindow: Map<number, Client>;
     private _clientsByFrame: Map<number, Client>;
@@ -23,6 +25,7 @@ export class OWMLib {
     private _focused: Client | undefined;
     private _log: Logger;
     private _bindings: Keybindings;
+    private _root: number;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, loglevel: Logger.Level) {
         this._wm = wm;
@@ -30,6 +33,8 @@ export class OWMLib {
         this._xkb = xkb;
 
         this._log = new ConsoleLogger(loglevel);
+
+        this._root = 0;
 
         this._clients = [];
         this._screens = [];
@@ -52,6 +57,10 @@ export class OWMLib {
 
     get xkb() {
         return this._xkb;
+    }
+
+    get root() {
+        return this._root;
     }
 
     get clients(): Client[] {
@@ -110,20 +119,7 @@ export class OWMLib {
         this.xcb.map_window(this.wm, parent);
         this.xcb.flush(this.wm);
 
-        // find the screen number of this client
-        let no: number | undefined = undefined;
-        for (let screen of this._screens) {
-            if (screen.root === win.geometry.root) {
-                no = screen.no;
-                break;
-            }
-        }
-
-        if (no === undefined) {
-            throw new Error("Couldn't find screen for client");
-        }
-
-        const client = new Client(this, parent, win, no, border);
+        const client = new Client(this, parent, win, border);
         this._clientsByWindow.set(win.window, client);
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, parent);
@@ -132,9 +128,9 @@ export class OWMLib {
         this._policy.clientAdded(client);
     }
 
-    updateScreens(screens: XCB.Screen[]) {
+    updateScreens(screens: OWM.Screens) {
         this._log.info("screens", screens);
-        this._screens = screens;
+        this._root = screens.root;
     }
 
     buttonPress(event: XCB.ButtonPress) {
@@ -192,12 +188,6 @@ export class OWMLib {
 
     recreateKeyBindings() {
         this._bindings.recreate();
-    }
-
-    forEachRoot(callback: (root: number) => void) {
-        for (let screen of this._screens) {
-            callback(screen.root);
-        }
     }
 
     cleanup() {

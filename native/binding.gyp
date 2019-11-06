@@ -26,6 +26,7 @@
 	    "-lxcb-util",
 	    "-lxcb-xkb",
 	    "-lxcb-keysyms",
+	    "-lxcb-randr",
 	    "-lxkbcommon",
 	    "-lxkbcommon-x11"
 	],

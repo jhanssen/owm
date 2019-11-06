@@ -453,6 +453,78 @@ void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsf
     free(event);
 }
 
+void queryScreens(std::shared_ptr<WM>& wm)
+{
+    wm->screens.clear();
+
+    auto cookie = xcb_randr_get_monitors(wm->conn, wm->defaultScreen->root, 1);
+    auto reply = xcb_randr_get_monitors_reply(wm->conn, cookie, nullptr);
+
+    if (!reply)
+        return;
+
+    auto iter = xcb_randr_get_monitors_monitors_iterator(reply);
+
+    for (; iter.rem; xcb_randr_monitor_info_next(&iter)) {
+        if (!xcb_randr_monitor_info_outputs_length(iter.data))
+            continue;
+
+        std::string name;
+
+        auto nameCookie = xcb_get_atom_name_unchecked(wm->conn, iter.data->name);
+        auto nameReply = xcb_get_atom_name_reply(wm->conn, nameCookie, nullptr);
+        if (nameReply) {
+            const char* sname = xcb_get_atom_name_name(nameReply);
+            size_t slen = xcb_get_atom_name_name_length(nameReply);
+
+            name = std::string(sname, slen);
+
+            free(nameReply);
+        } else {
+            name = "unknown";
+        }
+
+        wm->screens.emplace_back(iter.data->x, iter.data->y, iter.data->width, iter.data->height, std::move(name));
+    }
+
+    free(reply);
+}
+
+void sendScreens(const std::shared_ptr<WM>&wm, const Napi::ThreadSafeFunction& tsfn)
+{
+    std::vector<owm::Screen> screens = wm->screens;
+    const xcb_window_t root = wm->defaultScreen->root;
+    auto screensCallback = [screens{std::move(screens)}, root](Napi::Env env, Napi::Function js) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", "screens");
+
+        Napi::Object scr = Napi::Object::New(env);
+        scr.Set("root", root);
+        Napi::Array arr = Napi::Array::New(env, screens.size());
+        for (size_t i = 0; i < screens.size(); ++i) {
+            const auto& screen = screens[i];
+            Napi::Object s = Napi::Object::New(env);
+            s.Set("x", screen.x);
+            s.Set("y", screen.y);
+            s.Set("width", screen.w);
+            s.Set("height", screen.h);
+            s.Set("name", screen.name);
+            arr.Set(i, s);
+        }
+        scr.Set("data", arr);
+        obj.Set("screens", scr);
+
+        try {
+            napi_value nvalue = obj;
+            js.Call(1, &nvalue);
+        } catch (const Napi::Error& e) {
+            printf("exception from js: %s\n", e.what());
+        }
+    };
+
+    tsfn.BlockingCall(screensCallback);
+}
+
 static Napi::Object initAtoms(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object atoms = Napi::Object::New(env);
@@ -847,32 +919,6 @@ static Napi::Object initEwmh(napi_env env, const std::shared_ptr<WM>& wm)
     return ewmh;
 }
 
-static inline const Screen* screenForWindow(const std::shared_ptr<WM>& wm, xcb_window_t win)
-{
-    // first, see if this window is a root window
-    for (const auto& screen : wm->screens) {
-        if (screen.screen->root == win)
-            return &screen;
-    }
-
-    // no? well, let's query the root
-    auto cookie = xcb_get_geometry_unchecked(wm->conn, win);
-    auto reply = xcb_get_geometry_reply(wm->conn, cookie, nullptr);
-    if (!reply)
-        return nullptr;
-
-    // find the screen of the root
-    const auto root = reply->root;
-    free(reply);
-
-    for (const auto& screen : wm->screens) {
-        if (screen.screen->root == root)
-            return &screen;
-    }
-
-    return nullptr;
-}
-
 Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object xcb = Napi::Object::New(env);
@@ -1149,11 +1195,6 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
         parent = arg.Get("parent").As<Napi::Number>().Uint32Value();
 
-        auto screen = screenForWindow(wm, parent);
-        if (!screen) {
-            throw Napi::TypeError::New(env, "create_window couldn't find screen for parent");
-        }
-
         if (arg.Has("x")) {
             x = arg.Get("x").As<Napi::Number>().Int32Value();
         }
@@ -1163,7 +1204,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto win = xcb_generate_id(wm->conn);
         xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, win, parent, x, y, width, height, 0,
-                          XCB_WINDOW_CLASS_INPUT_OUTPUT, screen->screen->root_visual, 0, nullptr);
+                          XCB_WINDOW_CLASS_INPUT_OUTPUT, wm->defaultScreen->root_visual, 0, nullptr);
 
         return Napi::Number::New(env, win);
     }));

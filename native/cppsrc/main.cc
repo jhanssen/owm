@@ -284,6 +284,16 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             deferred->Reject("Unable to xcb_connect()");
             return;
         }
+        wm->defaultScreenNo = defaultScreen;
+        wm->defaultScreen = xcb_aux_get_screen(wm->conn, wm->defaultScreenNo);
+        if (!wm->defaultScreen) {
+            deferred->Reject("Couldn't get default screen");
+            return;
+        }
+
+        // prefetch extensions
+        xcb_prefetch_extension_data(wm->conn, &xcb_xkb_id);
+        xcb_prefetch_extension_data(wm->conn, &xcb_randr_id);
 
         const int xcbfd = xcb_get_file_descriptor(wm->conn);
 
@@ -291,20 +301,11 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         event.data.fd = xcbfd;
         epoll_ctl(epoll, EPOLL_CTL_ADD, xcbfd, &event);
 
-        const xcb_setup_t* setup = xcb_get_setup(wm->conn);
-        const int screenCount = xcb_setup_roots_length(setup);
-        wm->screens.reserve(screenCount);
-        xcb_screen_iterator_t it = xcb_setup_roots_iterator(setup);
-        for (int i = 0; i < screenCount; ++i) {
-            wm->screens.push_back({ it.data, xcb_aux_get_visualtype(wm->conn, i, it.data->root_visual), { 0, 0, it.data->width_in_pixels, it.data->height_in_pixels } });
-            xcb_screen_next(&it);
-        }
-
         std::unique_ptr<xcb_generic_error_t> err;
 
         {
             const uint32_t values[] = { XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT };
-            xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, wm->screens[defaultScreen].screen->root, XCB_CW_EVENT_MASK, values);
+            xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, wm->defaultScreen->root, XCB_CW_EVENT_MASK, values);
             err.reset(xcb_request_check(wm->conn, cookie));
             if (err) { // another wm already running
                 deferred->Reject("Another wm is already running?");
@@ -566,21 +567,19 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                                         | XCB_EVENT_MASK_BUTTON_RELEASE
                                         | XCB_EVENT_MASK_FOCUS_CHANGE
                                         | XCB_EVENT_MASK_PROPERTY_CHANGE };
-            for (auto s : wm->screens) {
-                xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, s.screen->root, XCB_CW_EVENT_MASK, values);
-                queryWindows(wm->conn, wm->ewmh, wm->atoms, s.screen->root);
-                err.reset(xcb_request_check(wm->conn, cookie));
-                if (err) {
-                    deferred->Reject("Unable to change attributes on one of the root windows");
-                    return;
-                }
-                xcb_ewmh_set_wm_pid(wm->ewmh, s.screen->root, getpid());
+            const auto root = wm->defaultScreen->root;
+            xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, root, XCB_CW_EVENT_MASK, values);
+            queryWindows(wm->conn, wm->ewmh, wm->atoms, root);
+            err.reset(xcb_request_check(wm->conn, cookie));
+            if (err) {
+                deferred->Reject("Unable to change attributes on the root window");
+                return;
             }
+            xcb_ewmh_set_wm_pid(wm->ewmh, root, getpid());
         }
 
         {
             // xkb stuffs
-            xcb_prefetch_extension_data(wm->conn, &xcb_xkb_id);
             const int ret = xkb_x11_setup_xkb_extension(wm->conn,
                                                         XKB_X11_MIN_MAJOR_XKB_VERSION,
                                                         XKB_X11_MIN_MINOR_XKB_VERSION,
@@ -656,6 +655,36 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             wm->xkb = { reply->first_event, ctx, xcb_key_symbols_alloc(wm->conn), keymap, state, deviceId };
         }
 
+        {
+            // randr stuff
+            auto reply = xcb_get_extension_data(wm->conn, &xcb_randr_id);
+            if(!reply || !reply->present) {
+                deferred->Reject("Unable get select xkb events");
+                return;
+            }
+
+            auto versionCookie = xcb_randr_query_version(wm->conn, 1, 5);
+            auto versionReply = xcb_randr_query_version_reply(wm->conn, versionCookie, nullptr);
+            if(!versionReply) {
+                return;
+            }
+
+            if (versionReply->major_version != 1 || versionReply->minor_version < 5) {
+                free(versionReply);
+                return;
+            }
+
+            xcb_randr_select_input(wm->conn, wm->defaultScreen->root, XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
+
+            wm->randr.event = reply->first_event;
+            owm::queryScreens(wm);
+
+            if (wm->screens.empty()) {
+                deferred->Reject("No screens queried from randr");
+                return;
+            }
+        }
+
         deferred->Resolve([wm](napi_env env) -> Napi::Value {
             Napi::Object obj = Napi::Object::New(env);
             obj.Set("xcb", owm::makeXcb(env, wm));
@@ -665,37 +694,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         });
         deferred.reset();
 
-        std::vector<owm::Screen> screens = wm->screens;
-        auto screensCallback = [screens{std::move(screens)}](Napi::Env env, Napi::Function js) {
-            Napi::Object obj = Napi::Object::New(env);
-            obj.Set("type", "screens");
-
-            Napi::Array arr = Napi::Array::New(env, screens.size());
-            for (size_t i = 0; i < screens.size(); ++i) {
-                const auto& screen = screens[i];
-                Napi::Object s = Napi::Object::New(env);
-                Napi::Object g = Napi::Object::New(env);
-                g.Set("x", screen.rect.x);
-                g.Set("y", screen.rect.y);
-                g.Set("width", screen.rect.w);
-                g.Set("height", screen.rect.h);
-                s.Set("geometry", g);
-                s.Set("root", Napi::Number::New(env, screen.screen->root));
-                s.Set("no", Napi::Number::New(env, i));
-                arr.Set(i, s);
-            }
-
-            obj.Set("screens", arr);
-
-            try {
-                napi_value nvalue = obj;
-                js.Call(1, &nvalue);
-            } catch (const Napi::Error& e) {
-                printf("exception from js: %s\n", e.what());
-            }
-        };
-
-        data.tsfn.BlockingCall(screensCallback);
+        owm::sendScreens(wm, data.tsfn);
 
         auto windowsCallback = [windows{std::move(windows)}](Napi::Env env, Napi::Function js) mutable {
             Napi::Object obj = Napi::Object::New(env);
@@ -736,6 +735,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         epoll_event events[MaxEvents];
 
         const auto xkbevent = wm->xkb.event;
+        const auto randrevent = wm->randr.event;
 
         for (;;) {
             const int count = epoll_wait(epoll, events, MaxEvents, -1);
@@ -757,8 +757,14 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                         xcb_generic_event_t *event = xcb_poll_for_event(wm->conn);
                         if (!event)
                             break;
-                        if ((event->response_type & ~0x80) == xkbevent) {
+                        if (event->response_type == xkbevent) {
                             owm::handleXkb(wm, data.tsfn, reinterpret_cast<owm::_xkb_event*>(event));
+                        } else if (event->response_type == randrevent + XCB_RANDR_NOTIFY) {
+                            // handle this?
+                        } else if (event->response_type == randrevent + XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE) {
+                            // type xcb_randr_screen_change_notify_event_t
+                            owm::queryScreens(wm);
+                            owm::sendScreens(wm, data.tsfn);
                         } else {
                             owm::handleXcb(wm, data.tsfn, event);
                         }

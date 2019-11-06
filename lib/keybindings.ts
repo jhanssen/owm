@@ -152,13 +152,11 @@ export class Keybindings
             const mode = keybinding.mode;
             const grabMode = this._owm.xcb.grabMode;
             this._log.debug("codes", codes, mods, mode);
-            this._owm.forEachRoot((root: number) => {
-                for (let code of codes) {
-                    this._log.debug("really add", root, code);
-                    this._owm.xcb.grab_key(this._owm.wm, { window: root, owner_events: 1, modifiers: mods,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
-                }
-            });
+            for (let code of codes) {
+                this._log.debug("really add", this._owm.root, code);
+                this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
+                                                       key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+            }
         }
 
         this._bindings.set(binding, keybinding);
@@ -179,11 +177,9 @@ export class Keybindings
             if (!codes.length)
                 return;
             const mods = keybinding.mods;
-            this._owm.forEachRoot((root: number) => {
-                for (let code of codes) {
-                    this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: root, modifiers: mods });
-                }
-            });
+            for (let code of codes) {
+                this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: mods });
+            }
         }
     }
 
@@ -291,10 +287,8 @@ export class Keybindings
     }
 
     private _unbind() {
-        this._owm.forEachRoot((root: number) => {
-            this._log.debug("unbind", root);
-            this._owm.xcb.ungrab_key(this._owm.wm, { key: this._owm.xcb.grabAny, window: root, modifiers: this._owm.xcb.buttonMask.ANY });
-        });
+        this._log.debug("unbind", this._owm.root);
+        this._owm.xcb.ungrab_key(this._owm.wm, { key: this._owm.xcb.grabAny, window: this._owm.root, modifiers: this._owm.xcb.buttonMask.ANY });
     }
 
     private _rebind() {
@@ -315,14 +309,13 @@ export class Keybindings
             const mods = keybinding.mods;
             const mode = keybinding.mode;
             const grabMode = this._owm.xcb.grabMode;
-            this._owm.forEachRoot((root: number) => {
-                this._log.debug("rebind root", root, codes);
+
+            this._log.debug("rebind root", this._owm.root, codes);
                 //this._owm.xcb.grab_key(this._owm.wm,
-                for (let code of codes) {
-                    this._owm.xcb.grab_key(this._owm.wm, { window: root, owner_events: 1, modifiers: mods,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
-                }
-            });
+            for (let code of codes) {
+                this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
+                                                       key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+            }
         }
     }
 
