@@ -99,6 +99,8 @@ export namespace XCB {
         readonly y: number;
         readonly width: number;
         readonly height: number;
+        readonly primary: boolean;
+        readonly outputs: string[];
     }
 
     export interface ButtonPress {
@@ -463,7 +465,7 @@ export namespace OWM {
     }
     export interface Screens {
         readonly root: number;
-        readonly data: XCB.Screen[];
+        readonly entries: XCB.Screen[];
     }
     export interface Event {
         readonly type: string;

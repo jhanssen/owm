@@ -38,8 +38,8 @@ Napi::Value fromVariant(napi_env env, const Variant& variant);
 
 struct Screen
 {
-    Screen(int16_t xx, int16_t yy, uint16_t ww, uint16_t hh, std::string&& nn)
-        : x(xx), y(yy), w(ww), h(hh), name(std::forward<std::string>(nn))
+    Screen(int16_t xx, int16_t yy, uint16_t ww, uint16_t hh, std::string&& nn, std::vector<std::string>&& oo, bool pp)
+        : x(xx), y(yy), w(ww), h(hh), name(std::forward<std::string>(nn)), outputs(std::forward<std::vector<std::string> >(oo)), primary(pp)
     {
     }
 
@@ -48,6 +48,8 @@ struct Screen
     uint16_t w { 0 };
     uint16_t h { 0 };
     std::string name;
+    std::vector<std::string> outputs;
+    bool primary;
 };
 
 struct Window

@@ -466,7 +466,8 @@ void queryScreens(std::shared_ptr<WM>& wm)
     auto iter = xcb_randr_get_monitors_monitors_iterator(reply);
 
     for (; iter.rem; xcb_randr_monitor_info_next(&iter)) {
-        if (!xcb_randr_monitor_info_outputs_length(iter.data))
+        const int olen = xcb_randr_monitor_info_outputs_length(iter.data);
+        if (!olen)
             continue;
 
         std::string name;
@@ -484,7 +485,31 @@ void queryScreens(std::shared_ptr<WM>& wm)
             name = "unknown";
         }
 
-        wm->screens.emplace_back(iter.data->x, iter.data->y, iter.data->width, iter.data->height, std::move(name));
+        std::vector<std::string> outputNames;
+
+        auto outputs = xcb_randr_monitor_info_outputs(iter.data);
+        for (int o = 0; o < olen; ++o) {
+            auto outputCookie = xcb_randr_get_output_info(wm->conn, outputs[o], reply->timestamp);
+            auto outputReply = xcb_randr_get_output_info_reply(wm->conn, outputCookie, nullptr);
+            if (!outputReply)
+                continue;
+            if (outputReply->crtc == XCB_NONE) {
+                free(outputReply);
+                continue;
+            }
+            const char* oname = reinterpret_cast<const char*>(xcb_randr_get_output_info_name(outputReply));
+            const auto olen = xcb_randr_get_output_info_name_length(outputReply);
+            std::string outputName;
+            if (oname && olen) {
+                outputName = std::string(oname, olen);
+            } else {
+                outputName = "unknown";
+            }
+            outputNames.push_back(std::move(outputName));
+            free(outputReply);
+        }
+
+        wm->screens.emplace_back(iter.data->x, iter.data->y, iter.data->width, iter.data->height, std::move(name), std::move(outputNames), iter.data->primary != 0);
     }
 
     free(reply);
@@ -509,9 +534,16 @@ void sendScreens(const std::shared_ptr<WM>&wm, const Napi::ThreadSafeFunction& t
             s.Set("width", screen.w);
             s.Set("height", screen.h);
             s.Set("name", screen.name);
+            s.Set("primary", screen.primary);
+            const auto outsz = screen.outputs.size();
+            Napi::Array outs = Napi::Array::New(env, outsz);
+            for (size_t i = 0; i < outsz; ++i) {
+                outs.Set(i, screen.outputs[i]);
+            }
+            s.Set("outputs", outs);
             arr.Set(i, s);
         }
-        scr.Set("data", arr);
+        scr.Set("entries", arr);
         obj.Set("screens", scr);
 
         try {

@@ -2,7 +2,6 @@ import { XCB, OWM } from "native";
 import { Policy } from "./policy";
 import { Keybindings } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
-import { Screen } from "./screen";
 import { Workspace } from "./workspace";
 import { Client } from "./client";
 
@@ -17,7 +16,7 @@ export class OWMLib {
     private readonly _xcb: OWM.XCB;
     private readonly _xkb: OWM.XKB;
     private _clients: Client[];
-    private _screens: Screen[];
+    private _workspaces: Workspace[];
     private _currentTime: number;
     private _clientsByWindow: Map<number, Client>;
     private _clientsByFrame: Map<number, Client>;
@@ -37,7 +36,7 @@ export class OWMLib {
         this._root = 0;
 
         this._clients = [];
-        this._screens = [];
+        this._workspaces = [];
         this._clientsByWindow = new Map<number, Client>();
         this._clientsByFrame = new Map<number, Client>();
         this._currentTime = 0;
@@ -83,8 +82,8 @@ export class OWMLib {
         return this._log;
     }
 
-    get screens() {
-        return this._screens;
+    get workspaces() {
+        return this._workspaces;
     }
 
     findClient(window: number): Client | undefined {
@@ -129,7 +128,7 @@ export class OWMLib {
     }
 
     updateScreens(screens: OWM.Screens) {
-        this._log.info("screens", screens);
+        this._log.info("screens", screens, screens.entries[0].outputs);
         this._root = screens.root;
     }
 
