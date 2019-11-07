@@ -76,6 +76,10 @@ export class Workspace
         this._container.remove(client);
     }
 
+    relayout() {
+        this._container.relayout();
+    }
+
     update(screen: XCB.Screen) {
         this._screen = screen;
         this._container.geometry = screen;
@@ -185,6 +189,13 @@ export class Workspaces
                 }
                 return false;
             }
+            return true;
+        });
+    }
+
+    relayout() {
+        this.forEachWorkspace((ws: Workspace) => {
+            ws.relayout();
             return true;
         });
     }

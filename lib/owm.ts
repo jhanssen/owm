@@ -198,6 +198,10 @@ export class OWMLib {
         this.xcb.flush(this.wm);
     }
 
+    relayout() {
+        this._workspaces.relayout();
+    }
+
     recreateKeyBindings() {
         this._bindings.recreate();
     }
