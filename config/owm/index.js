@@ -12,7 +12,7 @@ function init(owmlib) {
     const cfg = new owmlib.policy.layout.Config();
 
     cfg.rows = 2;
-    cfg.columns = 2;
+    cfg.columns = undefined;
 
     owmlib.policy.layout.setConfig(cfg);
 

@@ -8,13 +8,13 @@ export class TilingLayoutConfig implements LayoutConfig
 {
     private _type: string;
 
-    public rows: number;
-    public columns: number;
+    public rows: number | undefined;
+    public columns: number | undefined;
 
     constructor() {
         this._type = "TilingLayoutConfig";
+        this.columns = undefined;
         this.rows = 1;
-        this.columns = 1;
     }
 }
 
@@ -29,19 +29,18 @@ export class TilingLayoutPolicy implements LayoutPolicy
     private _policy: Policy;
     private _log: Logger;
     private _type: string;
-    private _cfg: TilingLayoutConfig | undefined;
+    private _cfg: TilingLayoutConfig;
 
     constructor(policy: Policy) {
         this._type = "TilingLayout";
         this._policy = policy;
+        this._cfg = new TilingLayoutConfig();
         this._log = policy.owm.logger.prefixed("TilingLayout");
     }
 
     layout(items: ContainerItem[], geometry: Geometry) {
-        if (!this._cfg)
-            return;
-        const rows = this._cfg.rows;
-        const columns = this._cfg.columns;
+        const rows = this._cfg.rows || 1;
+        const columns = this._cfg.columns || (items.length / rows);
 
         const wper = geometry.width / columns;
         const hper = geometry.height / rows;
