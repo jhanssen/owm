@@ -13,8 +13,8 @@ export class TilingLayoutConfig implements LayoutConfig
 
     constructor() {
         this._type = "TilingLayoutConfig";
-        this.rows = 0;
-        this.columns = 0;
+        this.rows = 1;
+        this.columns = 1;
     }
 }
 
