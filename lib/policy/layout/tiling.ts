@@ -39,8 +39,17 @@ export class TilingLayoutPolicy implements LayoutPolicy
     }
 
     layout(items: ContainerItem[], geometry: Geometry) {
-        const rows = this._cfg.rows || 1;
-        const columns = this._cfg.columns || (items.length / rows);
+        let rows = 0, columns = 0;
+        if (this._cfg.rows) {
+            rows = this._cfg.rows;
+            columns = this._cfg.columns || (items.length / rows);
+        } else if (this._cfg.columns) {
+            columns = this._cfg.columns;
+            rows = this._cfg.rows || (items.length / columns);
+        } else {
+            rows = 1;
+            columns = items.length;
+        }
 
         const wper = geometry.width / columns;
         const hper = geometry.height / rows;
