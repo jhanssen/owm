@@ -32,11 +32,18 @@ export class Workspaces
         this._owm = owm;
     }
 
-    workspace(output: string) {
+    workspaces(output: string): Workspace[] | undefined {
         return this._workspaces.get(output);
     }
 
-    get workspaces() {
+    workspace(output: string): Workspace | undefined {
+        const wss = this._workspaces.get(output);
+        if (!wss || !wss.length)
+            return undefined;
+        return wss[0];
+    }
+
+    get all() {
         return this._workspaces.values();
     }
 
