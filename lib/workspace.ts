@@ -61,7 +61,7 @@ export class Workspaces
 
     update(screens: XCB.Screen[]) {
         const olds = new Map(this._workspaces);
-        const news: XCB.Screen[] = [];
+        const sadded: XCB.Screen[] = [];
         const supdated: XCB.Screen[] = [];
         const wupdated: Workspace[] = []
 
@@ -90,26 +90,23 @@ export class Workspaces
             }
 
             if (!found) {
-                news.push(screen);
+                sadded.push(screen);
             }
         }
 
-        this._owm.events.emit("screens-new", news);
-        this._owm.events.emit("workspaces-updated", wupdated);
-        this._owm.events.emit("screens-updated", supdated);
 
-        const sdead: XCB.Screen[] = [];
-        const wdead: Workspace[] = [];
+        const sremoved: XCB.Screen[] = [];
+        const wremoved: Workspace[] = [];
         // all workspaces left in olds are from dead outputs
         for (const [key, workspaces] of olds) {
             for (let i = 0; i < workspaces.length; ++i) {
-                sdead.push(workspaces[i].screen);
-                wdead.push(workspaces[i]);
+                sremoved.push(workspaces[i].screen);
+                wremoved.push(workspaces[i]);
             }
             this._workspaces.delete(key);
         }
 
-        this._owm.events.emit("workspaces-dead", wdead);
-        this._owm.events.emit("screens-dead", [...new Set(sdead)]);
+        this._owm.events.emit("screens", { added: sadded, removed: [...new Set(sremoved)], updated: supdated });
+        this._owm.events.emit("workspaces", { updated: wupdated, removed: wremoved });
     }
 }
