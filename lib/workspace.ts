@@ -69,11 +69,11 @@ export class Workspace
     }
 
     addClient(client: Client) {
-        this._container.addClient(client);
+        this._container.add(client);
     }
 
     removeClient(client: Client) {
-        this._container.removeClient(client);
+        this._container.remove(client);
     }
 
     update(screen: XCB.Screen) {

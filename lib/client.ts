@@ -1,16 +1,19 @@
 import { OWMLib } from "./owm";
 import { Logger } from "./logger";
+import { ContainerItem } from "./container";
+import { Geometry } from "./utils";
 import { XCB } from "native";
 
-export class Client
+export class Client implements ContainerItem
 {
     private readonly _parent: number;
     private readonly _window: XCB.Window;
     private readonly _owm: OWMLib;
     private readonly _border: number;
-    private _geometry: { x: number, y: number, width: number, height: number };
+    private _geometry: Geometry;
     private _noinput: boolean;
     private _log: Logger;
+    private _type: string;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
         this._owm = owm;
@@ -23,6 +26,7 @@ export class Client
             width: window.geometry.width,
             height: window.geometry.height
         };
+        this._type = "Client";
 
         this._noinput = false;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
@@ -105,3 +109,7 @@ export class Client
         this._owm.setFocused(this);
     }
 };
+
+export function isClient(o: any): o is Client {
+    return o._type === "Client";
+}

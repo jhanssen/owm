@@ -1,4 +1,4 @@
-import { Client } from "../../client";
+import { ContainerItem } from "../../container";
 import { Geometry } from "../../utils";
 import { Logger } from "../../logger";
 import { LayoutPolicy } from ".";
@@ -16,7 +16,7 @@ export class TilingLayoutPolicy implements LayoutPolicy
         this._log = policy.owm.logger.prefixed("TilingLayout");
     }
 
-    layout(clients: Client[], geometry: Geometry) {
+    layout(items: ContainerItem[], geometry: Geometry) {
     }
 }
 
