@@ -9,9 +9,12 @@ function init(owmlib) {
     });
 
     owmlib.policy.layout = owmlib.policy.createLayout("tiling");
+    const cfg = new owmlib.policy.layout.Config();
 
-    owmlib.policy.layout.rows = 2;
-    owmlib.policy.layout.columns = 2;
+    cfg.rows = 2;
+    cfg.columns = 2;
+
+    owmlib.policy.layout.setConfig(cfg);
 
     owmlib.events.on("screens", screens => {
         // console.log("got screens?", screens, owmlib.Workspace);
