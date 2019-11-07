@@ -8,7 +8,7 @@ function init(owmlib) {
         logger.info("got", binding);
     });
 
-    owmlib.policy.layout = "tiling";
+    owmlib.policy.layout = owmlib.policy.createLayout("tiling");
 
     owmlib.policy.layout.rows = 2;
     owmlib.policy.layout.columns = 2;
@@ -17,13 +17,18 @@ function init(owmlib) {
         // console.log("got screens?", screens, owmlib.Workspace);
         if (screens.added) {
             for (const s of screens.added) {
-                const ws = new owmlib.Workspace(s);
+                const ws = new owmlib.Workspace(owmlib, s);
                 owmlib.workspaces.add(ws);
             }
         }
     });
     owmlib.events.on("client", client => {
         logger.info("got client");
+        const ws = owmlib.workspaces.workspaceByOutput("default");
+        if (!ws) {
+            throw new Error("no default workspace");
+        }
+        ws.addClient(client);
     });
 }
 

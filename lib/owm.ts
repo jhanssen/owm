@@ -40,9 +40,10 @@ export class OWMLib {
         this._onsettled = [];
 
         this._log = new ConsoleLogger(loglevel);
-
         this._root = 0;
         this._events = new EventEmitter();
+
+        this._policy = new Policy(this);
 
         this._clients = [];
         this._workspaces = new Workspaces(this);
@@ -51,8 +52,6 @@ export class OWMLib {
         this._currentTime = 0;
         this._focused = undefined;
         this._bindings = new Keybindings(this);
-
-        this._policy = new Policy(this);
     };
 
     get wm() {
@@ -136,8 +135,6 @@ export class OWMLib {
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, parent);
         this._clients.push(client);
-
-        this._policy.clientAdded(client);
 
         this._events.emit("client", client);
     }

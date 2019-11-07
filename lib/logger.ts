@@ -32,14 +32,6 @@ export namespace Logger
         Info,
         Debug
     }
-
-    let _dummy: DummyLogger;
-    export function dummy() {
-        if (!_dummy) {
-            _dummy = new DummyLogger();
-        }
-        return _dummy;
-    }
 }
 
 export class ConsoleLogger implements Logger
@@ -97,30 +89,5 @@ export class ConsoleLogger implements Logger
     fatal(...args: any) {
         this.log(Logger.Level.Fatal, ...args);
         process.exit();
-    }
-}
-
-class DummyLogger implements Logger
-{
-    prefixed(prefix: string) {
-        return this;
-    }
-
-    debug(...args: any) {
-    }
-
-    info(...args: any) {
-    }
-
-    warn(...args: any) {
-    }
-
-    warning(...args: any) {
-    }
-
-    error(...args: any) {
-    }
-
-    fatal(...args: any) {
     }
 }

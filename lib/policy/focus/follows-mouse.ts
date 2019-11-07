@@ -5,9 +5,10 @@ import { XCB } from "native";
 
 export class FocusFollowsMousePolicy implements FocusPolicy
 {
-    private _policy: Policy | undefined;
+    private _policy: Policy;
 
-    constructor() {
+    constructor(policy: Policy) {
+        this._policy = policy;
     }
 
     buttonPress(event: XCB.ButtonPress) {
@@ -23,9 +24,6 @@ export class FocusFollowsMousePolicy implements FocusPolicy
     }
 
     enterNotify(event: XCB.EnterNotify) {
-        if (!this._policy)
-            return;
-
         let client = this._policy.owm.findClient(event.child);
         if (!client) {
             client = this._policy.owm.findClient(event.event);
@@ -38,9 +36,5 @@ export class FocusFollowsMousePolicy implements FocusPolicy
     }
 
     leaveNotify(event: XCB.EnterNotify) {
-    }
-
-    setPolicy(policy: Policy | undefined) {
-        this._policy = policy;
     }
 }

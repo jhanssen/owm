@@ -1,42 +1,22 @@
 import { Client } from "../../client";
+import { Geometry } from "../../utils";
 import { Logger } from "../../logger";
 import { LayoutPolicy } from ".";
 import { Policy } from "..";
 
 export class TilingLayoutPolicy implements LayoutPolicy
 {
-    private _policy: Policy | undefined;
+    private _policy: Policy;
     private _log: Logger;
     private _type: string;
 
-    constructor() {
+    constructor(policy: Policy) {
         this._type = "TilingLayout";
-        this._log = Logger.dummy();
-    }
-
-    setPolicy(policy: Policy | undefined) {
-        if (!policy) {
-            this._log = Logger.dummy();
-        } else {
-            this._log = policy.owm.logger.prefixed("TilingLayout");
-        }
         this._policy = policy;
+        this._log = policy.owm.logger.prefixed("TilingLayout");
     }
 
-    clientAdded(client: Client) {
-        this._log.info("client added");
-    }
-
-    clientRemoved(client: Client) {
-    }
-
-    clientGeometryChanged(client: Client) {
-    }
-
-    adopt(policy: Policy) {
-    }
-
-    relayout() {
+    layout(clients: Client[], geometry: Geometry) {
     }
 }
 

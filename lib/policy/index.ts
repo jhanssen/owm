@@ -14,10 +14,8 @@ export class Policy
 
     constructor(owm: OWMLib) {
         this._owm = owm;
-        this._focus = new FocusFollowsMousePolicy;
-        this._focus.setPolicy(this);
-        this._layout = new TilingLayoutPolicy;
-        this._layout.setPolicy(this);
+        this._focus = new FocusFollowsMousePolicy(this);
+        this._layout = new TilingLayoutPolicy(this);
     }
 
     get owm() {
@@ -36,23 +34,25 @@ export class Policy
         return this._layout;
     }
 
-    set layout(arg: LayoutPolicy | string) {
-        console.log("does this happen", arg);
-        if (typeof arg === "string") {
-            switch (arg) {
-            case "tiling":
-                arg = new TilingLayoutPolicy;
-                break;
-            default:
-                throw new Error("invalid layout");
-            }
-        }
-
-        arg.setPolicy(this);
-        arg.adopt(this);
-
+    set layout(arg: LayoutPolicy) {
         this._layout = arg;
-        this._layout.relayout();
+    }
+
+    createLayout(name: string): LayoutPolicy | undefined {
+        switch (name) {
+            case "tiling":
+                return new TilingLayoutPolicy(this);
+        }
+        return undefined;
+    }
+
+    createFocus(name: string): FocusPolicy | undefined {
+        switch (name) {
+            case "follows-mouse":
+            case "followsmouse":
+                return new FocusFollowsMousePolicy(this);
+        }
+        return undefined;
     }
 
     buttonPress(event: XCB.ButtonPress) {
@@ -77,22 +77,6 @@ export class Policy
 
     leaveNotify(event: XCB.EnterNotify) {
         this._focus.leaveNotify(event);
-    }
-
-    clientAdded(client: Client) {
-        this._layout.clientAdded(client);
-    }
-
-    clientRemoved(client: Client) {
-        this._layout.clientRemoved(client);
-    }
-
-    clientGeometryChanged(client: Client) {
-        this._layout.clientGeometryChanged(client);
-    }
-
-    relayout() {
-        this._layout.relayout();
     }
 };
 
