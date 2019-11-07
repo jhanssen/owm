@@ -13,7 +13,7 @@ function init(owmlib) {
     owmlib.policy.layout.rows = 2;
     owmlib.policy.layout.columns = 2;
 
-    owmlib.events.on("screens", screens => {
+    owmlib.events.on("screens-new", screens => {
         // console.log("got screens?", screens, owmlib.Workspace);
         for (const s of screens) {
             const ws = new owmlib.Workspace(s);

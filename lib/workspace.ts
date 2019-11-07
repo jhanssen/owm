@@ -62,8 +62,11 @@ export class Workspaces
     update(screens: XCB.Screen[]) {
         const olds = new Map(this._workspaces);
         const news: XCB.Screen[] = [];
+        const supdated: XCB.Screen[] = [];
+        const wupdated: Workspace[] = []
 
-        const deleteAll = (ws: Workspace) => {
+        const updateAll = (ws: Workspace, screen: XCB.Screen) => {
+            ws.update(screen);
             for (const [key, workspaces] of olds) {
                 if (workspaces.includes(ws))
                     olds.delete(key);
@@ -71,31 +74,42 @@ export class Workspaces
         };
 
         for (const screen of screens) {
-            let updated = false;
+            let found = false;
             const outputs = screen.outputs;
             for (const output of outputs) {
                 const wss = this._workspaces.get(output);
                 if (wss) {
-                    updated = true;
+                    found = true;
+                    supdated.push(screen);
                     for (let i = 0; i < wss.length; ++i) {
-                        const ws = wss[i];
-                        ws.update(screen);
-                        deleteAll(ws);
+                        updateAll(wss[i], screen);
+                        wupdated.push(wss[i]);
                     }
                     break;
                 }
             }
 
-            if (!updated) {
+            if (!found) {
                 news.push(screen);
             }
         }
 
-        this._owm.events.emit("screens", news);
+        this._owm.events.emit("screens-new", news);
+        this._owm.events.emit("workspaces-updated", wupdated);
+        this._owm.events.emit("screens-updated", supdated);
 
+        const sdead: XCB.Screen[] = [];
+        const wdead: Workspace[] = [];
         // all workspaces left in olds are from dead outputs
-        for (const [key, workspace] of olds) {
+        for (const [key, workspaces] of olds) {
+            for (let i = 0; i < workspaces.length; ++i) {
+                sdead.push(workspaces[i].screen);
+                wdead.push(workspaces[i]);
+            }
             this._workspaces.delete(key);
         }
+
+        this._owm.events.emit("workspaces-dead", wdead);
+        this._owm.events.emit("screens-dead", [...new Set(sdead)]);
     }
 }
