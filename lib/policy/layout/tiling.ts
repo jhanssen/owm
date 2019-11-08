@@ -42,10 +42,10 @@ export class TilingLayoutPolicy implements LayoutPolicy
         let rows = 0, columns = 0;
         if (this._cfg.rows) {
             rows = this._cfg.rows;
-            columns = this._cfg.columns || (items.length / rows);
+            columns = this._cfg.columns || Math.ceil(items.length / rows);
         } else if (this._cfg.columns) {
             columns = this._cfg.columns;
-            rows = this._cfg.rows || (items.length / columns);
+            rows = this._cfg.rows || Math.ceil(items.length / columns);
         } else {
             rows = 1;
             columns = items.length;
@@ -63,6 +63,8 @@ export class TilingLayoutPolicy implements LayoutPolicy
             item.move(x, y);
             item.resize(wper, hper);
         };
+
+        this._log.info("calculated", rows, columns, wper, hper, geometry);
 
         let y = geometry.y;
         for (let row = 0; row < rows; ++row) {
