@@ -520,6 +520,67 @@ T Wrap<T>::unwrap(const Napi::Value& value)
     return T();
 }
 
+inline Window::SizeHints makeSizeHint(const xcb_size_hints_t& in)
+{
+    Window::SizeHints out;
+    static_assert(sizeof(in) == sizeof(out));
+    memcpy(&out, &in, sizeof(in));
+    return out;
+}
+
+inline Window::WMHints makeWMHints(const xcb_icccm_wm_hints_t& in)
+{
+    Window::WMHints out;
+    static_assert(sizeof(in) == sizeof(out));
+    memcpy(&out, &in, sizeof(in));
+    return out;
+}
+
+inline Window::WMClass makeWMClass(const xcb_icccm_get_wm_class_reply_t& in)
+{
+    Window::WMClass out;
+    if (in.instance_name)
+        out.instance_name = in.instance_name;
+    if (in.class_name)
+        out.class_name = in.class_name;
+    return out;
+}
+
+inline std::string makeString(const xcb_icccm_get_text_property_reply_t& in)
+{
+    if (in.format == 8 && in.name && in.name_len > 0) {
+        return std::string(in.name, in.name_len);
+    }
+    return std::string();
+}
+
+template<typename T>
+inline std::vector<xcb_atom_t> makeAtoms(const T& in)
+{
+    std::vector<xcb_atom_t> out;
+    out.reserve(in.atoms_len);
+    for (uint32_t i = 0; i < in.atoms_len; ++i) {
+        out.push_back(in.atoms[i]);
+    }
+    return out;
+}
+
+inline Window::EWMHExtents makeExtents(const xcb_ewmh_get_extents_reply_t& in)
+{
+    Window::EWMHExtents out;
+    static_assert(sizeof(in) == sizeof(out));
+    memcpy(&out, &in, sizeof(in));
+    return out;
+}
+
+inline Window::EWMHStrutPartial makeStrutPartial(const xcb_ewmh_wm_strut_partial_t& in)
+{
+    Window::EWMHStrutPartial out;
+    static_assert(sizeof(in) == sizeof(out));
+    memcpy(&out, &in, sizeof(in));
+    return out;
+}
+
 } // namespace owm
 
 #endif

@@ -212,16 +212,16 @@ static Napi::Value makeConfigureRequest(napi_env env, xcb_configure_request_even
     Napi::Object obj = Napi::Object::New(env);
 
     obj.Set("type", event->response_type & ~0x80);
-    obj.Set("stack_mode", event->stack_mode);
     obj.Set("window", event->window);
     obj.Set("parent", event->parent);
-    obj.Set("sibling", event->sibling);
+    obj.Set("value_mask", event->value_mask);
     obj.Set("x", event->x);
     obj.Set("y", event->y);
     obj.Set("width", event->width);
     obj.Set("height", event->height);
     obj.Set("border_width", event->border_width);
-    obj.Set("value_mask", event->value_mask);
+    obj.Set("sibling", event->sibling);
+    obj.Set("stack_mode", event->stack_mode);
 
     return obj;
 }
@@ -861,6 +861,34 @@ static Napi::Object initAllows(napi_env env, const std::shared_ptr<WM>& wm)
     return allows;
 }
 
+static Napi::Object initConfigWindows(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object cfgs = Napi::Object::New(env);
+
+    cfgs.Set("X", Napi::Number::New(env, XCB_CONFIG_WINDOW_X));
+    cfgs.Set("Y", Napi::Number::New(env, XCB_CONFIG_WINDOW_Y));
+    cfgs.Set("WIDTH", Napi::Number::New(env, XCB_CONFIG_WINDOW_WIDTH));
+    cfgs.Set("HEIGHT", Napi::Number::New(env, XCB_CONFIG_WINDOW_HEIGHT));
+    cfgs.Set("BORDER_WIDTH", Napi::Number::New(env, XCB_CONFIG_WINDOW_BORDER_WIDTH));
+    cfgs.Set("SIBLING", Napi::Number::New(env, XCB_CONFIG_WINDOW_SIBLING));
+    cfgs.Set("STACK_MODE", Napi::Number::New(env, XCB_CONFIG_WINDOW_STACK_MODE));
+
+    return cfgs;
+}
+
+static Napi::Object initStackMode(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object modes = Napi::Object::New(env);
+
+    modes.Set("ABOVE", Napi::Number::New(env, XCB_STACK_MODE_ABOVE));
+    modes.Set("BELOW", Napi::Number::New(env, XCB_STACK_MODE_BELOW));
+    modes.Set("TOP_IF", Napi::Number::New(env, XCB_STACK_MODE_TOP_IF));
+    modes.Set("BOTTOM_IF", Napi::Number::New(env, XCB_STACK_MODE_BOTTOM_IF));
+    modes.Set("OPPOSITE", Napi::Number::New(env, XCB_STACK_MODE_OPPOSITE));
+
+    return modes;
+}
+
 static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object icccm = Napi::Object::New(env);
@@ -1011,61 +1039,6 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
-    xcb.Set("configure_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "configure_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uint32_t window;
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "configure_window requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        uint32_t values[7];
-        uint16_t mask = 0;
-        uint32_t off = 0;
-
-        if (arg.Has("x")) {
-            mask |= XCB_CONFIG_WINDOW_X;
-            values[off++] = arg.Get("x").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("y")) {
-            mask |= XCB_CONFIG_WINDOW_Y;
-            values[off++] = arg.Get("y").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("width")) {
-            mask |= XCB_CONFIG_WINDOW_WIDTH;
-            values[off++] = arg.Get("width").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("height")) {
-            mask |= XCB_CONFIG_WINDOW_HEIGHT;
-            values[off++] = arg.Get("height").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("border_width")) {
-            mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
-            values[off++] = arg.Get("border_width").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("sibling")) {
-            mask |= XCB_CONFIG_WINDOW_SIBLING;
-            values[off++] = arg.Get("sibling").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("stack_mode")) {
-            mask |= XCB_CONFIG_WINDOW_STACK_MODE;
-            values[off++] = arg.Get("stack_mode").As<Napi::Number>().Uint32Value();
-        }
-
-        if (off) {
-            xcb_configure_window(wm->conn, window, mask, values);
-        }
-
-        return env.Undefined();
-    }));
     xcb.Set("change_window_attributes", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -1654,6 +1627,146 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return array;
     }));
 
+    xcb.Set("request_window_information", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "request_window_information requires two argument");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        const uint32_t window = info[1].As<Napi::Number>().Uint32Value();
+
+        auto attribCookie = xcb_get_window_attributes_unchecked(wm->conn, window);
+        auto geomCookie = xcb_get_geometry_unchecked(wm->conn, window);
+        auto leaderCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("WM_CLIENT_LEADER"), XCB_ATOM_WINDOW, 0, 1);
+        auto normalHintsCookie = xcb_icccm_get_wm_normal_hints(wm->conn, window);
+        auto transientCookie = xcb_icccm_get_wm_transient_for(wm->conn, window);
+        auto hintsCookie = xcb_icccm_get_wm_hints(wm->conn, window);
+        auto classCookie = xcb_icccm_get_wm_class(wm->conn, window);
+        auto nameCookie = xcb_icccm_get_wm_name(wm->conn, window);
+        auto protocolsCookie = xcb_icccm_get_wm_protocols(wm->conn, window, wm->atoms.at("WM_PROTOCOLS"));
+        auto strutCookie = xcb_ewmh_get_wm_strut(wm->ewmh, window);
+        auto partialStrutCookie = xcb_ewmh_get_wm_strut_partial(wm->ewmh, window);
+        auto stateCookie = xcb_ewmh_get_wm_state(wm->ewmh, window);
+        auto typeCookie = xcb_ewmh_get_wm_window_type(wm->ewmh, window);
+        auto pidCookie = xcb_ewmh_get_wm_pid(wm->ewmh, window);
+
+        xcb_size_hints_t normalHints;
+        xcb_icccm_wm_hints_t wmHints;
+        xcb_icccm_get_wm_class_reply_t wmClass;
+        xcb_icccm_get_text_property_reply_t wmName;
+        xcb_window_t transientWin, leaderWin;
+        xcb_icccm_get_wm_protocols_reply_t wmProtocols;
+        xcb_ewmh_get_extents_reply_t ewmhStrut;
+        xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
+        xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
+        uint32_t pid;
+
+        xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(wm->conn, attribCookie, nullptr);
+        xcb_get_geometry_reply_t* geom = xcb_get_geometry_reply(wm->conn, geomCookie, nullptr);
+        if (geom->width < 1 || geom->height < 1) {
+            free(attrib);
+            free(geom);
+            return env.Undefined();
+        }
+        xcb_get_property_reply_t* leader = xcb_get_property_reply(wm->conn, leaderCookie, nullptr);
+        if (!leader) {
+            leaderWin = XCB_NONE;
+        } else {
+            if (leader->type != XCB_ATOM_WINDOW || leader->format != 32 || !leader->length) {
+                leaderWin = XCB_NONE;
+            } else {
+                leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leader));
+            }
+            free(leader);
+        }
+        if (!xcb_icccm_get_wm_normal_hints_reply(wm->conn, normalHintsCookie, &normalHints, nullptr)) {
+            memset(&normalHints, 0, sizeof(normalHints));
+        }
+        if (!xcb_icccm_get_wm_transient_for_reply(wm->conn, transientCookie, &transientWin, nullptr)) {
+            transientWin = XCB_NONE;
+        }
+        if (!xcb_icccm_get_wm_hints_reply(wm->conn, hintsCookie, &wmHints, nullptr)) {
+            memset(&wmHints, 0, sizeof(wmHints));
+        }
+        if (!xcb_icccm_get_wm_class_reply(wm->conn, classCookie, &wmClass, nullptr)) {
+            memset(&wmClass, 0, sizeof(wmClass));
+        }
+        if (!xcb_icccm_get_wm_name_reply(wm->conn, nameCookie, &wmName, nullptr)) {
+            memset(&wmName, 0, sizeof(wmName));
+        }
+        if (!xcb_icccm_get_wm_protocols_reply(wm->conn, protocolsCookie, &wmProtocols, nullptr)) {
+            memset(&wmProtocols, 0, sizeof(wmProtocols));
+        }
+        if (!xcb_ewmh_get_wm_strut_reply(wm->ewmh, strutCookie, &ewmhStrut, nullptr)) {
+            memset(&ewmhStrut, 0, sizeof(ewmhStrut));
+        }
+        if (!xcb_ewmh_get_wm_strut_partial_reply(wm->ewmh, partialStrutCookie, &ewmhStrutPartial, nullptr)) {
+            memset(&ewmhStrutPartial, 0, sizeof(ewmhStrutPartial));
+        }
+        if (!xcb_ewmh_get_wm_state_reply(wm->ewmh, stateCookie, &ewmhState, nullptr)) {
+            memset(&ewmhState, 0, sizeof(ewmhState));
+        }
+        if (!xcb_ewmh_get_wm_window_type_reply(wm->ewmh, typeCookie, &ewmhWindowType, nullptr)) {
+            memset(&ewmhWindowType, 0, sizeof(ewmhWindowType));
+        }
+        if (!xcb_ewmh_get_wm_pid_reply(wm->ewmh, pidCookie, &pid, nullptr)) {
+            pid = 0;
+        }
+
+        const Window win = {
+            window,
+            {
+                attrib->bit_gravity,
+                attrib->win_gravity,
+                attrib->map_state,
+                attrib->override_redirect,
+                attrib->all_event_masks,
+                attrib->your_event_mask,
+                attrib->do_not_propagate_mask
+            }, {
+                geom->root,
+                geom->x,
+                geom->y,
+                geom->width,
+                geom->height,
+                geom->border_width
+            },
+            owm::makeSizeHint(normalHints),
+            owm::makeWMHints(wmHints),
+            owm::makeWMClass(wmClass),
+            owm::makeString(wmName),
+            owm::makeAtoms(wmProtocols),
+            owm::makeAtoms(ewmhState),
+            owm::makeAtoms(ewmhWindowType),
+            owm::makeExtents(ewmhStrut),
+            owm::makeStrutPartial(ewmhStrutPartial),
+            pid, transientWin, leaderWin
+        };
+
+        if (wmName.name && wmName.name_len) {
+            xcb_icccm_get_text_property_reply_wipe(&wmName);
+        }
+        if (wmClass.instance_name || wmClass.class_name) {
+            xcb_icccm_get_wm_class_reply_wipe(&wmClass);
+        }
+        if (wmProtocols.atoms && wmProtocols.atoms_len) {
+            xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
+        }
+        if (ewmhState.atoms && ewmhState.atoms_len) {
+            xcb_ewmh_get_atoms_reply_wipe(&ewmhState);
+        }
+        if (ewmhWindowType.atoms && ewmhWindowType.atoms_len) {
+            xcb_ewmh_get_atoms_reply_wipe(&ewmhWindowType);
+        }
+
+        free(attrib);
+        free(geom);
+
+        return makeWindow(env, win);
+    }));
+
     xcb.Set("atom", initAtoms(env, wm));
     xcb.Set("event", initEvents(env, wm));
     xcb.Set("eventMask", initEventMasks(env, wm));
@@ -1665,6 +1778,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("grabMode", initGrabModes(env, wm));
     xcb.Set("grabStatus", initGrabStatus(env, wm));
     xcb.Set("allow", initAllows(env, wm));
+    xcb.Set("configWindow", initConfigWindows(env, wm));
+    xcb.Set("stackMode", initStackMode(env, wm));
     xcb.Set("icccm", initIcccm(env, wm));
     xcb.Set("ewmh", initEwmh(env, wm));
     xcb.Set("currentTime", Napi::Number::New(env, XCB_TIME_CURRENT_TIME));

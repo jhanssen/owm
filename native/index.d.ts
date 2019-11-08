@@ -436,6 +436,8 @@ export namespace OWM {
         readonly grabMode: {[key: string]: number};
         readonly grabStatus: {[key: string]: number};
         readonly allows: {[key: string]: number};
+        readonly configWindow: {[key: string]: number};
+        readonly stackMode: {[key: string]: number};
         readonly currentTime: number;
         readonly grabAny: number;
         readonly windowNone: number;
@@ -458,6 +460,7 @@ export namespace OWM {
         key_symbols_get_keycode(wm: OWM.WM, sym: number): number[];
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;
+        request_window_information(wm: OWM.WM, window: number): XCB.Window | undefined;
         flush(wm: OWM.WM): void;
     }
     export interface XKB {

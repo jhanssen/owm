@@ -145,6 +145,50 @@ export class OWMLib {
         this._workspaces.update(screens.entries);
     }
 
+    mapRequest(event: XCB.MapRequest) {
+        const win = this.xcb.request_window_information(this.wm, event.window);
+        this._log.info("maprequest", event.window, win);
+        this.xcb.map_window(this.wm, event.window);
+        if (!win || win.attributes.override_redirect) {
+            this.xcb.flush(this.wm);
+            return;
+        }
+        this.addClient(win);
+    }
+
+    configureRequest(event: XCB.ConfigureRequest) {
+        this._log.info("configurerequest", event);
+        const cfg: { window: number,
+                     x?: number,
+                     y?: number,
+                     width?: number,
+                     height?: number,
+                     border_width?: number,
+                     sibling?: number,
+                     stack_mode?: number
+                   } = { window: event.window };
+        if (event.value_mask & this.xcb.configWindow.X)
+            cfg.x = event.x;
+        if (event.value_mask & this.xcb.configWindow.Y)
+            cfg.y = event.y;
+        if (event.value_mask & this.xcb.configWindow.WIDTH)
+            cfg.width = event.width;
+        if (event.value_mask & this.xcb.configWindow.HEIGHT)
+            cfg.height = event.height;
+        if (event.value_mask & this.xcb.configWindow.BORDER_WIDTH)
+            cfg.border_width = event.border_width;
+        if (event.value_mask & this.xcb.configWindow.SIBLING)
+            cfg.sibling = event.sibling;
+        if (event.value_mask & this.xcb.configWindow.STACK_MODE)
+            cfg.stack_mode = event.stack_mode;
+        this.xcb.configure_window(this.wm, cfg);
+        this.xcb.flush(this.wm);
+    }
+
+    configureNotify(event: XCB.ConfigureNotify) {
+        this._log.info("configurenotify", event.window);
+    }
+
     buttonPress(event: XCB.ButtonPress) {
         this._log.info("press", event);
         this._currentTime = event.time;
@@ -233,5 +277,39 @@ export class OWMLib {
             this.xcb.flush(this.wm);
         }
         this._clients = [];
+    }
+
+    handleXCB(e: OWM.Event) {
+        if (!e.xcb)
+            return;
+        switch (e.xcb.type) {
+        case this.xcb.event.BUTTON_PRESS:
+            this.buttonPress(e.xcb as XCB.ButtonPress);
+            break;
+        case this.xcb.event.BUTTON_RELEASE:
+            this.buttonRelease(e.xcb as XCB.ButtonPress);
+            break;
+        case this.xcb.event.KEY_PRESS:
+            this.keyPress(e.xcb as XCB.KeyPress);
+            break;
+        case this.xcb.event.KEY_RELEASE:
+            this.keyRelease(e.xcb as XCB.KeyPress);
+            break;
+        case this.xcb.event.ENTER_NOTIFY:
+            this.enterNotify(e.xcb as XCB.EnterNotify);
+            break;
+        case this.xcb.event.LEAVE_NOTIFY:
+            this.leaveNotify(e.xcb as XCB.EnterNotify);
+            break;
+        case this.xcb.event.MAP_REQUEST:
+            this.mapRequest(e.xcb as XCB.MapRequest);
+            break;
+        case this.xcb.event.CONFIGURE_REQUEST:
+            this.configureRequest(e.xcb as XCB.ConfigureRequest);
+            break;
+        case this.xcb.event.CONFIGURE_NOTIFY:
+            this.configureNotify(e.xcb as XCB.ConfigureNotify);
+            break;
+        }
     }
 };

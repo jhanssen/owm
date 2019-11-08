@@ -38,27 +38,8 @@ let lib: OWMLib;
 function event(e: OWM.Event) {
     //console.log("got event2", e);
 
-    if (e.type == "xcb" && e.xcb) {
-        switch (e.xcb.type) {
-            case owm.xcb.event.BUTTON_PRESS:
-                lib.buttonPress(e.xcb as XCB.ButtonPress);
-                break;
-            case owm.xcb.event.BUTTON_RELEASE:
-                lib.buttonRelease(e.xcb as XCB.ButtonPress);
-                break;
-            case owm.xcb.event.KEY_PRESS:
-                lib.keyPress(e.xcb as XCB.KeyPress);
-                break;
-            case owm.xcb.event.KEY_RELEASE:
-                lib.keyRelease(e.xcb as XCB.KeyPress);
-                break;
-            case owm.xcb.event.ENTER_NOTIFY:
-                lib.enterNotify(e.xcb as XCB.EnterNotify);
-                break;
-            case owm.xcb.event.LEAVE_NOTIFY:
-                lib.leaveNotify(e.xcb as XCB.EnterNotify);
-                break;
-        }
+    if (e.type == "xcb") {
+        lib.handleXCB(e);
     } else if (e.type == "windows" && e.windows) {
         const windows = e.windows as XCB.Window[];
         //console.log("got wins", windows);

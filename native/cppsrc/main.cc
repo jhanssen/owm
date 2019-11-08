@@ -393,59 +393,6 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
             uint32_t pid;
 
-            auto makeSizeHint = [](const xcb_size_hints_t& in) -> owm::Window::SizeHints {
-                owm::Window::SizeHints out;
-                static_assert(sizeof(in) == sizeof(out));
-                memcpy(&out, &in, sizeof(in));
-                return out;
-            };
-
-            auto makeWMHints = [](const xcb_icccm_wm_hints_t& in) -> owm::Window::WMHints {
-                owm::Window::WMHints out;
-                static_assert(sizeof(in) == sizeof(out));
-                memcpy(&out, &in, sizeof(in));
-                return out;
-            };
-
-            auto makeWMClass = [](const xcb_icccm_get_wm_class_reply_t& in) -> owm::Window::WMClass {
-                owm::Window::WMClass out;
-                if (in.instance_name)
-                    out.instance_name = in.instance_name;
-                if (in.class_name)
-                    out.class_name = in.class_name;
-                return out;
-            };
-
-            auto makeString = [](const xcb_icccm_get_text_property_reply_t& in) -> std::string {
-                if (in.format == 8 && in.name && in.name_len > 0) {
-                    return std::string(in.name, in.name_len);
-                }
-                return std::string();
-            };
-
-            auto makeAtoms = [](const auto& in) -> std::vector<xcb_atom_t> {
-                std::vector<xcb_atom_t> out;
-                out.reserve(in.atoms_len);
-                for (uint32_t i = 0; i < in.atoms_len; ++i) {
-                    out.push_back(in.atoms[i]);
-                }
-                return out;
-            };
-
-            auto makeExtents = [](const xcb_ewmh_get_extents_reply_t& in) -> owm::Window::EWMHExtents {
-                owm::Window::EWMHExtents out;
-                static_assert(sizeof(in) == sizeof(out));
-                memcpy(&out, &in, sizeof(in));
-                return out;
-            };
-
-            auto makeStrutPartial = [](const xcb_ewmh_wm_strut_partial_t& in) -> owm::Window::EWMHStrutPartial {
-                owm::Window::EWMHStrutPartial out;
-                static_assert(sizeof(in) == sizeof(out));
-                memcpy(&out, &in, sizeof(in));
-                return out;
-            };
-
             for (unsigned int i = 0; i < tree->children_len; ++i) {
                 xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(conn, attribCookies[i], nullptr);
                 if (attrib->map_state == XCB_MAP_STATE_UNMAPPED) {
@@ -522,15 +469,15 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                             geom->height,
                             geom->border_width
                         },
-                        makeSizeHint(normalHints),
-                        makeWMHints(wmHints),
-                        makeWMClass(wmClass),
-                        makeString(wmName),
-                        makeAtoms(wmProtocols),
-                        makeAtoms(ewmhState),
-                        makeAtoms(ewmhWindowType),
-                        makeExtents(ewmhStrut),
-                        makeStrutPartial(ewmhStrutPartial),
+                        owm::makeSizeHint(normalHints),
+                        owm::makeWMHints(wmHints),
+                        owm::makeWMClass(wmClass),
+                        owm::makeString(wmName),
+                        owm::makeAtoms(wmProtocols),
+                        owm::makeAtoms(ewmhState),
+                        owm::makeAtoms(ewmhWindowType),
+                        owm::makeExtents(ewmhStrut),
+                        owm::makeStrutPartial(ewmhStrutPartial),
                         pid, transientWin, leaderWin
                 });
 
