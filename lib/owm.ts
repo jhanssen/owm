@@ -137,6 +137,7 @@ export class OWMLib {
             this.xcb.map_window(this.wm, win.window);
         }
         this.xcb.map_window(this.wm, parent);
+        this.xcb.change_save_set(this.wm, { window: win.window, mode: this.xcb.setMode.INSERT });
         this.xcb.flush(this.wm);
 
         const client = new Client(this, parent, win, border);
@@ -297,8 +298,10 @@ export class OWMLib {
 
     cleanup() {
         for (const client of this._clients) {
+            const window = ((client as unknown) as ClientInternal)._window.window;
+            this.xcb.change_window_attributes(this.wm, { window: window, event_mask: 0 });
             this.xcb.reparent_window(this.wm, {
-                window: ((client as unknown) as ClientInternal)._window.window,
+                window: window,
                 parent: ((client as unknown) as ClientInternal)._window.geometry.root,
                 x: ((client as unknown) as ClientInternal)._window.geometry.x,
                 y: ((client as unknown) as ClientInternal)._window.geometry.y

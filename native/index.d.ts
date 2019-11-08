@@ -407,6 +407,12 @@ declare interface AllowEventsArgs
     readonly time?: number;
 }
 
+declare interface ChangeSaveSetArgs
+{
+    readonly window: number;
+    readonly mode: number;
+}
+
 declare interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
@@ -438,6 +444,7 @@ export namespace OWM {
         readonly allows: {[key: string]: number};
         readonly configWindow: {[key: string]: number};
         readonly stackMode: {[key: string]: number};
+        readonly setMode: {[key: string]: number};
         readonly currentTime: number;
         readonly grabAny: number;
         readonly windowNone: number;
@@ -453,6 +460,7 @@ export namespace OWM {
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
+        change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
         grab_key(wm: OWM.WM, args: GrabKeyArgs): void;
         ungrab_key(wm: OWM.WM, args: UngrabKeyArgs): void;
         grab_keyboard(wm: OWM.WM, args: GrabKeyboardArgs): void;

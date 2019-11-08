@@ -889,6 +889,16 @@ static Napi::Object initStackMode(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
+static Napi::Object initSetMode(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object modes = Napi::Object::New(env);
+
+    modes.Set("INSERT", Napi::Number::New(env, XCB_SET_MODE_INSERT));
+    modes.Set("DELETE", Napi::Number::New(env, XCB_SET_MODE_DELETE));
+
+    return modes;
+}
+
 static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object icccm = Napi::Object::New(env);
@@ -1447,6 +1457,33 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("change_save_set", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "change_save_set requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t window, mode;
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "change_save_set requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("mode")) {
+            throw Napi::TypeError::New(env, "change_save_set requires a mode");
+        }
+        mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
+
+        xcb_change_save_set(wm->conn, mode, window);
+
+        return env.Undefined();
+    }));
+
     xcb.Set("grab_key", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -1797,6 +1834,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("allow", initAllows(env, wm));
     xcb.Set("configWindow", initConfigWindows(env, wm));
     xcb.Set("stackMode", initStackMode(env, wm));
+    xcb.Set("setMode", initSetMode(env, wm));
     xcb.Set("icccm", initIcccm(env, wm));
     xcb.Set("ewmh", initEwmh(env, wm));
     xcb.Set("currentTime", Napi::Number::New(env, XCB_TIME_CURRENT_TIME));
