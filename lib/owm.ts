@@ -106,7 +106,7 @@ export class OWMLib {
         return client;
     }
 
-    addClient(win: XCB.Window) {
+    addClient(win: XCB.Window, map?: boolean) {
         this._log.debug("client", win);
 
         // reparent to new window
@@ -116,7 +116,7 @@ export class OWMLib {
                                                          height: win.geometry.height + (border * 2),
                                                          parent: win.geometry.root });
 
-        const mask = this.xcb.eventMask.STRUCTURE_NOTIFY |
+        const frameMask = this.xcb.eventMask.STRUCTURE_NOTIFY |
             this.xcb.eventMask.ENTER_WINDOW |
             this.xcb.eventMask.LEAVE_WINDOW |
             this.xcb.eventMask.EXPOSURE |
@@ -124,9 +124,18 @@ export class OWMLib {
             this.xcb.eventMask.POINTER_MOTION |
             this.xcb.eventMask.BUTTON_PRESS |
             this.xcb.eventMask.BUTTON_RELEASE;
+        const winMask = this.xcb.eventMask.PROPERTY_CHANGE |
+            this.xcb.eventMask.STRUCTURE_NOTIFY |
+            this.xcb.eventMask.FOCUS_CHANGE;
 
-        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, event_mask: mask });
+        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, event_mask: frameMask });
+        // make sure we don't get an unparent notify for this window when we reparent
+        this.xcb.change_window_attributes(this.wm, { window: win.window, event_mask: 0 });
         this.xcb.reparent_window(this.wm, { window: win.window, parent: parent, x: border, y: border });
+        this.xcb.change_window_attributes(this.wm, { window: win.window, event_mask: winMask });
+        if (map) {
+            this.xcb.map_window(this.wm, win.window);
+        }
         this.xcb.map_window(this.wm, parent);
         this.xcb.flush(this.wm);
 
@@ -148,12 +157,12 @@ export class OWMLib {
     mapRequest(event: XCB.MapRequest) {
         const win = this.xcb.request_window_information(this.wm, event.window);
         this._log.info("maprequest", event.window, win);
-        this.xcb.map_window(this.wm, event.window);
         if (!win || win.attributes.override_redirect) {
+            this.xcb.map_window(this.wm, event.window);
             this.xcb.flush(this.wm);
             return;
         }
-        this.addClient(win);
+        this.addClient(win, true);
     }
 
     configureRequest(event: XCB.ConfigureRequest) {
@@ -187,6 +196,26 @@ export class OWMLib {
 
     configureNotify(event: XCB.ConfigureNotify) {
         this._log.info("configurenotify", event.window);
+    }
+
+    unmapNotify(event: XCB.UnmapNotify) {
+        this._log.info("unmapnotify", event);
+        const client = this.findClient(event.window);
+        if (!client)
+            return;
+
+        this._clientsByWindow.delete(event.window);
+        this._clientsByFrame.delete(client.frame);
+
+        this._workspaces.removeItem(client);
+
+        this._events.emit("clientRemoved", client);
+
+        this.xcb.change_window_attributes(this.wm, { window: event.window, event_mask: 0 });
+        this.xcb.unmap_window(this.wm, client.frame);
+        this.xcb.reparent_window(this.wm, { window: event.window, parent: client.root, x: 0, y: 0 });
+        this.xcb.destroy_window(this.wm, client.frame);
+        this.xcb.flush(this.wm);
     }
 
     buttonPress(event: XCB.ButtonPress) {
@@ -309,6 +338,9 @@ export class OWMLib {
             break;
         case this.xcb.event.CONFIGURE_NOTIFY:
             this.configureNotify(e.xcb as XCB.ConfigureNotify);
+            break;
+        case this.xcb.event.UNMAP_NOTIFY:
+            this.unmapNotify(e.xcb as XCB.UnmapNotify);
             break;
         }
     }

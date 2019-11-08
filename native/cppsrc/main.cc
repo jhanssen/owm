@@ -506,7 +506,6 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
         {
             const uint32_t values[] = { XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
-                                        | XCB_EVENT_MASK_SUBSTRUCTURE_NOTIFY
                                         | XCB_EVENT_MASK_ENTER_WINDOW
                                         | XCB_EVENT_MASK_LEAVE_WINDOW
                                         | XCB_EVENT_MASK_STRUCTURE_NOTIFY

@@ -1432,6 +1432,21 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("destroy_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "destroy_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        const auto window = info[1].As<Napi::Number>().Uint32Value();
+
+        xcb_destroy_window(wm->conn, window);
+
+        return env.Undefined();
+    }));
+
     xcb.Set("grab_key", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

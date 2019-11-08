@@ -1,6 +1,6 @@
 import { XCB } from "native";
 import { OWMLib } from "./owm";
-import { Container } from "./container";
+import { Container, ContainerItem } from "./container";
 import { Client } from "./client";
 
 export class Workspace
@@ -68,12 +68,12 @@ export class Workspace
         return this._container;
     }
 
-    addClient(client: Client) {
-        this._container.add(client);
+    addItem(item: ContainerItem) {
+        this._container.add(item);
     }
 
-    removeClient(client: Client) {
-        this._container.remove(client);
+    removeItem(item: ContainerItem) {
+        this._container.remove(item);
     }
 
     relayout() {
@@ -196,6 +196,13 @@ export class Workspaces
     relayout() {
         this.forEachWorkspace((ws: Workspace) => {
             ws.relayout();
+            return true;
+        });
+    }
+
+    removeItem(item: ContainerItem) {
+        this.forEachWorkspace((ws: Workspace) => {
+            ws.removeItem(item);
             return true;
         });
     }

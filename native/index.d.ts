@@ -460,6 +460,7 @@ export namespace OWM {
         key_symbols_get_keycode(wm: OWM.WM, sym: number): number[];
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;
+        destroy_window(wm: OWM.WM, window: number): void;
         request_window_information(wm: OWM.WM, window: number): XCB.Window | undefined;
         flush(wm: OWM.WM): void;
     }

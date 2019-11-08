@@ -43,6 +43,10 @@ export class Client implements ContainerItem
         return this._geometry;
     }
 
+    get frame() {
+        return this._parent;
+    }
+
     move(x: number, y: number) {
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,

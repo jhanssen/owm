@@ -31,7 +31,7 @@ function init(owmlib) {
         if (!ws) {
             throw new Error("no default workspace");
         }
-        ws.addClient(client);
+        ws.addItem(client);
     });
 }
 
