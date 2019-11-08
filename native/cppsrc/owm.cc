@@ -1634,6 +1634,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             throw Napi::TypeError::New(env, "request_window_information requires two argument");
         }
 
+#warning should grab the server for this so we don't get any property updates while this all happens
+
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         const uint32_t window = info[1].As<Napi::Number>().Uint32Value();
 
