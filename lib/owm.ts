@@ -182,9 +182,9 @@ export class OWMLib {
         this._log.info("client", win.window, win.wmClass, parent);
         this._clients.push(client);
 
-        client.focus();
-
         this._events.emit("client", client);
+
+        client.focus();
     }
 
     updateScreens(screens: OWM.Screens) {
@@ -326,7 +326,7 @@ export class OWMLib {
                                                         rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
             }
 
-            this._events.emit("this._focusedFocusOut", this._focused);
+            this._events.emit("clientFocusOut", this._focused);
         }
 
         this._focused = client;
@@ -339,7 +339,7 @@ export class OWMLib {
         }
         this.xcb.flush(this.wm);
 
-        this._events.emit("this._focusedFocusin", this._focused);
+        this._events.emit("clientFocusIn", this._focused);
     }
 
     revertFocus() {
