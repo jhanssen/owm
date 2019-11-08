@@ -876,7 +876,7 @@ static Napi::Object initConfigWindows(napi_env env, const std::shared_ptr<WM>& w
     return cfgs;
 }
 
-static Napi::Object initStackMode(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initStackModes(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object modes = Napi::Object::New(env);
 
@@ -889,7 +889,7 @@ static Napi::Object initStackMode(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
-static Napi::Object initSetMode(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initSetModes(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object modes = Napi::Object::New(env);
 
@@ -1278,6 +1278,49 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             throw Napi::TypeError::New(env, "send_client_message data must be divisible by 4");
         }
         memcpy(&event.data.data8, data.Data(), data.ByteLength());
+
+        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
+                       reinterpret_cast<char*>(&event));
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("send_expose", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "send_expose requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        xcb_expose_event_t event;
+        memset(&event, 0, sizeof(event));
+        event.response_type = XCB_EXPOSE;
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "send_expose requires a window");
+        }
+        event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (arg.Has("x")) {
+            event.x = arg.Get("x").As<Napi::Number>().Uint32Value();
+        }
+
+        if (arg.Has("y")) {
+            event.y = arg.Get("y").As<Napi::Number>().Uint32Value();
+        }
+
+        if (!arg.Has("width")) {
+            throw Napi::TypeError::New(env, "send_expose requires a width");
+        }
+        event.width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("height")) {
+            throw Napi::TypeError::New(env, "send_expose requires a height");
+        }
+        event.height = arg.Get("height").As<Napi::Number>().Uint32Value();
 
         xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
                        reinterpret_cast<char*>(&event));
@@ -1679,6 +1722,345 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return array;
     }));
 
+    xcb.Set("poly_fill_rectangle", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "poly_fill_rectangle requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t window, gc;
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "poly_fill_rectangle requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("gc")) {
+            throw Napi::TypeError::New(env, "poly_fill_rectangle requires a gc");
+        }
+        gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("rects")) {
+            throw Napi::TypeError::New(env, "poly_fill_rectangle requires a rects");
+        }
+
+        std::vector<xcb_rectangle_t> rectsVector;
+        auto makeRect = [&rectsVector](const Napi::Object& obj) {
+            if (!obj.Has("width"))
+                return;
+            if (!obj.Has("height"))
+                return;
+            int16_t x, y;
+            uint16_t width, height;
+            if (obj.Has("x")) {
+                x = obj.Get("x").As<Napi::Number>().Int32Value();
+            } else {
+                x = 0;
+            }
+            if (obj.Has("y")) {
+                y = obj.Get("y").As<Napi::Number>().Int32Value();
+            } else {
+                y = 0;
+            }
+            width = obj.Get("width").As<Napi::Number>().Uint32Value();
+            height = obj.Get("height").As<Napi::Number>().Uint32Value();
+            rectsVector.push_back({ x, y, width, height });
+        };
+
+        const auto rects = arg.Get("rects");
+        if (rects.IsArray()) {
+            const auto rectsArray = rects.As<Napi::Array>();
+            const size_t sz = rectsArray.Length();
+            rectsVector.reserve(sz);
+            for (size_t i = 0; i < sz; ++i) {
+                const auto item = rectsArray.Get(i);
+                if (item.IsObject()) {
+                    makeRect(item.As<Napi::Object>());
+                }
+            }
+        } else if (rects.IsObject()) {
+            makeRect(rects.As<Napi::Object>());
+        } else {
+            throw Napi::TypeError::New(env, "poly_fill_rectangle rects must be an array or object");
+        }
+
+        if (!rectsVector.empty()) {
+            xcb_poly_fill_rectangle(wm->conn, window, gc, rectsVector.size(), &rectsVector[0]);
+        }
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("create_gc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "create_gc requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t window;
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "create_gc requires a window");
+        }
+        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("values")) {
+            throw Napi::TypeError::New(env, "create_gc requires a values");
+        }
+        auto vals = arg.Get("values").As<Napi::Object>();
+
+        uint32_t values[23];
+        uint32_t mask = 0;
+        uint32_t off = 0;
+
+        if (vals.Has("function")) {
+            mask |= XCB_GC_FUNCTION;
+            values[off++] = vals.Get("function").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("plane_mask")) {
+            mask |= XCB_GC_PLANE_MASK;
+            values[off++] = vals.Get("plane_mask").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("foreground")) {
+            mask |= XCB_GC_FOREGROUND;
+            values[off++] = vals.Get("foreground").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("background")) {
+            mask |= XCB_GC_BACKGROUND;
+            values[off++] = vals.Get("background").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("line_width")) {
+            mask |= XCB_GC_LINE_WIDTH;
+            values[off++] = vals.Get("line_width").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("line_style")) {
+            mask |= XCB_GC_LINE_STYLE;
+            values[off++] = vals.Get("line_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("cap_style")) {
+            mask |= XCB_GC_CAP_STYLE;
+            values[off++] = vals.Get("cap_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("join_style")) {
+            mask |= XCB_GC_JOIN_STYLE;
+            values[off++] = vals.Get("join_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("fill_style")) {
+            mask |= XCB_GC_FILL_STYLE;
+            values[off++] = vals.Get("fill_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("fill_rule")) {
+            mask |= XCB_GC_FILL_RULE;
+            values[off++] = vals.Get("fill_rule").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("tile")) {
+            mask |= XCB_GC_TILE;
+            values[off++] = vals.Get("tile").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("stipple")) {
+            mask |= XCB_GC_STIPPLE;
+            values[off++] = vals.Get("stipple").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("tile_stipple_origin_x")) {
+            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_X;
+            values[off++] = vals.Get("tile_stipple_origin_x").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("tile_stipple_origin_y")) {
+            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_Y;
+            values[off++] = vals.Get("tile_stipple_origin_y").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("font")) {
+            mask |= XCB_GC_FONT;
+            values[off++] = vals.Get("font").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("subwindow_mode")) {
+            mask |= XCB_GC_SUBWINDOW_MODE;
+            values[off++] = vals.Get("subwindow_mode").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("graphics_exposures")) {
+            mask |= XCB_GC_GRAPHICS_EXPOSURES;
+            values[off++] = vals.Get("graphics_exposures").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("clip_origin_x")) {
+            mask |= XCB_GC_CLIP_ORIGIN_X;
+            values[off++] = vals.Get("clip_origin_x").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("clip_origin_y")) {
+            mask |= XCB_GC_CLIP_ORIGIN_Y;
+            values[off++] = vals.Get("clip_origin_y").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("clip_mask")) {
+            mask |= XCB_GC_CLIP_MASK;
+            values[off++] = vals.Get("clip_mask").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("dash_offset")) {
+            mask |= XCB_GC_DASH_OFFSET;
+            values[off++] = vals.Get("dash_offset").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("dash_list")) {
+            mask |= XCB_GC_DASH_LIST;
+            values[off++] = vals.Get("dash_list").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("arc_mode")) {
+            mask |= XCB_GC_ARC_MODE;
+            values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
+        }
+
+        if (off) {
+            auto gcid = xcb_generate_id(wm->conn);
+            xcb_create_gc(wm->conn, gcid, window, mask, values);
+            return Napi::Number::New(env, gcid);
+        }
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("change_gc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "change_gc requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uint32_t gc;
+        if (!arg.Has("gc")) {
+            throw Napi::TypeError::New(env, "change_gc requires a gc");
+        }
+        gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("values")) {
+            throw Napi::TypeError::New(env, "create_gc requires a values");
+        }
+        auto vals = arg.Get("values").As<Napi::Object>();
+
+        uint32_t values[23];
+        uint32_t mask = 0;
+        uint32_t off = 0;
+
+        if (vals.Has("function")) {
+            mask |= XCB_GC_FUNCTION;
+            values[off++] = vals.Get("function").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("plane_mask")) {
+            mask |= XCB_GC_PLANE_MASK;
+            values[off++] = vals.Get("plane_mask").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("foreground")) {
+            mask |= XCB_GC_FOREGROUND;
+            values[off++] = vals.Get("foreground").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("background")) {
+            mask |= XCB_GC_BACKGROUND;
+            values[off++] = vals.Get("background").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("line_width")) {
+            mask |= XCB_GC_LINE_WIDTH;
+            values[off++] = vals.Get("line_width").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("line_style")) {
+            mask |= XCB_GC_LINE_STYLE;
+            values[off++] = vals.Get("line_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("cap_style")) {
+            mask |= XCB_GC_CAP_STYLE;
+            values[off++] = vals.Get("cap_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("join_style")) {
+            mask |= XCB_GC_JOIN_STYLE;
+            values[off++] = vals.Get("join_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("fill_style")) {
+            mask |= XCB_GC_FILL_STYLE;
+            values[off++] = vals.Get("fill_style").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("fill_rule")) {
+            mask |= XCB_GC_FILL_RULE;
+            values[off++] = vals.Get("fill_rule").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("tile")) {
+            mask |= XCB_GC_TILE;
+            values[off++] = vals.Get("tile").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("stipple")) {
+            mask |= XCB_GC_STIPPLE;
+            values[off++] = vals.Get("stipple").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("tile_stipple_origin_x")) {
+            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_X;
+            values[off++] = vals.Get("tile_stipple_origin_x").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("tile_stipple_origin_y")) {
+            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_Y;
+            values[off++] = vals.Get("tile_stipple_origin_y").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("font")) {
+            mask |= XCB_GC_FONT;
+            values[off++] = vals.Get("font").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("subwindow_mode")) {
+            mask |= XCB_GC_SUBWINDOW_MODE;
+            values[off++] = vals.Get("subwindow_mode").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("graphics_exposures")) {
+            mask |= XCB_GC_GRAPHICS_EXPOSURES;
+            values[off++] = vals.Get("graphics_exposures").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("clip_origin_x")) {
+            mask |= XCB_GC_CLIP_ORIGIN_X;
+            values[off++] = vals.Get("clip_origin_x").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("clip_origin_y")) {
+            mask |= XCB_GC_CLIP_ORIGIN_Y;
+            values[off++] = vals.Get("clip_origin_y").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("clip_mask")) {
+            mask |= XCB_GC_CLIP_MASK;
+            values[off++] = vals.Get("clip_mask").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("dash_offset")) {
+            mask |= XCB_GC_DASH_OFFSET;
+            values[off++] = vals.Get("dash_offset").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("dash_list")) {
+            mask |= XCB_GC_DASH_LIST;
+            values[off++] = vals.Get("dash_list").As<Napi::Number>().Uint32Value();
+        }
+        if (vals.Has("arc_mode")) {
+            mask |= XCB_GC_ARC_MODE;
+            values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
+        }
+
+        if (off) {
+            xcb_change_gc(wm->conn, gc, mask, values);
+        }
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("free_gc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "free_gc requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        const auto gcid = info[1].As<Napi::Number>().Uint32Value();
+
+        xcb_free_gc(wm->conn, gcid);
+
+        return env.Undefined();
+    }));
+
     xcb.Set("request_window_information", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -1833,8 +2215,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("grabStatus", initGrabStatus(env, wm));
     xcb.Set("allow", initAllows(env, wm));
     xcb.Set("configWindow", initConfigWindows(env, wm));
-    xcb.Set("stackMode", initStackMode(env, wm));
-    xcb.Set("setMode", initSetMode(env, wm));
+    xcb.Set("stackMode", initStackModes(env, wm));
+    xcb.Set("setMode", initSetModes(env, wm));
     xcb.Set("icccm", initIcccm(env, wm));
     xcb.Set("ewmh", initEwmh(env, wm));
     xcb.Set("currentTime", Napi::Number::New(env, XCB_TIME_CURRENT_TIME));

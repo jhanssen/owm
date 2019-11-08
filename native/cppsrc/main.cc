@@ -290,6 +290,10 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             deferred->Reject("Couldn't get default screen");
             return;
         }
+        if (wm->defaultScreen->root_depth != 32 && wm->defaultScreen->root_depth != 24) {
+            deferred->Reject("Only supports true color screens");
+            return;
+        }
 
         // prefetch extensions
         xcb_prefetch_extension_data(wm->conn, &xcb_xkb_id);

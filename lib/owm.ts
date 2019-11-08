@@ -5,12 +5,19 @@ import { Logger, ConsoleLogger } from "./logger";
 import { Workspace, Workspaces } from "./workspace";
 import { Client } from "./client";
 import { EventEmitter } from "events";
+import { default as hexRgb } from "hex-rgb";
 
 interface ClientInternal
 {
     readonly _parent: number;
     readonly _window: XCB.Window;
 };
+
+function makePixel(hex: string): number
+{
+    const rgba = hexRgb(hex);
+    return ((rgba.alpha * 255) << 24) | (rgba.red << 16) | (rgba.green << 8) | rgba.blue;
+}
 
 export class OWMLib {
     private readonly _wm: OWM.WM;
@@ -128,7 +135,7 @@ export class OWMLib {
             this.xcb.eventMask.STRUCTURE_NOTIFY |
             this.xcb.eventMask.FOCUS_CHANGE;
 
-        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, event_mask: frameMask });
+        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, event_mask: frameMask, back_pixel: 0 });
         // make sure we don't get an unparent notify for this window when we reparent
         this.xcb.change_window_attributes(this.wm, { window: win.window, event_mask: 0 });
         this.xcb.reparent_window(this.wm, { window: win.window, parent: parent, x: border, y: border });
@@ -143,7 +150,7 @@ export class OWMLib {
         const client = new Client(this, parent, win, border);
         this._clientsByWindow.set(win.window, client);
         this._clientsByFrame.set(parent, client);
-        this._log.info("client", win.window, parent);
+        this._log.info("client", win.window, win.wmClass, parent);
         this._clients.push(client);
 
         this._events.emit("client", client);
@@ -219,6 +226,25 @@ export class OWMLib {
         this.xcb.flush(this.wm);
     }
 
+    focusIn(event: XCB.FocusIn) {
+    }
+
+    focusOut(event: XCB.FocusIn) {
+    }
+
+    expose(event: XCB.Expose) {
+        if (event.count !== 0)
+            return;
+        const client = this._clientsByFrame.get(event.window);
+        if (!client)
+            return;
+        this._log.info("expose", client.frame, client.framePixel, client.frameGC);
+        const gc = client.frameGC;
+        if (!gc)
+            return;
+        this.xcb.poly_fill_rectangle(this.wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
+    }
+
     buttonPress(event: XCB.ButtonPress) {
         this._log.info("press", event);
         this._currentTime = event.time;
@@ -251,13 +277,47 @@ export class OWMLib {
         this._policy.leaveNotify(event);
     }
 
-    setFocused(client: Client) {
+    get focused() {
+        return this._focused;
+    }
+
+    set focused(client: Client | undefined) {
+        if (client === undefined) {
+            this.revertFocus();
+            return;
+        }
+        let gc;
+        if (this._focused) {
+            this._focused.framePixel = makePixel("#555");
+            gc = this._focused.frameGC;
+            if (gc) {
+                this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
+                                                        rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
+            }
+
+            this._events.emit("this._focusedFocusOut", this._focused);
+        }
+
         this._focused = client;
+
+        this._focused.framePixel = makePixel("#00f");
+        gc = this._focused.frameGC;
+        if (gc) {
+            this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
+                                                    rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
+        }
+        this.xcb.flush(this.wm);
+
+        this._events.emit("this._focusedFocusin", this._focused);
     }
 
     revertFocus() {
         if (!this._focused)
             return;
+
+        this._focused.framePixel = makePixel("#555");
+        this.xcb.flush(this.wm);
+        this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
 
         const root = this._focused.root;
         this._focused = undefined;
@@ -344,6 +404,15 @@ export class OWMLib {
             break;
         case this.xcb.event.UNMAP_NOTIFY:
             this.unmapNotify(e.xcb as XCB.UnmapNotify);
+            break;
+        case this.xcb.event.FOCUS_IN:
+            this.focusIn(e.xcb as XCB.FocusIn);
+            break;
+        case this.xcb.event.FOCUS_OUT:
+            this.focusOut(e.xcb as XCB.FocusIn);
+            break;
+        case this.xcb.event.EXPOSE:
+            this.expose(e.xcb as XCB.Expose);
             break;
         }
     }

@@ -312,6 +312,14 @@ declare type XCB_Type =
     XCB.PropertyNotify |
     XCB.ClientMessage;
 
+
+declare interface Rectangle {
+    readonly x?: number;
+    readonly y?: number;
+    readonly width: number;
+    readonly height: number;
+}
+
 declare interface ConfigureWindowArgs {
     readonly window: number;
     readonly x?: number;
@@ -361,6 +369,50 @@ declare interface SendClientMessageArgs {
     readonly window: number;
     readonly type: number;
     readonly data: ArrayBuffer | XCB_TypedArray;
+}
+
+declare interface SendExposeArgs {
+    readonly window: number;
+    readonly x?: number;
+    readonly y?: number;
+    readonly width: number;
+    readonly height: number;
+}
+
+declare interface GCArgs {
+    readonly function?: number;
+    readonly plane_mask?: number;
+    readonly foreground?: number;
+    readonly background?: number;
+    readonly line_width?: number;
+    readonly line_style?: number;
+    readonly cap_style?: number;
+    readonly join_style?: number;
+    readonly fill_style?: number;
+    readonly fill_rule?: number;
+    readonly tile?: number;
+    readonly stipple?: number;
+    readonly tile_stipple_origin_x?: number;
+    readonly tile_stipple_origin_y?: number;
+    readonly font?: number;
+    readonly subwindow_mode?: number;
+    readonly graphics_exposures?: number;
+    readonly clip_origin_x?: number;
+    readonly clip_origin_y?: number;
+    readonly clip_mask?: number;
+    readonly dash_offset?: number;
+    readonly dash_list?: number;
+    readonly arc_mode?: number;
+}
+
+declare interface CreateGCArgs {
+    readonly window: number;
+    readonly values: GCArgs;
+}
+
+declare interface ChangeGCArgs {
+    readonly gc: number;
+    readonly values: GCArgs;
 }
 
 declare interface ChangePropertyArgs {
@@ -413,6 +465,13 @@ declare interface ChangeSaveSetArgs
     readonly mode: number;
 }
 
+declare interface PolyRectangleArgs
+{
+    readonly window: number;
+    readonly gc: number;
+    readonly rects: Rectangle | Rectangle[];
+}
+
 declare interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
@@ -459,8 +518,12 @@ export namespace OWM {
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
+        send_expose(wm: OWM.WM, args: SendExposeArgs): void;
+        create_gc(wm: OWM.WM, args: CreateGCArgs): number | undefined;
+        change_gc(wm: OWM.WM, args: ChangeGCArgs): number | undefined;
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
+        poly_fill_rectangle(wm: OWM.WM, args: PolyRectangleArgs): void;
         grab_key(wm: OWM.WM, args: GrabKeyArgs): void;
         ungrab_key(wm: OWM.WM, args: UngrabKeyArgs): void;
         grab_keyboard(wm: OWM.WM, args: GrabKeyboardArgs): void;
@@ -470,6 +533,7 @@ export namespace OWM {
         unmap_window(wm: OWM.WM, window: number): void;
         destroy_window(wm: OWM.WM, window: number): void;
         request_window_information(wm: OWM.WM, window: number): XCB.Window | undefined;
+        free_gc(wm: OWM.WM, gc: number): void;
         flush(wm: OWM.WM): void;
     }
     export interface XKB {
