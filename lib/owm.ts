@@ -36,6 +36,8 @@ export class OWMLib {
     private _events: EventEmitter;
     private _settled: boolean;
     private _onsettled: { (): void }[];
+    private _activeColor: number;
+    private _inactiveColor: number;
 
     public readonly Workspace = Workspace;
 
@@ -59,6 +61,9 @@ export class OWMLib {
         this._currentTime = 0;
         this._focused = undefined;
         this._bindings = new Keybindings(this);
+
+        this._activeColor = makePixel("#00f");
+        this._inactiveColor = makePixel("#555");
     };
 
     get wm() {
@@ -103,6 +108,30 @@ export class OWMLib {
 
     get events() {
         return this._events;
+    }
+
+    get activeColor(): number | string {
+        return this._activeColor;
+    }
+
+    set activeColor(c: number | string) {
+        if (typeof c === "string") {
+            this._activeColor = makePixel(c);
+            return;
+        }
+        this._activeColor = c;
+    }
+
+    get inactiveColor(): number | string {
+        return this._inactiveColor;
+    }
+
+    set inactiveColor(c: number | string) {
+        if (typeof c === "string") {
+            this._inactiveColor = makePixel(c);
+            return;
+        }
+        this._inactiveColor = c;
     }
 
     findClient(window: number): Client | undefined {
@@ -152,6 +181,8 @@ export class OWMLib {
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, win.wmClass, parent);
         this._clients.push(client);
+
+        client.focus();
 
         this._events.emit("client", client);
     }
@@ -288,7 +319,7 @@ export class OWMLib {
         }
         let gc;
         if (this._focused) {
-            this._focused.framePixel = makePixel("#555");
+            this._focused.framePixel = this._inactiveColor;
             gc = this._focused.frameGC;
             if (gc) {
                 this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
@@ -300,7 +331,7 @@ export class OWMLib {
 
         this._focused = client;
 
-        this._focused.framePixel = makePixel("#00f");
+        this._focused.framePixel = this._activeColor;
         gc = this._focused.frameGC;
         if (gc) {
             this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
@@ -315,7 +346,7 @@ export class OWMLib {
         if (!this._focused)
             return;
 
-        this._focused.framePixel = makePixel("#555");
+        this._focused.framePixel = this._inactiveColor;
         this.xcb.flush(this.wm);
         this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
 

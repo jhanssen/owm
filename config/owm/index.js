@@ -16,6 +16,8 @@ function init(owmlib) {
 
     owmlib.policy.layout.setConfig(cfg);
 
+    owmlib.activeColor = "#33c";
+
     owmlib.events.on("screens", screens => {
         // console.log("got screens?", screens, owmlib.Workspace);
         if (screens.added) {
