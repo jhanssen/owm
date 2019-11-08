@@ -253,6 +253,10 @@ export class OWMLib {
         this.xcb.change_window_attributes(this.wm, { window: event.window, event_mask: 0 });
         this.xcb.unmap_window(this.wm, client.frame);
         this.xcb.reparent_window(this.wm, { window: event.window, parent: client.root, x: 0, y: 0 });
+        const gc = client.frameGC;
+        if (gc !== undefined) {
+            this.xcb.free_gc(this.wm, gc)
+        }
         this.xcb.destroy_window(this.wm, client.frame);
         this.xcb.flush(this.wm);
     }
@@ -271,7 +275,7 @@ export class OWMLib {
             return;
         this._log.info("expose", client.frame, client.framePixel, client.frameGC);
         const gc = client.frameGC;
-        if (!gc)
+        if (gc === undefined)
             return;
         this.xcb.poly_fill_rectangle(this.wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
     }
@@ -321,7 +325,7 @@ export class OWMLib {
         if (this._focused) {
             this._focused.framePixel = this._inactiveColor;
             gc = this._focused.frameGC;
-            if (gc) {
+            if (gc !== undefined) {
                 this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
                                                         rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
             }
@@ -333,7 +337,7 @@ export class OWMLib {
 
         this._focused.framePixel = this._activeColor;
         gc = this._focused.frameGC;
-        if (gc) {
+        if (gc !== undefined) {
             this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
                                                     rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
         }
@@ -347,8 +351,11 @@ export class OWMLib {
             return;
 
         this._focused.framePixel = this._inactiveColor;
-        this.xcb.flush(this.wm);
-        this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
+        const gc = this._focused.frameGC;
+        if (gc !== undefined) {
+            this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
+                                                    rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
+        }
 
         const root = this._focused.root;
         this._focused = undefined;
