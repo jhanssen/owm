@@ -32,7 +32,7 @@ export class Workspace
 
     set id(id: number | undefined) {
         if (this._workspaces && id)
-            this._workspaces.updateId(this, id);
+            this._workspaces.removeById(id);
         this._id = id;
     }
 
@@ -42,7 +42,7 @@ export class Workspace
 
     set name(name: string | undefined) {
         if (this._workspaces && name)
-            this._workspaces.updateName(this, name);
+            this._workspaces.removeByName(name);
         this._name = name;
     }
 
@@ -106,23 +106,22 @@ export class Workspace
 
 export class Workspaces
 {
-    private _workspaces: Map<string, Workspace[]>;
+    private _workspaces: Set<Workspace>;
     private _owm: OWMLib;
+    private _monitor: Monitor;
 
-    constructor(owm: OWMLib) {
-        this._workspaces = new Map<string, Workspace[]>();
+    constructor(owm: OWMLib, monitor: Monitor) {
+        this._workspaces = new Set<Workspace>();
         this._owm = owm;
+        this._monitor = monitor;
     }
 
-    workspacesByOutput(output: string): Workspace[] | undefined {
-        return this._workspaces.get(output);
+    get monitor() {
+        return this._monitor;
     }
 
-    workspaceByOutput(output: string): Workspace | undefined {
-        const wss = this._workspaces.get(output);
-        if (!wss || !wss.length)
-            return undefined;
-        return wss[0];
+    workspaces(output: string) {
+        return this._workspaces;
     }
 
     workspaceById(id: number): Workspace | undefined {
@@ -149,65 +148,38 @@ export class Workspaces
         return ret;
     }
 
-    get all() {
-        return this._workspaces.values();
+    add(ws: Workspace) {
+        // verify that the name and id of this workspace is unique
+        const name = ws.name;
+        const id = ws.id;
+        if (name || id) {
+            ws.monitor.monitors.forEachWorkspace((sub: Workspace) => {
+                if (name && sub.name === name ||
+                    id && sub.id === id) {
+                    throw new Error(`Workspace not uniquely named ${id} ${name}`);
+                }
+                return true;
+            });
+        }
+
+        ws.workspaces = this;
+        this._workspaces.add(ws);
     }
 
-    add(ws: Workspace) {
-        console.log("adding ws", ws.outputs);
-        ws.workspaces = this;
-        for (const output of ws.outputs) {
-            const wss = this._workspaces.get(output);
-            if (wss) {
-                wss.push(ws);
-            } else {
-                this._workspaces.set(output, [ws]);
-            }
+    removeById(id: number) {
+        // remove any workspace existing with newId
+        const old = this.workspaceById(id);
+        if (old) {
+            this._workspaces.delete(old);
         }
     }
 
-    updateId(ws: Workspace, newId: number) {
+    removeByName(name: string) {
         // remove any workspace existing with newId
-        this.forEachWorkspace((ws: Workspace) => {
-            if (ws.id === newId) {
-                const outputs = ws.outputs;
-                for (let i = 0; i < outputs.length; ++i) {
-                    const wss = this._workspaces.get(outputs[i]);
-                    if (!wss)
-                        continue;
-                    const idx = wss.indexOf(ws);
-                    if (idx === -1)
-                        continue;
-                    wss.splice(idx, 1);
-                    if (!wss.length)
-                        this._workspaces.delete(outputs[i]);
-                }
-                return false;
-            }
-            return true;
-        });
-    }
-
-    updateName(ws: Workspace, newName: string) {
-        // remove any workspace existing with newId
-        this.forEachWorkspace((ws: Workspace) => {
-            if (ws.name === newName) {
-                const outputs = ws.outputs;
-                for (let i = 0; i < outputs.length; ++i) {
-                    const wss = this._workspaces.get(outputs[i]);
-                    if (!wss)
-                        continue;
-                    const idx = wss.indexOf(ws);
-                    if (idx === -1)
-                        continue;
-                    wss.splice(idx, 1);
-                    if (!wss.length)
-                        this._workspaces.delete(outputs[i]);
-                }
-                return false;
-            }
-            return true;
-        });
+        const old = this.workspaceByName(name);
+        if (old) {
+            this._workspaces.delete(old);
+        }
     }
 
     updateScreen() {
@@ -232,15 +204,10 @@ export class Workspaces
     }
 
     forEachWorkspace(run: (ws: Workspace) => boolean) {
-        const wss = new Set<Workspace>();
-        for (const [output, ws] of this._workspaces) {
-            for (let i = 0; i < ws.length; ++i) {
-                wss.add(ws[i]);
-            }
-        }
-        for (const ws of wss) {
+        for (const ws of this._workspaces) {
             if (!run(ws))
-                break;
+                return false;
         }
+        return true;
     }
 }

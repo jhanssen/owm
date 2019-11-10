@@ -8,10 +8,16 @@ export class Monitor
     private _screen: XCB.Screen;
     private _workspaces: Workspaces;
     private _workspace: Workspace | undefined;
+    private _monitors: Monitors;
 
-    constructor(owm: OWMLib, screen: XCB.Screen) {
+    constructor(monitors: Monitors, screen: XCB.Screen) {
         this._screen = screen;
-        this._workspaces = new Workspaces(owm);
+        this._monitors = monitors;
+        this._workspaces = new Workspaces(monitors.owm, this);
+    }
+
+    get monitors() {
+        return this._monitors;
     }
 
     get screen() {
@@ -66,6 +72,10 @@ export class Monitors
         this._monitors = new Map<string, Monitor>();
     }
 
+    get owm() {
+        return this._owm;
+    }
+
     get all() {
         return this._monitors.values();
     }
@@ -96,6 +106,38 @@ export class Monitors
         }
     }
 
+    forEachWorkspace(run: (ws: Workspace) => boolean) {
+        for (const [key, monitor] of this._monitors) {
+            if (!monitor.workspaces.forEachWorkspace(run))
+                return false;
+        }
+        return true;
+    }
+
+    workspaceById(id: number): Workspace | undefined {
+        let ret: Workspace | undefined = undefined;
+        this.forEachWorkspace((ws: Workspace) => {
+            if (ws.id === id) {
+                ret = ws;
+                return false;
+            }
+            return true;
+        });
+        return ret;
+    }
+
+    workspaceByName(name: string): Workspace | undefined {
+        let ret: Workspace | undefined = undefined;
+        this.forEachWorkspace((ws: Workspace) => {
+            if (ws.name === name) {
+                ret = ws;
+                return false;
+            }
+            return true;
+        });
+        return ret;
+    }
+
     update(screens: XCB.Screen[]) {
         const newMonitors = new Map<string, Monitor>();
         const oldMonitors = new Map<string, Monitor>(this._monitors);
@@ -109,7 +151,9 @@ export class Monitors
                 const monitor = this._monitors.get(output);
                 if (monitor) {
                     found = true;
-                    oldMonitors.delete(output);
+                    for (const output2 of outputs) {
+                        oldMonitors.delete(output2);
+                    }
 
                     // update workspaces on this monitor
                     monitor.screen = screen;
@@ -118,8 +162,10 @@ export class Monitors
             }
 
             if (!found) {
-                // add a monitor for the first output
-                newMonitors.set(outputs[0], new Monitor(this._owm, screen));
+                const monitor = new Monitor(this, screen);
+                for (const output of outputs) {
+                    newMonitors.set(output, monitor);
+                }
             }
         }
 

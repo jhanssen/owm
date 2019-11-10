@@ -7,29 +7,21 @@ function init(owmlib) {
     owmlib.bindings.add("Ctrl+A", (bindings, binding) => {
         //logger.info("got", binding);
         // activate workspace 1
-        const m = owmlib.monitors.monitorByOutput("default");
-        if (!m) {
-            throw new Error("no default workspace");
-        }
-        const ws = m.workspaceById(1);
+        const ws = owmlib.monitors.workspaceById(1);
         if (!ws) {
             throw new Error("no workspace 1");
         }
-        m.workspace = ws;
+        ws.monitor.workspace = ws;
     });
 
     owmlib.bindings.add("Ctrl+B", (bindings, binding) => {
         //logger.info("got", binding);
-        // activate workspace 1
-        const m = owmlib.monitors.monitorByOutput("default");
-        if (!m) {
-            throw new Error("no default workspace");
-        }
-        const ws = m.workspaceById(2);
+        // activate workspace 2
+        const ws = owmlib.monitors.workspaceById(2);
         if (!ws) {
             throw new Error("no workspace 2");
         }
-        m.workspace = ws;
+        ws.monitor.workspace = ws;
     });
 
     owmlib.policy.layout = owmlib.policy.createLayout("tiling");
@@ -45,11 +37,7 @@ function init(owmlib) {
     const xtermMatchCondition = new owmlib.Match.MatchWMClass({ class: "XTerm" });
     const xtermMatch = new owmlib.Match((client) => {
         console.log("got an xterm, adding to ws 2");
-        const m = owmlib.monitors.monitorByOutput("default");
-        if (!m) {
-            throw new Error("no default workspace");
-        }
-        const ws = m.workspaceById(2);
+        const ws = owmlib.monitors.workspaceById(2);
         if (!ws) {
             throw new Error("no workspace 2");
         }
