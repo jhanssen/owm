@@ -7,6 +7,7 @@ import { Monitors } from "./monitor";
 import { Client } from "./client";
 import { Match } from "./match";
 import { EventEmitter } from "events";
+import { spawn } from "child_process";
 import { default as hexRgb } from "hex-rgb";
 
 interface ClientInternal
@@ -41,15 +42,17 @@ export class OWMLib {
     private _onsettled: { (): void }[];
     private _activeColor: number;
     private _inactiveColor: number;
+    private _display: string | undefined;
 
     public readonly Workspace = Workspace;
     public readonly Match = Match;
 
-    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, loglevel: Logger.Level) {
+    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, display: string | undefined, loglevel: Logger.Level) {
         this._wm = wm;
         this._xcb = xcb;
         this._xkb = xkb;
         this._settled = false;
+        this._display = display;
         this._onsettled = [];
 
         this._log = new ConsoleLogger(loglevel);
@@ -415,6 +418,21 @@ export class OWMLib {
             func();
         }
         this._onsettled = [];
+    }
+
+    launch(cmd: string, ...args: string[]) {
+        let env = process.env;
+        if (this._display !== undefined) {
+            env = Object.assign({}, env);
+            env.DISPLAY = this._display;
+        }
+        const subprocess = spawn(cmd, args, {
+            detached: true,
+            stdio: 'ignore',
+            env: env
+        });
+
+        subprocess.unref();
     }
 
     cleanup() {

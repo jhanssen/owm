@@ -24,6 +24,10 @@ function init(owmlib) {
         ws.monitor.workspace = ws;
     });
 
+    owmlib.bindings.add("Ctrl+T", () => {
+        owmlib.launch("terminator");
+    });
+
     owmlib.policy.layout = owmlib.policy.createLayout("tiling");
     const cfg = new owmlib.policy.layout.Config();
 
