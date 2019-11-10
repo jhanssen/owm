@@ -18,6 +18,13 @@ function init(owmlib) {
 
     owmlib.activeColor = "#33c";
 
+    const xtermMatchCondition = new owmlib.Match.MatchWMClass({ class: "XTerm" });
+    const xtermMatch = new owmlib.Match((client) => {
+        console.log("got an xterm");
+    });
+    xtermMatch.addCondition(xtermMatchCondition);
+    owmlib.addMatch(xtermMatch);
+
     owmlib.events.on("screens", screens => {
         // console.log("got screens?", screens, owmlib.Workspace);
         if (screens.added) {

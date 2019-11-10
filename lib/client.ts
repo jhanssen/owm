@@ -41,6 +41,10 @@ export class Client implements ContainerItem
         return this._window.geometry.root;
     }
 
+    get window() {
+        return this._window;
+    }
+
     get geometry() {
         return this._geometry;
     }

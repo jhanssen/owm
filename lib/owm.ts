@@ -4,6 +4,7 @@ import { Keybindings } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
 import { Workspace, Workspaces } from "./workspace";
 import { Client } from "./client";
+import { Match } from "./match";
 import { EventEmitter } from "events";
 import { default as hexRgb } from "hex-rgb";
 
@@ -23,7 +24,8 @@ export class OWMLib {
     private readonly _wm: OWM.WM;
     private readonly _xcb: OWM.XCB;
     private readonly _xkb: OWM.XKB;
-    private _clients: Client[];
+    private _clients: Set<Client>;
+    private _matches: Set<Match>;
     private _workspaces: Workspaces;
     private _currentTime: number;
     private _clientsByWindow: Map<number, Client>;
@@ -40,6 +42,7 @@ export class OWMLib {
     private _inactiveColor: number;
 
     public readonly Workspace = Workspace;
+    public readonly Match = Match;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, loglevel: Logger.Level) {
         this._wm = wm;
@@ -54,7 +57,8 @@ export class OWMLib {
 
         this._policy = new Policy(this);
 
-        this._clients = [];
+        this._clients = new Set<Client>();
+        this._matches = new Set<Match>();
         this._workspaces = new Workspaces(this);
         this._clientsByWindow = new Map<number, Client>();
         this._clientsByFrame = new Map<number, Client>();
@@ -82,7 +86,7 @@ export class OWMLib {
         return this._root;
     }
 
-    get clients(): Client[] {
+    get clients(): Set<Client> {
         return this._clients;
     }
 
@@ -180,11 +184,26 @@ export class OWMLib {
         this._clientsByWindow.set(win.window, client);
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, win.wmClass, parent);
-        this._clients.push(client);
+        this._clients.add(client);
+
+        for (let m of this._matches) {
+            m.match(client);
+        }
 
         this._events.emit("client", client);
 
         client.focus();
+    }
+
+    addMatch(match: Match) {
+        this._matches.add(match);
+        for (let c of this._clients) {
+            match.match(c);
+        }
+    }
+
+    removeMatch(match: Match) {
+        this._matches.delete(match);
     }
 
     updateScreens(screens: OWM.Screens) {
@@ -194,6 +213,11 @@ export class OWMLib {
     }
 
     mapRequest(event: XCB.MapRequest) {
+        // check if we already have a client for this window
+        const client = this.findClient(event.window);
+        if (client)
+            return;
+
         const win = this.xcb.request_window_information(this.wm, event.window);
         this._log.info("maprequest", event.window, win);
         if (!win || win.attributes.override_redirect) {
@@ -242,6 +266,10 @@ export class OWMLib {
         const client = this.findClient(event.window);
         if (!client)
             return;
+        // if this is our focused client, revert focus somewhere else
+        if (client === this._focused) {
+            this.revertFocus();
+        }
 
         this._clientsByWindow.delete(event.window);
         this._clientsByFrame.delete(client.frame);
@@ -406,7 +434,7 @@ export class OWMLib {
             });
             this.xcb.flush(this.wm);
         }
-        this._clients = [];
+        this._clients.clear();
     }
 
     handleXCB(e: OWM.Event) {
