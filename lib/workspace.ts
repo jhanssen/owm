@@ -2,27 +2,28 @@ import { XCB } from "native";
 import { OWMLib } from "./owm";
 import { Container, ContainerItem } from "./container";
 import { Client } from "./client";
+import { Monitor } from "./monitor";
 
 export class Workspace
 {
-    private _screen: XCB.Screen;
+    private _monitor: Monitor;
     private _id: number | undefined;
     private _name: string | undefined;
     private _workspaces: Workspaces | undefined;
     private _container: Container;
 
-    constructor(owm: OWMLib, screen: XCB.Screen, id?: number | string, name?: string) {
+    constructor(owm: OWMLib, monitor: Monitor, id?: number | string, name?: string) {
         if (typeof id === "string" && name) {
             throw new Error("Workspace name passed twice");
         }
-        this._screen = screen;
+        this._monitor = monitor;
         if (typeof id === "string") {
             this._name = id;
         } else {
             this._id = id;
         }
         this._name = name;
-        this._container = new Container(owm, screen);
+        this._container = new Container(owm, monitor.screen);
     }
 
     get id() {
@@ -56,23 +57,40 @@ export class Workspace
         this._workspaces = wss;
     }
 
-    get screen() {
-        return this._screen;
+    get monitor() {
+        return this._monitor;
     }
 
     get outputs() {
-        return this._screen.outputs;
+        return this._monitor.screen.outputs;
     }
 
     get container() {
         return this._container;
     }
 
+    get visible() {
+        return this._container.visible;
+    }
+
+    set visible(v: boolean) {
+        // hide all clients
+        this._container.visible = v;
+    }
+
     addItem(item: ContainerItem) {
+        if (item.workspace !== undefined) {
+            throw new Error("Item is already on a workspace!");
+        }
+        item.workspace = this;
         this._container.add(item);
     }
 
     removeItem(item: ContainerItem) {
+        if (item.workspace !== this) {
+            throw new Error("Item is on wrong workspace!");
+        }
+        item.workspace = undefined;
         this._container.remove(item);
     }
 
@@ -80,9 +98,8 @@ export class Workspace
         this._container.relayout();
     }
 
-    update(screen: XCB.Screen) {
-        this._screen = screen;
-        this._container.geometry = screen;
+    update() {
+        this._container.geometry = this._monitor.screen;
         this._container.relayout();
     }
 }
@@ -193,6 +210,13 @@ export class Workspaces
         });
     }
 
+    updateScreen() {
+        this.forEachWorkspace((ws: Workspace) => {
+            ws.update();
+            return true;
+        });
+    }
+
     relayout() {
         this.forEachWorkspace((ws: Workspace) => {
             ws.relayout();
@@ -218,59 +242,5 @@ export class Workspaces
             if (!run(ws))
                 break;
         }
-    }
-
-    update(screens: XCB.Screen[]) {
-        const olds = new Map(this._workspaces);
-        const sadded: XCB.Screen[] = [];
-        const supdated: XCB.Screen[] = [];
-        const wupdated: Workspace[] = []
-
-        const updateAll = (ws: Workspace, screen: XCB.Screen) => {
-            ws.update(screen);
-            for (const [key, workspaces] of olds) {
-                if (workspaces.includes(ws))
-                    olds.delete(key);
-            }
-        };
-
-        for (const screen of screens) {
-            let found = false;
-            const outputs = screen.outputs;
-            for (const output of outputs) {
-                const wss = this._workspaces.get(output);
-                if (wss) {
-                    found = true;
-                    supdated.push(screen);
-                    for (let i = 0; i < wss.length; ++i) {
-                        updateAll(wss[i], screen);
-                        wupdated.push(wss[i]);
-                    }
-                    break;
-                }
-            }
-
-            if (!found) {
-                sadded.push(screen);
-            }
-        }
-
-
-        const sremoved: XCB.Screen[] = [];
-        const wremoved: Workspace[] = [];
-        // all workspaces left in olds are from dead outputs
-        for (const [key, workspaces] of olds) {
-            for (let i = 0; i < workspaces.length; ++i) {
-                sremoved.push(workspaces[i].screen);
-                wremoved.push(workspaces[i]);
-            }
-            this._workspaces.delete(key);
-        }
-
-        const removedWorkspaces = [...new Set(wremoved)];
-        // maybe move the workspace clients to some workspace that's still around?
-
-        this._owm.events.emit("screens", { added: sadded, removed: [...new Set(sremoved)], updated: supdated });
-        this._owm.events.emit("workspaces", { updated: wupdated, removed: removedWorkspaces });
     }
 }

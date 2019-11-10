@@ -2223,6 +2223,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("grabAny", Napi::Number::New(env, XCB_GRAB_ANY));
     xcb.Set("windowNone", Napi::Number::New(env, XCB_WINDOW_NONE));
     xcb.Set("cursorNone", Napi::Number::New(env, XCB_CURSOR_NONE));
+    xcb.Set("none", Napi::Number::New(env, XCB_NONE));
 
     return xcb;
 }

@@ -2,7 +2,8 @@ import { XCB, OWM } from "native";
 import { Policy } from "./policy";
 import { Keybindings } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
-import { Workspace, Workspaces } from "./workspace";
+import { Workspace } from "./workspace";
+import { Monitors } from "./monitor";
 import { Client } from "./client";
 import { Match } from "./match";
 import { EventEmitter } from "events";
@@ -26,7 +27,7 @@ export class OWMLib {
     private readonly _xkb: OWM.XKB;
     private _clients: Set<Client>;
     private _matches: Set<Match>;
-    private _workspaces: Workspaces;
+    private _monitors: Monitors;
     private _currentTime: number;
     private _clientsByWindow: Map<number, Client>;
     private _clientsByFrame: Map<number, Client>;
@@ -59,7 +60,7 @@ export class OWMLib {
 
         this._clients = new Set<Client>();
         this._matches = new Set<Match>();
-        this._workspaces = new Workspaces(this);
+        this._monitors = new Monitors(this);
         this._clientsByWindow = new Map<number, Client>();
         this._clientsByFrame = new Map<number, Client>();
         this._currentTime = 0;
@@ -106,10 +107,6 @@ export class OWMLib {
         return this._log;
     }
 
-    get workspaces() {
-        return this._workspaces;
-    }
-
     get events() {
         return this._events;
     }
@@ -138,6 +135,10 @@ export class OWMLib {
         this._inactiveColor = c;
     }
 
+    get monitors() {
+        return this._monitors;
+    }
+
     findClient(window: number): Client | undefined {
         let client = this._clientsByWindow.get(window);
         if (!client) {
@@ -146,7 +147,7 @@ export class OWMLib {
         return client;
     }
 
-    addClient(win: XCB.Window, map?: boolean) {
+    addClient(win: XCB.Window) {
         this._log.debug("client", win);
 
         // reparent to new window
@@ -156,27 +157,10 @@ export class OWMLib {
                                                          height: win.geometry.height + (border * 2),
                                                          parent: win.geometry.root });
 
-        const frameMask = this.xcb.eventMask.STRUCTURE_NOTIFY |
-            this.xcb.eventMask.ENTER_WINDOW |
-            this.xcb.eventMask.LEAVE_WINDOW |
-            this.xcb.eventMask.EXPOSURE |
-            this.xcb.eventMask.SUBSTRUCTURE_REDIRECT |
-            this.xcb.eventMask.POINTER_MOTION |
-            this.xcb.eventMask.BUTTON_PRESS |
-            this.xcb.eventMask.BUTTON_RELEASE;
-        const winMask = this.xcb.eventMask.PROPERTY_CHANGE |
-            this.xcb.eventMask.STRUCTURE_NOTIFY |
-            this.xcb.eventMask.FOCUS_CHANGE;
-
-        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, event_mask: frameMask, back_pixel: 0 });
+        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, back_pixel: 0 });
         // make sure we don't get an unparent notify for this window when we reparent
         this.xcb.change_window_attributes(this.wm, { window: win.window, event_mask: 0 });
         this.xcb.reparent_window(this.wm, { window: win.window, parent: parent, x: border, y: border });
-        this.xcb.change_window_attributes(this.wm, { window: win.window, event_mask: winMask });
-        if (map) {
-            this.xcb.map_window(this.wm, win.window);
-        }
-        this.xcb.map_window(this.wm, parent);
         this.xcb.change_save_set(this.wm, { window: win.window, mode: this.xcb.setMode.INSERT });
         this.xcb.flush(this.wm);
 
@@ -191,6 +175,15 @@ export class OWMLib {
         }
 
         this._events.emit("client", client);
+
+        // is this client in a visible workspace?
+        const ws = client.workspace;
+        if (ws && ws.visible) {
+            client.state = Client.State.Normal;
+        } else {
+            // no, this window is withdrawn
+            client.state = Client.State.Withdrawn;
+        }
 
         client.focus();
     }
@@ -209,7 +202,7 @@ export class OWMLib {
     updateScreens(screens: OWM.Screens) {
         this._log.info("screens", screens);
         this._root = screens.root;
-        this._workspaces.update(screens.entries);
+        this._monitors.update(screens.entries);
     }
 
     mapRequest(event: XCB.MapRequest) {
@@ -225,7 +218,7 @@ export class OWMLib {
             this.xcb.flush(this.wm);
             return;
         }
-        this.addClient(win, true);
+        this.addClient(win);
     }
 
     configureRequest(event: XCB.ConfigureRequest) {
@@ -273,8 +266,10 @@ export class OWMLib {
 
         this._clientsByWindow.delete(event.window);
         this._clientsByFrame.delete(client.frame);
-
-        this._workspaces.removeItem(client);
+        const ws = client.workspace;
+        if (ws) {
+            ws.removeItem(client);
+        }
 
         this._events.emit("clientRemoved", client);
 
@@ -399,7 +394,7 @@ export class OWMLib {
     }
 
     relayout() {
-        this._workspaces.relayout();
+        this._monitors.relayout();
     }
 
     recreateKeyBindings() {

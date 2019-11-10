@@ -158,6 +158,7 @@ export class Keybindings
                                                        key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
             }
         }
+        this._owm.xcb.flush(this._owm.wm);
 
         this._bindings.set(binding, keybinding);
     }
@@ -224,6 +225,8 @@ export class Keybindings
     }
 
     feed(key: XCB.KeyPress) {
+        this._log.debug("feed", key, this._enabled);
+
         if (!this._enabled)
             return;
 
@@ -310,7 +313,7 @@ export class Keybindings
             const mode = keybinding.mode;
             const grabMode = this._owm.xcb.grabMode;
 
-            this._log.debug("rebind root", this._owm.root, codes);
+            this._log.debug("rebind root", this._owm.root, mods, codes);
                 //this._owm.xcb.grab_key(this._owm.wm,
             for (let code of codes) {
                 this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,

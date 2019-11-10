@@ -62,10 +62,9 @@ function event(e: OWM.Event) {
         const promises: Promise<void>[] = [];
         configDirs.forEach(dir => { promises.push(loadConfig(dir, lib)); });
         Promise.all(promises).then(() => {
-            lib.bindings.enable();
-
             process.nextTick(() => {
                 lib.settled();
+                lib.bindings.enable();
             });
         }).catch(err => {
             console.error("error loading module");

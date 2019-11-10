@@ -2,12 +2,15 @@ import { OWMLib } from "./owm";
 import { Logger } from "./logger";
 import { LayoutPolicy } from "./policy/layout";
 import { Geometry } from "./utils";
+import { Workspace } from "./workspace";
 
 export interface ContainerItem
 {
     move(x: number, y: number): void;
     resize(width: number, height: number): void;
     readonly geometry: Geometry;
+    workspace: Workspace | undefined;
+    visible: boolean;
 }
 
 export class Container implements ContainerItem
@@ -17,6 +20,8 @@ export class Container implements ContainerItem
     private _geometry: Geometry;
     private _log: Logger;
     private _type: string;
+    private _workspace: Workspace | undefined;
+    private _visible: boolean;
 
     constructor(owm: OWMLib, geom: Geometry = {} as Geometry) {
         this._items = [];
@@ -24,10 +29,15 @@ export class Container implements ContainerItem
         this._geometry = geom;
         this._log = owm.logger.prefixed("Container");
         this._type = "Container";
+        this._visible = false;
     }
 
     get layout() {
         return this._layout;
+    }
+
+    set layout(policy: LayoutPolicy) {
+        this._layout = policy;
     }
 
     get geometry() {
@@ -39,8 +49,24 @@ export class Container implements ContainerItem
         this.resize(g.width, g.height);
     }
 
-    set layout(policy: LayoutPolicy) {
-        this._layout = policy;
+    get workspace() {
+        return this._workspace;
+    }
+
+    set workspace(ws: Workspace | undefined) {
+        this._workspace = ws;
+    }
+
+    get visible() {
+        return this._visible;
+    }
+
+    set visible(v: boolean) {
+        this._visible = v;
+
+        for (let item of this._items) {
+            item.visible = v;
+        }
     }
 
     move(x: number, y: number) {
@@ -69,6 +95,8 @@ export class Container implements ContainerItem
         this._log.info("got new item");
         this._items.push(item)
         this.relayout();
+
+        item.visible = this._visible;
     }
 
     remove(item: ContainerItem) {

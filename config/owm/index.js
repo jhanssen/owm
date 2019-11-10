@@ -5,7 +5,31 @@ function init(owmlib) {
     logger.info("hello... adding ctrl-a");
 
     owmlib.bindings.add("Ctrl+A", (bindings, binding) => {
-        logger.info("got", binding);
+        //logger.info("got", binding);
+        // activate workspace 1
+        const m = owmlib.monitors.monitorByOutput("default");
+        if (!m) {
+            throw new Error("no default workspace");
+        }
+        const ws = m.workspaceById(1);
+        if (!ws) {
+            throw new Error("no workspace 1");
+        }
+        m.workspace = ws;
+    });
+
+    owmlib.bindings.add("Ctrl+B", (bindings, binding) => {
+        //logger.info("got", binding);
+        // activate workspace 1
+        const m = owmlib.monitors.monitorByOutput("default");
+        if (!m) {
+            throw new Error("no default workspace");
+        }
+        const ws = m.workspaceById(2);
+        if (!ws) {
+            throw new Error("no workspace 2");
+        }
+        m.workspace = ws;
     });
 
     owmlib.policy.layout = owmlib.policy.createLayout("tiling");
@@ -20,27 +44,42 @@ function init(owmlib) {
 
     const xtermMatchCondition = new owmlib.Match.MatchWMClass({ class: "XTerm" });
     const xtermMatch = new owmlib.Match((client) => {
-        console.log("got an xterm");
+        console.log("got an xterm, adding to ws 2");
+        const m = owmlib.monitors.monitorByOutput("default");
+        if (!m) {
+            throw new Error("no default workspace");
+        }
+        const ws = m.workspaceById(2);
+        if (!ws) {
+            throw new Error("no workspace 2");
+        }
+        ws.addItem(client);
     });
     xtermMatch.addCondition(xtermMatchCondition);
     owmlib.addMatch(xtermMatch);
 
-    owmlib.events.on("screens", screens => {
+    owmlib.events.on("monitors", monitors => {
         // console.log("got screens?", screens, owmlib.Workspace);
-        if (screens.added) {
-            for (const s of screens.added) {
-                const ws = new owmlib.Workspace(owmlib, s);
-                owmlib.workspaces.add(ws);
+        if (monitors.added) {
+            for (const [key, monitor] of monitors.added) {
+                const ws1 = new owmlib.Workspace(owmlib, monitor, 1);
+                monitor.workspaces.add(ws1);
+                monitor.workspace = ws1;
+
+                const ws2 = new owmlib.Workspace(owmlib, monitor, 2);
+                monitor.workspaces.add(ws2);
             }
         }
     });
     owmlib.events.on("client", client => {
         logger.info("got client");
-        const ws = owmlib.workspaces.workspaceByOutput("default");
-        if (!ws) {
+        if (client.workspace)
+            return;
+        const m = owmlib.monitors.monitorByOutput("default");
+        if (!m) {
             throw new Error("no default workspace");
         }
-        ws.addItem(client);
+        m.workspace.addItem(client);
     });
 }
 

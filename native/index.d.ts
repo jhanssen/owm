@@ -508,6 +508,7 @@ export namespace OWM {
         readonly grabAny: number;
         readonly windowNone: number;
         readonly cursorNone: number;
+        readonly none: number;
         readonly icccm: ICCCMEnums;
         readonly ewmh: EWMHEnums;
         intern_atom(name: string, onlyIfExists?: boolean): number;
