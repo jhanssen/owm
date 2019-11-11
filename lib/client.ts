@@ -460,6 +460,16 @@ export class ClientGroup {
         this._followers.delete(follower);
     }
 
+    remove(window: number) {
+        this._followers.delete(window);
+        this._transients.delete(window);
+        for (const [f, t] of this._transients) {
+            if (t === window) {
+                this._transients.delete(f);
+            }
+        }
+    }
+
     ref() {
         ++this._ref;
     }

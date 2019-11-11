@@ -519,6 +519,7 @@ export class OWMLib {
         if (client === this._focused) {
             this.revertFocus();
         }
+        client.group.remove(window);
         if (client.group.deref()) {
             this._groups.delete(client.group.leaderWindow);
         }
