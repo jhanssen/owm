@@ -39,16 +39,20 @@ export class TilingLayoutPolicy implements LayoutPolicy
     }
 
     layout(items: ContainerItem[], geometry: Geometry) {
+        const filtered = items.filter((item: ContainerItem) => {
+            return !item.skipLayout;
+        });
+
         let rows = 0, columns = 0;
         if (this._cfg.rows) {
             rows = this._cfg.rows;
-            columns = this._cfg.columns || Math.ceil(items.length / rows);
+            columns = this._cfg.columns || Math.ceil(filtered.length / rows);
         } else if (this._cfg.columns) {
             columns = this._cfg.columns;
-            rows = this._cfg.rows || Math.ceil(items.length / columns);
+            rows = this._cfg.rows || Math.ceil(filtered.length / columns);
         } else {
             rows = 1;
-            columns = items.length;
+            columns = filtered.length;
         }
 
         const wper = geometry.width / columns;
@@ -57,9 +61,9 @@ export class TilingLayoutPolicy implements LayoutPolicy
         let itemno = 0;
 
         const setItemGeometry = (no: number, x: number, y: number) => {
-            if (no >= items.length)
+            if (no >= filtered.length)
                 return;
-            const item = items[no];
+            const item = filtered[no];
             item.move(x, y);
             item.resize(wper, hper);
         };

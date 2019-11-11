@@ -1342,6 +1342,58 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("send_configure_notify", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "send_configure_notify requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        xcb_configure_notify_event_t event;
+        memset(&event, 0, sizeof(event));
+        event.response_type = XCB_CONFIGURE_NOTIFY;
+        event.above_sibling = XCB_NONE;
+        event.override_redirect = false;
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "send_configure_notify requires a window");
+        }
+        event.event = event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("x")) {
+            throw Napi::TypeError::New(env, "send_configure_notify requires a x");
+        }
+        event.x = arg.Get("x").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("y")) {
+            throw Napi::TypeError::New(env, "send_configure_notify requires a y");
+        }
+        event.y = arg.Get("y").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("width")) {
+            throw Napi::TypeError::New(env, "send_configure_notify requires a width");
+        }
+        event.width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("height")) {
+            throw Napi::TypeError::New(env, "send_configure_notify requires a height");
+        }
+        event.height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("border_width")) {
+            throw Napi::TypeError::New(env, "send_configure_notify requires a border_width");
+        }
+        event.border_width = arg.Get("border_width").As<Napi::Number>().Uint32Value();
+
+        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                       reinterpret_cast<char*>(&event));
+
+        return env.Undefined();
+    }));
+
     xcb.Set("change_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

@@ -256,8 +256,14 @@ export class OWMLib {
             cfg.sibling = event.sibling;
         if (event.value_mask & this.xcb.configWindow.STACK_MODE)
             cfg.stack_mode = event.stack_mode;
-        this.xcb.configure_window(this.wm, cfg);
-        this.xcb.flush(this.wm);
+
+        const client = this.findClient(event.window);
+        if (client) {
+            client.configure(cfg);
+        } else {
+            this.xcb.configure_window(this.wm, cfg);
+            this.xcb.flush(this.wm);
+        }
     }
 
     configureNotify(event: XCB.ConfigureNotify) {

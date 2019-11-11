@@ -5,6 +5,17 @@ import { Workspace } from "./workspace";
 import { Geometry } from "./utils";
 import { XCB } from "native";
 
+interface ConfigureArgs {
+    readonly window: number;
+    readonly x?: number;
+    readonly y?: number;
+    readonly width?: number;
+    readonly height?: number;
+    readonly border_width?: number;
+    readonly sibling?: number;
+    readonly stack_mode?: number;
+}
+
 export class Client implements ContainerItem
 {
     private readonly _parent: number;
@@ -20,6 +31,7 @@ export class Client implements ContainerItem
     private _prevPixel: number | undefined;
     private _state: Client.State;
     private _workspace: Workspace | undefined;
+    private _skipLayout: boolean;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
         this._owm = owm;
@@ -32,6 +44,7 @@ export class Client implements ContainerItem
             width: window.geometry.width,
             height: window.geometry.height
         };
+        this._skipLayout = false;
         this._type = "Client";
 
         this._noinput = false;
@@ -155,6 +168,17 @@ export class Client implements ContainerItem
         this.state = v ? Client.State.Normal : Client.State.Withdrawn;
     }
 
+    get skipLayout() {
+        return this._skipLayout;
+    }
+
+    set skipLayout(s: boolean) {
+        this._skipLayout = s;
+        if (this._workspace) {
+            this._workspace.relayout();
+        }
+    }
+
     get workspace() {
         return this._workspace;
     }
@@ -191,6 +215,65 @@ export class Client implements ContainerItem
             height: this._geometry.height
         });
         this._owm.xcb.flush(this._owm.wm);
+    }
+
+    configure(cfg: ConfigureArgs) {
+        if (cfg.window !== this._window.window) {
+            throw new Error("configuring wrong window");
+        }
+        if (this._skipLayout) {
+            // let's do it
+            let x, y, width, height;
+            if (cfg.x !== undefined) {
+                x = cfg.x;
+                this._geometry.x = cfg.x;
+            } else {
+                x = this._geometry.x;
+            }
+            if (cfg.y !== undefined) {
+                y = cfg.y;
+                this._geometry.y = cfg.y;
+            } else {
+                y = this._geometry.y;
+            }
+            if (cfg.width !== undefined) {
+                width = cfg.width;
+                this._geometry.width = cfg.width;
+            } else {
+                width = this._geometry.width;
+            }
+            if (cfg.height !== undefined) {
+                height = cfg.height;
+                this._geometry.height = cfg.height;
+            } else {
+                height = this._geometry.height;
+            }
+
+            const px = x - this._border;
+            const py = y - this._border;
+            const pwidth = width + (this._border * 2);
+            const pheight = height + (this._border * 2);
+
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: this._parent,
+                x: px, y: py, width: pwidth, height: pheight
+            });
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: cfg.window,
+                x: x, y: y, width: width, height: height
+            });
+            this._owm.xcb.flush(this._owm.wm);
+        } else {
+            this._log.info("trying to configure window in layout, ignoring");
+            this._owm.xcb.send_configure_notify(this._owm.wm, {
+                window: cfg.window,
+                x: this._geometry.x,
+                y: this._geometry.y,
+                width: this._geometry.width,
+                height: this._geometry.height,
+                border_width: 0
+            });
+        }
     }
 
     map() {
