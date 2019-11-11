@@ -2,7 +2,7 @@ import { OWMLib } from "./owm";
 import { Logger } from "./logger";
 import { XCB } from "native";
 
-export class Keybinding
+class Keybinding
 {
     private _owm: OWMLib;
     private _binding: string;
@@ -114,27 +114,17 @@ export class Keybinding
 export class Keybindings
 {
     private _owm: OWMLib;
-    private _parent: Keybindings | undefined;
-    private _child: Keybindings | undefined;
     private _bindings: Map<string, Keybinding>;
     private _enabled: boolean;
     private _feeding: boolean;
     private _log: Logger;
 
-    constructor(owm: OWMLib, parent?: Keybindings) {
+    constructor(owm: OWMLib) {
         this._owm = owm;
-        this._parent = parent;
         this._bindings = new Map<string, Keybinding>();
         this._enabled = false;
         this._feeding = false;
         this._log = owm.logger.prefixed("Keybindings");
-
-        if (parent) {
-            if (parent._child) {
-                throw new Error("can only have one child of a keybindings");
-            }
-            parent._child = this;
-        }
     }
 
     add(binding: string, callback: (bindings: Keybindings, binding: string) => void, sync?: boolean) {
@@ -185,102 +175,42 @@ export class Keybindings
     }
 
     has(binding: string): boolean {
-        if (this._parent) {
-            return this._parent.has(binding);
-        }
-        return this._has(binding);
+        return this._bindings.has(binding);
     }
 
     enable() {
         this._enabled = true;
         this._unbind();
-        this.rebind();
+        this._rebind();
     }
 
     disable() {
         this._enabled = false;
         this._unbind();
-        this.rebind();
     }
 
     recreate() {
-        if (this._parent) {
-            this._parent.recreate();
-            return;
-        }
         this._recreate();
-        if (this._child) {
-            this._child._recreate();
-        }
         this._unbind();
         this._rebind();
     }
 
     rebind() {
-        if (this._parent) {
-            this._parent.rebind();
-            return;
-        }
         this._rebind();
     }
 
-    feed(key: XCB.KeyPress) {
-        this._log.debug("feed", key, this._enabled);
+    feed(press: XCB.KeyPress) {
+        this._log.debug("feed", press, this._enabled);
 
         if (!this._enabled)
             return;
 
-        if (this._parent) {
-            throw new Error("can only feed the topmost keybindings");
-        }
-
-        if (this._feeding) {
-            this._feed(key);
-            return;
-        }
-
-        if (!this._child || !this._child._enabled) {
-            this._feed(key);
-            return;
-        }
-
-        let child = this._child;
-        while (child._child !== undefined && !child._feeding && child._child._enabled) {
-            child = child._child;
-        }
-
-        child._feed(key);
-    }
-
-    private _feed(key: XCB.KeyPress) {
-        // check if I match one of my bindings. if I don't, try my parent
-        if (!this._match(key)) {
-            if (this._parent)
-                this._parent._feed(key);
-        }
-    }
-
-    private _match(press: XCB.KeyPress) {
-        this._log.debug("match?", press);
         for (const [key, keybinding] of this._bindings) {
             //console.log("cand. binding", keybinding);
             if (press.sym === keybinding.sym && press.state === keybinding.mods) {
                 keybinding.call(this);
-                return true;
             }
         }
-        return false;
-    }
-
-    private _has(binding: string): boolean {
-        if (!this._enabled)
-            return false;
-        if (this._bindings.has(binding))
-            return true;
-        if (this._child && this._child._has(binding)) {
-            return true;
-        }
-        return false;
     }
 
     private _recreate() {
@@ -295,17 +225,9 @@ export class Keybindings
     }
 
     private _rebind() {
-        if (this._parent) {
-            throw "Can only call _rebind on the topmost keybindings";
-        }
-
-        // collect all bindings
-        const bindings = new Map<string, Keybinding>();
-        this._collect(bindings);
-
         this._log.debug("rebind");
 
-        for (const [key, keybinding] of bindings) {
+        for (const [key, keybinding] of this._bindings) {
             const codes = keybinding.codes;
             if (!codes.length)
                 return;
@@ -319,20 +241,6 @@ export class Keybindings
                 this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
                                                        key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
             }
-        }
-    }
-
-    private _collect(bindings: Map<string, Keybinding>) {
-        if (!this._enabled) {
-            return;
-        }
-        for (const [key, keybinding] of this._bindings) {
-            if (!bindings.has(key)) {
-                bindings.set(key, keybinding);
-            }
-        }
-        if (this._child) {
-            this._child._collect(bindings);
         }
     }
 }
