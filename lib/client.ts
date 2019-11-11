@@ -219,6 +219,32 @@ export class Client implements ContainerItem
         return this._group;
     }
 
+    centerOn(client: Client) {
+        const cg = client.geometry;
+        const cx = ((cg.width / 2) - (this._geometry.width / 2)) + cg.x;
+        const cy = ((cg.height / 2) - (this._geometry.height / 2)) + cg.y;
+        const cwidth = this._geometry.width;
+        const cheight = this._geometry.height;
+
+        this._geometry.x = this._window.geometry.x = cx;
+        this._geometry.y = this._window.geometry.y = cy;
+
+        const px = cx - this._border;
+        const py = cy - this._border;
+        const pwidth =  cwidth + (this._border * 2);
+        const pheight = cheight + (this._border * 2);
+
+        this._owm.xcb.configure_window(this._owm.wm, {
+            window: this._parent,
+            x: px, y: py, width: pwidth, height: pheight
+        });
+        this._owm.xcb.configure_window(this._owm.wm, {
+            window: this._window.window,
+            x: this._border, y: this._border, width: cwidth, height: cheight
+        });
+        this._owm.xcb.flush(this._owm.wm);
+    }
+
     move(x: number, y: number) {
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,
