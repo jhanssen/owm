@@ -117,6 +117,17 @@ static Napi::Value makeMapRequest(napi_env env, xcb_map_request_event_t* event)
     return obj;
 }
 
+static Napi::Value makeDestroyNotify(napi_env env, xcb_destroy_notify_event_t* event)
+{
+    Napi::Object obj = Napi::Object::New(env);
+
+    obj.Set("type", event->response_type & ~0x80);
+    obj.Set("event", event->event);
+    obj.Set("window", event->window);
+
+    return obj;
+}
+
 static Napi::Value makeUnmapNotify(napi_env env, xcb_unmap_notify_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
@@ -341,6 +352,9 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
             break; }
         case XCB_UNMAP_NOTIFY: {
             value = makeUnmapNotify(env, reinterpret_cast<xcb_unmap_notify_event_t*>(xcb));
+            break; }
+        case XCB_DESTROY_NOTIFY: {
+            value = makeDestroyNotify(env, reinterpret_cast<xcb_destroy_notify_event_t*>(xcb));
             break; }
         case XCB_MAP_REQUEST: {
             value = makeMapRequest(env, reinterpret_cast<xcb_map_request_event_t*>(xcb));

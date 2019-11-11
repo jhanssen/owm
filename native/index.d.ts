@@ -186,6 +186,12 @@ export namespace XCB {
         readonly from_configure: number;
     }
 
+    export interface DestroyNotify {
+        readonly type: number;
+        readonly event: number;
+        readonly window: number;
+    }
+
     export interface MapNotify {
         readonly type: number;
         readonly event: number;
@@ -301,6 +307,7 @@ declare type XCB_Type =
     XCB.KeymapNotify |
     XCB.Expose |
     XCB.UnmapNotify |
+    XCB.DestroyNotify |
     XCB.MapRequest |
     XCB.MapNotify |
     XCB.ReparentNotify |

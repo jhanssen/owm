@@ -266,32 +266,12 @@ export class OWMLib {
 
     unmapNotify(event: XCB.UnmapNotify) {
         this._log.info("unmapnotify", event);
-        const client = this.findClient(event.window);
-        if (!client)
-            return;
-        // if this is our focused client, revert focus somewhere else
-        if (client === this._focused) {
-            this.revertFocus();
-        }
+        this._destroyClient(event.window);
+    }
 
-        this._clientsByWindow.delete(event.window);
-        this._clientsByFrame.delete(client.frame);
-        const ws = client.workspace;
-        if (ws) {
-            ws.removeItem(client);
-        }
-
-        this._events.emit("clientRemoved", client);
-
-        this.xcb.change_window_attributes(this.wm, { window: event.window, event_mask: 0 });
-        this.xcb.unmap_window(this.wm, client.frame);
-        this.xcb.reparent_window(this.wm, { window: event.window, parent: client.root, x: 0, y: 0 });
-        const gc = client.frameGC;
-        if (gc !== undefined) {
-            this.xcb.free_gc(this.wm, gc)
-        }
-        this.xcb.destroy_window(this.wm, client.frame);
-        this.xcb.flush(this.wm);
+    destroyNotify(event: XCB.DestroyNotify) {
+        this._log.info("destroynotify", event);
+        this._destroyClient(event.window);
     }
 
     focusIn(event: XCB.FocusIn) {
@@ -484,6 +464,9 @@ export class OWMLib {
         case this.xcb.event.UNMAP_NOTIFY:
             this.unmapNotify(e.xcb as XCB.UnmapNotify);
             break;
+        case this.xcb.event.DESTROY_NOTIFY:
+            this.destroyNotify(e.xcb as XCB.DestroyNotify);
+            break;
         case this.xcb.event.FOCUS_IN:
             this.focusIn(e.xcb as XCB.FocusIn);
             break;
@@ -494,5 +477,34 @@ export class OWMLib {
             this.expose(e.xcb as XCB.Expose);
             break;
         }
+    }
+
+    _destroyClient(window: number) {
+        const client = this.findClient(window);
+        if (!client)
+            return;
+        // if this is our focused client, revert focus somewhere else
+        if (client === this._focused) {
+            this.revertFocus();
+        }
+
+        this._clientsByWindow.delete(window);
+        this._clientsByFrame.delete(client.frame);
+        const ws = client.workspace;
+        if (ws) {
+            ws.removeItem(client);
+        }
+
+        this._events.emit("clientRemoved", client);
+
+        this.xcb.change_window_attributes(this.wm, { window: window, event_mask: 0 });
+        this.xcb.unmap_window(this.wm, client.frame);
+        this.xcb.reparent_window(this.wm, { window: window, parent: client.root, x: 0, y: 0 });
+        const gc = client.frameGC;
+        if (gc !== undefined) {
+            this.xcb.free_gc(this.wm, gc)
+        }
+        this.xcb.destroy_window(this.wm, client.frame);
+        this.xcb.flush(this.wm);
     }
 };
