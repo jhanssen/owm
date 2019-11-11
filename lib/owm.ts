@@ -1,6 +1,6 @@
 import { XCB, OWM } from "native";
 import { Policy } from "./policy";
-import { Keybindings } from "./keybindings";
+import { Keybindings, KeybindingsMode } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
 import { Workspace } from "./workspace";
 import { Monitors } from "./monitor";
@@ -50,6 +50,7 @@ export class OWMLib {
 
     public readonly Workspace = Workspace;
     public readonly Match = Match;
+    public readonly KeybindingsMode = KeybindingsMode;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, display: string | undefined, loglevel: Logger.Level) {
         this._wm = wm;

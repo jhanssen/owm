@@ -24,6 +24,19 @@ function init(owmlib) {
         ws.monitor.workspace = ws;
     });
 
+    const ctrldmode = new owmlib.KeybindingsMode(owmlib, "Ctrl+D mode");
+    ctrldmode.add("Escape", (mode) => {
+        logger.info("exit ctrldmode");
+        mode.exit();
+    });
+    ctrldmode.add("Ctrl+A", () => {
+        owmlib.launch("terminator");
+    });
+    ctrldmode.add("G", () => {
+        logger.error("pressed G");
+    });
+    owmlib.bindings.addMode("Ctrl+D", ctrldmode);
+
     owmlib.bindings.add("Ctrl+T", () => {
         owmlib.launch("terminator");
     });

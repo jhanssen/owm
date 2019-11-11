@@ -115,14 +115,20 @@ export class KeybindingsMode
 {
     private _parent: Keybindings;
     private _bindings: Map<string, Keybinding>;
+    private _name: string | undefined;
 
-    constructor(owm: OWMLib) {
+    constructor(owm: OWMLib, name?: string) {
         this._parent = owm.bindings;
         this._bindings = new Map<string, Keybinding>();
+        this._name = name;
     }
 
     get bindings() {
         return this._bindings;
+    }
+
+    get name() {
+        return this._name;
     }
 
     add(binding: string, callback: (mode: KeybindingsMode, binding: string) => void) {
@@ -180,6 +186,8 @@ export class Keybindings
     }
 
     enterMode(mode: KeybindingsMode) {
+        this._owm.events.emit("enterMode", mode);
+
         for (const [str, binding] of mode.bindings) {
             if (this._hasSym(binding.sym, binding.mods))
                 continue;
@@ -216,6 +224,9 @@ export class Keybindings
                 this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: mods });
             }
         }
+        this._owm.xcb.flush(this._owm.wm);
+
+        this._owm.events.emit("exitMode", mode);
     }
 
     has(binding: string): boolean {
