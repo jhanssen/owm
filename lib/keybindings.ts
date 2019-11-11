@@ -140,6 +140,7 @@ export class KeybindingsMode
     }
 
     addMode(binding: string, mode: KeybindingsMode) {
+        this._parent.registerMode(mode);
         const keybinding = new Keybinding(this._parent.owm, binding, (bindings: Keybindings, binding: string) => {
             this._parent.enterMode(mode);
             this._parent.owm.xcb.allow_events(this._parent.owm.wm, { mode: this._parent.owm.xcb.allow.ASYNC_KEYBOARD,
@@ -158,7 +159,8 @@ export class Keybindings
 {
     private _owm: OWMLib;
     private _bindings: Map<string, Keybinding>;
-    private _modes: KeybindingsMode[];
+    private _enteredModes: KeybindingsMode[];
+    private _allModes: Set<KeybindingsMode>;
     private _enabled: boolean;
     private _log: Logger;
 
@@ -167,7 +169,8 @@ export class Keybindings
         this._bindings = new Map<string, Keybinding>();
         this._enabled = false;
         this._log = owm.logger.prefixed("Keybindings");
-        this._modes = [];
+        this._enteredModes = [];
+        this._allModes = new Set<KeybindingsMode>();
     }
 
     get owm() {
@@ -179,6 +182,7 @@ export class Keybindings
     }
 
     addMode(binding: string, mode: KeybindingsMode) {
+        this._allModes.add(mode);
         this._add(binding, (bindings: Keybindings, binding: string) => {
             this.enterMode(mode);
             this._owm.xcb.allow_events(this._owm.wm, { mode: this._owm.xcb.allow.ASYNC_KEYBOARD, time: this._owm.currentTime });
@@ -205,15 +209,15 @@ export class Keybindings
         }
         this._owm.xcb.flush(this._owm.wm);
 
-        this._modes.push(mode);
+        this._enteredModes.push(mode);
     }
 
     exitMode(mode: KeybindingsMode) {
-        if (!this._modes.length || this._modes[this._modes.length - 1] !== mode) {
+        if (!this._enteredModes.length || this._enteredModes[this._enteredModes.length - 1] !== mode) {
             throw new Error("Can't exit mode, current mode is not this mode");
         }
 
-        this._modes.pop();
+        this._enteredModes.pop();
 
         for (const [str, binding] of mode.bindings) {
             if (this._hasSym(binding.sym, binding.mods))
@@ -227,6 +231,10 @@ export class Keybindings
         this._owm.xcb.flush(this._owm.wm);
 
         this._owm.events.emit("exitMode", mode);
+    }
+
+    registerMode(mode: KeybindingsMode) {
+        this._allModes.add(mode);
     }
 
     has(binding: string): boolean {
@@ -260,7 +268,7 @@ export class Keybindings
         if (!this._enabled)
             return;
 
-        const bindings = this._modes.length > 0 ? this._modes[this._modes.length - 1].bindings : this._bindings;
+        const bindings = this._enteredModes.length > 0 ? this._enteredModes[this._enteredModes.length - 1].bindings : this._bindings;
 
         for (const [key, keybinding] of bindings) {
             //console.log("cand. binding", keybinding);
@@ -297,7 +305,7 @@ export class Keybindings
     }
 
     private _recreate() {
-        for (const mode of this._modes) {
+        for (const mode of this._allModes) {
             for (const [key, keybinding] of mode.bindings) {
                 keybinding.recreate();
             }
@@ -332,14 +340,14 @@ export class Keybindings
                 }
             }
         };
-        for (const mode of this._modes) {
+        for (const mode of this._enteredModes) {
             rebindBindings(mode.bindings);
         }
         rebindBindings(this._bindings);
     }
 
     private _hasSym(sym: number, mods: number) {
-        for (const m of this._modes) {
+        for (const m of this._enteredModes) {
             for (const [s, k] of m.bindings) {
                 if (k.sym === sym && k.mods === mods)
                     return true;
