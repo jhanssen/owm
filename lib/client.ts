@@ -399,8 +399,15 @@ export class Client implements ContainerItem
     }
 
     focus() {
-        const clients = this._group.transientsForClient(this);
-        const client = (clients.length > 0 && clients[0].modal) ? clients[0] : this;
+        let client: Client = this;
+        for (;;) {
+            const clients = this._group.transientsForClient(client);
+            if (clients.length > 0 && clients[0].modal) {
+                client = clients[0];
+            } else {
+                break;
+            }
+        }
 
         if (client.noinput) {
             return false;
