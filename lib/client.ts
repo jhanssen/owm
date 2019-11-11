@@ -17,6 +17,7 @@ export class Client implements ContainerItem
     private _type: string;
     private _gc: number | undefined;
     private _pixel: number | undefined;
+    private _prevPixel: number | undefined;
     private _state: Client.State;
     private _workspace: Workspace | undefined;
 
@@ -63,10 +64,13 @@ export class Client implements ContainerItem
 
     set framePixel(p: number | undefined) {
         this._pixel = p;
-        this._createGC();
     }
 
     get frameGC() {
+        if (this._prevPixel !== this._pixel) {
+            this._prevPixel = this._pixel;
+            this._createGC();
+        }
         return this._gc;
     }
 
@@ -200,10 +204,12 @@ export class Client implements ContainerItem
     }
 
     focus() {
-        if (this._noinput)
-            return;
-        if (this._owm.focused === this)
-            return;
+        if (this._noinput) {
+            return false;
+        }
+        if (this._owm.focused === this) {
+            return true;
+        }
 
         const takeFocus = this._owm.xcb.atom.WM_TAKE_FOCUS;
         if (this._window.wmProtocols.includes(takeFocus)) {
@@ -225,6 +231,8 @@ export class Client implements ContainerItem
         this._owm.xcb.flush(this._owm.wm);
 
         this._owm.focused = this;
+
+        return true;
     }
 
     private _createGC() {
@@ -233,10 +241,12 @@ export class Client implements ContainerItem
                 this._owm.xcb.change_gc(this._owm.wm, { gc: this._gc, values: { foreground: this._pixel } });
             } else {
                 this._owm.xcb.free_gc(this._owm.wm, this._gc);
+                this._gc = undefined;
             }
         } else if (this._pixel !== undefined) {
             this._gc = this._owm.xcb.create_gc(this._owm.wm, { window: this._parent, values: { foreground: this._pixel } })
         }
+        this._owm.xcb.flush(this._owm.wm);
     }
 }
 

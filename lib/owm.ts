@@ -150,7 +150,7 @@ export class OWMLib {
         return client;
     }
 
-    addClient(win: XCB.Window) {
+    addClient(win: XCB.Window, focus?: boolean) {
         this._log.debug("client", win);
 
         // reparent to new window
@@ -183,12 +183,19 @@ export class OWMLib {
         const ws = client.workspace;
         if (ws && ws.visible) {
             client.state = Client.State.Normal;
+            let focused = false;
+            if (focus === true || focus === undefined) {
+                if (client.focus())
+                    focused = true;
+            }
+            if (!focused) {
+                client.framePixel = this._inactiveColor;
+            }
+            this.xcb.send_expose(this.wm, { window: client.frame, width: client.frameWidth, height: client.frameHeight });
         } else {
             // no, this window is withdrawn
             client.state = Client.State.Withdrawn;
         }
-
-        client.focus();
     }
 
     addMatch(match: Match) {
@@ -304,6 +311,7 @@ export class OWMLib {
         if (gc === undefined)
             return;
         this.xcb.poly_fill_rectangle(this.wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
+        this.xcb.flush(this.wm);
     }
 
     buttonPress(event: XCB.ButtonPress) {
@@ -350,11 +358,8 @@ export class OWMLib {
         let gc;
         if (this._focused) {
             this._focused.framePixel = this._inactiveColor;
-            gc = this._focused.frameGC;
-            if (gc !== undefined) {
-                this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
-                                                        rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
-            }
+            this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
+            this.xcb.flush(this.wm);
 
             this._events.emit("clientFocusOut", this._focused);
         }
@@ -362,11 +367,7 @@ export class OWMLib {
         this._focused = client;
 
         this._focused.framePixel = this._activeColor;
-        gc = this._focused.frameGC;
-        if (gc !== undefined) {
-            this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
-                                                    rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
-        }
+        this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
         this.xcb.flush(this.wm);
 
         this._events.emit("clientFocusIn", this._focused);
@@ -377,11 +378,10 @@ export class OWMLib {
             return;
 
         this._focused.framePixel = this._inactiveColor;
-        const gc = this._focused.frameGC;
-        if (gc !== undefined) {
-            this.xcb.poly_fill_rectangle(this.wm, { window: this._focused.frame, gc: gc,
-                                                    rects: { width: this._focused.frameWidth, height: this._focused.frameHeight } });
-        }
+        this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
+        this.xcb.flush(this.wm);
+
+        this._events.emit("clientFocusOut", this._focused);
 
         const root = this._focused.root;
         this._focused = undefined;

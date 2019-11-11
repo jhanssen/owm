@@ -46,7 +46,7 @@ function event(e: OWM.Event) {
         lib.onsettled(() => {
             for (const window of windows) {
                 if (!window.attributes.override_redirect)
-                    lib.addClient(window);
+                    lib.addClient(window, false);
             }
         });
     } else if (e.type == "screens" && e.screens) {
