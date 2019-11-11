@@ -111,64 +111,108 @@ class Keybinding
     }
 }
 
+export class KeybindingsMode
+{
+    private _parent: Keybindings;
+    private _bindings: Map<string, Keybinding>;
+
+    constructor(owm: OWMLib) {
+        this._parent = owm.bindings;
+        this._bindings = new Map<string, Keybinding>();
+    }
+
+    get bindings() {
+        return this._bindings;
+    }
+
+    add(binding: string, callback: (mode: KeybindingsMode, binding: string) => void) {
+        const keybinding = new Keybinding(this._parent.owm, binding, (bindings: Keybindings, binding: string) => {
+            callback(this, binding);
+        }, false);
+        keybinding.recreate();
+        this._bindings.set(binding, keybinding);
+    }
+
+    addMode(binding: string, mode: KeybindingsMode) {
+        const keybinding = new Keybinding(this._parent.owm, binding, (bindings: Keybindings, binding: string) => {
+            this._parent.enterMode(mode);
+            this._parent.owm.xcb.allow_events(this._parent.owm.wm, { mode: this._parent.owm.xcb.allow.ASYNC_KEYBOARD,
+                                                                     time: this._parent.owm.currentTime });
+        }, true);
+        keybinding.recreate();
+        this._bindings.set(binding, keybinding);
+    }
+
+    exit() {
+        this._parent.exitMode(this);
+    }
+}
+
 export class Keybindings
 {
     private _owm: OWMLib;
     private _bindings: Map<string, Keybinding>;
+    private _modes: KeybindingsMode[];
     private _enabled: boolean;
-    private _feeding: boolean;
     private _log: Logger;
 
     constructor(owm: OWMLib) {
         this._owm = owm;
         this._bindings = new Map<string, Keybinding>();
         this._enabled = false;
-        this._feeding = false;
         this._log = owm.logger.prefixed("Keybindings");
+        this._modes = [];
     }
 
-    add(binding: string, callback: (bindings: Keybindings, binding: string) => void, sync?: boolean) {
-        const keybinding = new Keybinding(this._owm, binding, callback, sync);
+    get owm() {
+        return this._owm;
+    }
 
-        keybinding.recreate();
+    add(binding: string, callback: (bindings: Keybindings, binding: string) => void) {
+        this._add(binding, callback, false);
+    }
 
-        this._log.debug("adding", binding, sync);
+    addMode(binding: string, mode: KeybindingsMode) {
+        this._add(binding, (bindings: Keybindings, binding: string) => {
+            this.enterMode(mode);
+            this._owm.xcb.allow_events(this._owm.wm, { mode: this._owm.xcb.allow.ASYNC_KEYBOARD, time: this._owm.currentTime });
+        }, true);
+    }
 
-        if (this._enabled && !this.has(binding)) {
-            const codes = keybinding.codes;
+    enterMode(mode: KeybindingsMode) {
+        for (const [str, binding] of mode.bindings) {
+            if (this._hasSym(binding.sym, binding.mods))
+                continue;
+
+            const codes = binding.codes;
             if (!codes.length)
                 return;
-            const mods = keybinding.mods;
-            const mode = keybinding.mode;
+            const mods = binding.mods;
+            const mode = binding.mode;
             const grabMode = this._owm.xcb.grabMode;
-            this._log.debug("codes", codes, mods, mode);
             for (let code of codes) {
-                this._log.debug("really add", this._owm.root, code);
                 this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
                                                        key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
             }
         }
         this._owm.xcb.flush(this._owm.wm);
 
-        this._bindings.set(binding, keybinding);
+        this._modes.push(mode);
     }
 
-    remove(binding: string) {
-        if (!this._bindings.has(binding))
-            return;
+    exitMode(mode: KeybindingsMode) {
+        if (!this._modes.length || this._modes[this._modes.length - 1] !== mode) {
+            throw new Error("Can't exit mode, current mode is not this mode");
+        }
 
-        const keybinding = this._bindings.get(binding);
-        this._bindings.delete(binding);
+        this._modes.pop();
 
-        if (this._enabled && !this.has(binding)) {
-            // silly typescript, I already checked up above
-            if (!keybinding)
-                return;
-            const codes = keybinding.codes;
-            if (!codes.length)
-                return;
-            const mods = keybinding.mods;
-            for (let code of codes) {
+        for (const [str, binding] of mode.bindings) {
+            if (this._hasSym(binding.sym, binding.mods))
+                continue;
+
+            const mods = binding.mods;
+            for (let code of binding.codes) {
                 this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: mods });
             }
         }
@@ -205,7 +249,9 @@ export class Keybindings
         if (!this._enabled)
             return;
 
-        for (const [key, keybinding] of this._bindings) {
+        const bindings = this._modes.length > 0 ? this._modes[this._modes.length - 1].bindings : this._bindings;
+
+        for (const [key, keybinding] of bindings) {
             //console.log("cand. binding", keybinding);
             if (press.sym === keybinding.sym && press.state === keybinding.mods) {
                 keybinding.call(this);
@@ -213,7 +259,38 @@ export class Keybindings
         }
     }
 
+    private _add(binding: string, callback: (bindings: Keybindings, binding: string) => void, sync: boolean) {
+        const keybinding = new Keybinding(this._owm, binding, callback, sync);
+
+        keybinding.recreate();
+
+        this._log.debug("adding", binding, sync);
+
+        if (this._enabled && !this.has(binding)) {
+            const codes = keybinding.codes;
+            if (!codes.length)
+                return;
+            const mods = keybinding.mods;
+            const mode = keybinding.mode;
+            const grabMode = this._owm.xcb.grabMode;
+            this._log.debug("codes", codes, mods, mode);
+            for (let code of codes) {
+                this._log.debug("really add", this._owm.root, code);
+                this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
+                                                       key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+            }
+        }
+        this._owm.xcb.flush(this._owm.wm);
+
+        this._bindings.set(binding, keybinding);
+    }
+
     private _recreate() {
+        for (const mode of this._modes) {
+            for (const [key, keybinding] of mode.bindings) {
+                keybinding.recreate();
+            }
+        }
         for (const [key, keybinding] of this._bindings) {
             keybinding.recreate();
         }
@@ -227,20 +304,40 @@ export class Keybindings
     private _rebind() {
         this._log.debug("rebind");
 
-        for (const [key, keybinding] of this._bindings) {
-            const codes = keybinding.codes;
-            if (!codes.length)
-                return;
-            const mods = keybinding.mods;
-            const mode = keybinding.mode;
-            const grabMode = this._owm.xcb.grabMode;
+        const rebindBindings = (bindings: Map<string, Keybinding>) => {
+            for (const [key, keybinding] of bindings) {
+                const codes = keybinding.codes;
+                if (!codes.length)
+                    return;
+                const mods = keybinding.mods;
+                const mode = keybinding.mode;
+                const grabMode = this._owm.xcb.grabMode;
 
-            this._log.debug("rebind root", this._owm.root, mods, codes);
+                this._log.debug("rebind root", this._owm.root, mods, codes);
                 //this._owm.xcb.grab_key(this._owm.wm,
-            for (let code of codes) {
-                this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                       key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                for (let code of codes) {
+                    this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
+                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                }
+            }
+        };
+        for (const mode of this._modes) {
+            rebindBindings(mode.bindings);
+        }
+        rebindBindings(this._bindings);
+    }
+
+    private _hasSym(sym: number, mods: number) {
+        for (const m of this._modes) {
+            for (const [s, k] of m.bindings) {
+                if (k.sym === sym && k.mods === mods)
+                    return true;
             }
         }
+        for (const [s, k] of this._bindings) {
+            if (k.sym === sym && k.mods === mods)
+                return true;
+        }
+        return false;
     }
 }
