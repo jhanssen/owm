@@ -168,6 +168,11 @@ export class OWMLib {
         this.xcb.flush(this.wm);
 
         const client = new Client(this, parent, win, border);
+
+        if (win.transientFor !== 0) {
+            client.skipLayout = true;
+        }
+
         this._clientsByWindow.set(win.window, client);
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, win.wmClass, parent);

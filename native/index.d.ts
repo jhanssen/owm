@@ -11,12 +11,12 @@ export namespace XCB {
         }
 
         export interface Geometry {
-            readonly root: number;
-            readonly border_width: number;
-            readonly x: number;
-            readonly y: number;
-            readonly width: number;
-            readonly height: number;
+            root: number;
+            border_width: number;
+            x: number;
+            y: number;
+            width: number;
+            height: number;
         }
 
         export interface SizeHints {
@@ -80,6 +80,9 @@ export namespace XCB {
 
     export interface Window {
         readonly window: number;
+        readonly transientFor: number;
+        readonly pid: number;
+        readonly leader: number;
         readonly attributes: WindowTypes.Attributes;
         readonly normalHints: WindowTypes.SizeHints;
         readonly wmHints: WindowTypes.WMHints;

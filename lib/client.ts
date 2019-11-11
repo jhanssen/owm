@@ -173,9 +173,35 @@ export class Client implements ContainerItem
     }
 
     set skipLayout(s: boolean) {
+        if (this._skipLayout === s)
+            return;
         this._skipLayout = s;
         if (this._workspace) {
             this._workspace.relayout();
+        }
+        if (s) {
+            // we didn't skip before, but now we do.
+            // let's go back to our original geometry
+
+            const x = this._geometry.x = this._window.geometry.x;
+            const y = this._geometry.y = this._window.geometry.y;
+            const width = this._geometry.width = this._window.geometry.width;
+            const height = this._geometry.height = this._window.geometry.height;
+
+            const px = x - this._border;
+            const py = y - this._border;
+            const pwidth = width + (this._border * 2);
+            const pheight = height + (this._border * 2);
+
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: this._parent,
+                x: px, y: py, width: pwidth, height: pheight
+            });
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: this._window.window,
+                x: this._border, y: this._border, width: width, height: height
+            });
+            this._owm.xcb.flush(this._owm.wm);
         }
     }
 
@@ -227,24 +253,28 @@ export class Client implements ContainerItem
             if (cfg.x !== undefined) {
                 x = cfg.x;
                 this._geometry.x = cfg.x;
+                this._window.geometry.x = cfg.x;
             } else {
                 x = this._geometry.x;
             }
             if (cfg.y !== undefined) {
                 y = cfg.y;
                 this._geometry.y = cfg.y;
+                this._window.geometry.y = cfg.y;
             } else {
                 y = this._geometry.y;
             }
             if (cfg.width !== undefined) {
                 width = cfg.width;
                 this._geometry.width = cfg.width;
+                this._window.geometry.width = cfg.width;
             } else {
                 width = this._geometry.width;
             }
             if (cfg.height !== undefined) {
                 height = cfg.height;
                 this._geometry.height = cfg.height;
+                this._window.geometry.height = cfg.height;
             } else {
                 height = this._geometry.height;
             }
@@ -260,11 +290,24 @@ export class Client implements ContainerItem
             });
             this._owm.xcb.configure_window(this._owm.wm, {
                 window: cfg.window,
-                x: x, y: y, width: width, height: height
+                x: this._border, y: this._border, width: width, height: height
             });
             this._owm.xcb.flush(this._owm.wm);
         } else {
             this._log.info("trying to configure window in layout, ignoring");
+            // keep track of where the client really wants us
+            if (cfg.x !== undefined) {
+                this._window.geometry.x = cfg.x;
+            }
+            if (cfg.y !== undefined) {
+                this._window.geometry.y = cfg.y;
+            }
+            if (cfg.width !== undefined) {
+                this._window.geometry.width = cfg.width;
+            }
+            if (cfg.height !== undefined) {
+                this._window.geometry.height = cfg.height;
+            }
             this._owm.xcb.send_configure_notify(this._owm.wm, {
                 window: cfg.window,
                 x: this._geometry.x,
