@@ -23,6 +23,8 @@ export class Client implements ContainerItem
     private readonly _owm: OWMLib;
     private readonly _border: number;
     private _geometry: Geometry;
+    private _frameGeometry: Geometry;
+    private _floatingGeometry: Geometry;
     private _noinput: boolean;
     private _log: Logger;
     private _type: string;
@@ -45,6 +47,18 @@ export class Client implements ContainerItem
             width: window.geometry.width,
             height: window.geometry.height
         };
+        this._floatingGeometry = {
+            x: window.geometry.x,
+            y: window.geometry.y,
+            width: window.geometry.width,
+            height: window.geometry.height
+        };
+        this._frameGeometry = {
+            x: window.geometry.x - border,
+            y: window.geometry.y - border,
+            width: window.geometry.width + (border * 2),
+            height: window.geometry.height + (border * 2)
+        };
         this._floating = false;
         this._type = "Client";
         this._group = group;
@@ -65,20 +79,20 @@ export class Client implements ContainerItem
         return this._window;
     }
 
+    get noinput() {
+        return this._noinput;
+    }
+
+    get modal() {
+        return this._window.transientFor !== 0 && this._window.ewmhState.includes(this._owm.xcb.atom["_NET_WM_STATE_MODAL"]);
+    }
+
     get geometry() {
         return this._geometry;
     }
 
     get frameGeometry() {
-        if (!this._border)
-            return this._geometry;
-
-        const g = new Geometry();
-        g.x = this._geometry.x - this._border;
-        g.y = this._geometry.y - this._border;
-        g.width = this._geometry.width + (this._border * 2);
-        g.height = this._geometry.height + (this._border * 2);
-        return g;
+        return this._frameGeometry;
     }
 
     get border() {
@@ -106,11 +120,11 @@ export class Client implements ContainerItem
     }
 
     get frameWidth() {
-        return this._geometry.width + (this._border * 2);
+        return this._frameGeometry.width;
     }
 
     get frameHeight() {
-        return this._geometry.height + (this._border * 2);
+        return this._frameGeometry.height;
     }
 
     get state() {
@@ -201,15 +215,15 @@ export class Client implements ContainerItem
             // we didn't skip before, but now we do.
             // let's go back to our original geometry
 
-            const x = this._geometry.x = this._window.geometry.x;
-            const y = this._geometry.y = this._window.geometry.y;
-            const width = this._geometry.width = this._window.geometry.width;
-            const height = this._geometry.height = this._window.geometry.height;
+            const x = this._geometry.x = this._floatingGeometry.x;
+            const y = this._geometry.y = this._floatingGeometry.y;
+            const width = this._geometry.width = this._floatingGeometry.width;
+            const height = this._geometry.height = this._floatingGeometry.height;
 
-            const px = x - this._border;
-            const py = y - this._border;
-            const pwidth = width + (this._border * 2);
-            const pheight = height + (this._border * 2);
+            const px = this._frameGeometry.x = x - this._border;
+            const py = this._frameGeometry.y = y - this._border;
+            const pwidth = this._frameGeometry.width = width + (this._border * 2);
+            const pheight = this._frameGeometry.height = height + (this._border * 2);
 
             this._owm.xcb.configure_window(this._owm.wm, {
                 window: this._parent,
@@ -242,13 +256,16 @@ export class Client implements ContainerItem
         const cwidth = this._geometry.width;
         const cheight = this._geometry.height;
 
-        this._geometry.x = this._window.geometry.x = cx;
-        this._geometry.y = this._window.geometry.y = cy;
+        this._geometry.x = this._floatingGeometry.x = cx;
+        this._geometry.y = this._floatingGeometry.y = cy;
 
         const px = cx - this._border;
         const py = cy - this._border;
-        const pwidth =  cwidth + (this._border * 2);
-        const pheight = cheight + (this._border * 2);
+        const pwidth = this._frameGeometry.width;
+        const pheight = this._frameGeometry.height;
+
+        this._frameGeometry.x = px;
+        this._frameGeometry.y = py;
 
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,
@@ -267,6 +284,8 @@ export class Client implements ContainerItem
             x: x,
             y: y
         });
+        this._frameGeometry.x = x;
+        this._frameGeometry.y = y;
         this._geometry.x = x + this._border;
         this._geometry.y = y + this._border;
         this._owm.xcb.flush(this._owm.wm);
@@ -281,6 +300,8 @@ export class Client implements ContainerItem
             width: width,
             height: height
         });
+        this._frameGeometry.width = width;
+        this._frameGeometry.height = height;
         this._geometry.width = width - (this._border * 2);
         this._geometry.height = height - (this._border * 2);
         this._owm.xcb.configure_window(this._owm.wm, {
@@ -301,36 +322,36 @@ export class Client implements ContainerItem
             if (cfg.x !== undefined) {
                 x = cfg.x;
                 this._geometry.x = cfg.x;
-                this._window.geometry.x = cfg.x;
+                this._floatingGeometry.x = cfg.x;
             } else {
                 x = this._geometry.x;
             }
             if (cfg.y !== undefined) {
                 y = cfg.y;
                 this._geometry.y = cfg.y;
-                this._window.geometry.y = cfg.y;
+                this._floatingGeometry.y = cfg.y;
             } else {
                 y = this._geometry.y;
             }
             if (cfg.width !== undefined) {
                 width = cfg.width;
                 this._geometry.width = cfg.width;
-                this._window.geometry.width = cfg.width;
+                this._floatingGeometry.width = cfg.width;
             } else {
                 width = this._geometry.width;
             }
             if (cfg.height !== undefined) {
                 height = cfg.height;
                 this._geometry.height = cfg.height;
-                this._window.geometry.height = cfg.height;
+                this._floatingGeometry.height = cfg.height;
             } else {
                 height = this._geometry.height;
             }
 
-            const px = x - this._border;
-            const py = y - this._border;
-            const pwidth = width + (this._border * 2);
-            const pheight = height + (this._border * 2);
+            const px = this._frameGeometry.x = x - this._border;
+            const py = this._frameGeometry.y = y - this._border;
+            const pwidth = this._frameGeometry.width = width + (this._border * 2);
+            const pheight = this._frameGeometry.height = height + (this._border * 2);
 
             this._owm.xcb.configure_window(this._owm.wm, {
                 window: this._parent,
@@ -345,16 +366,16 @@ export class Client implements ContainerItem
             this._log.info("trying to configure window in layout, ignoring");
             // keep track of where the client really wants us
             if (cfg.x !== undefined) {
-                this._window.geometry.x = cfg.x;
+                this._floatingGeometry.x = cfg.x;
             }
             if (cfg.y !== undefined) {
-                this._window.geometry.y = cfg.y;
+                this._floatingGeometry.y = cfg.y;
             }
             if (cfg.width !== undefined) {
-                this._window.geometry.width = cfg.width;
+                this._floatingGeometry.width = cfg.width;
             }
             if (cfg.height !== undefined) {
-                this._window.geometry.height = cfg.height;
+                this._floatingGeometry.height = cfg.height;
             }
             this._owm.xcb.send_configure_notify(this._owm.wm, {
                 window: cfg.window,
@@ -378,33 +399,39 @@ export class Client implements ContainerItem
     }
 
     focus() {
-        if (this._noinput) {
+        const clients = this._group.transientsForClient(this);
+        const client = (clients.length > 0 && clients[0].modal) ? clients[0] : this;
+
+        if (client.noinput) {
             return false;
         }
-        if (this._owm.focused === this) {
+
+        const owm = this._owm;
+
+        if (owm.focused === client) {
             return true;
         }
 
-        const takeFocus = this._owm.xcb.atom.WM_TAKE_FOCUS;
-        if (this._window.wmProtocols.includes(takeFocus)) {
+        const takeFocus = owm.xcb.atom.WM_TAKE_FOCUS;
+        if (client.window.wmProtocols.includes(takeFocus)) {
             this._log.info("sending client message");
             const data = new Uint32Array(2);
             data[0] = takeFocus;
-            data[1] = this._owm.currentTime;
-            this._owm.xcb.send_client_message(this._owm.wm, { window: this._window.window, type: this._owm.xcb.atom.WM_PROTOCOLS, data: data });
+            data[1] = owm.currentTime;
+            owm.xcb.send_client_message(owm.wm, { window: client.window.window, type: owm.xcb.atom.WM_PROTOCOLS, data: data });
         }
 
-        this._owm.xcb.set_input_focus(this._owm.wm, { window: this._window.window, revert_to: this._owm.xcb.inputFocus.FOCUS_PARENT,
-                                                      time: this._owm.currentTime });
+        owm.xcb.set_input_focus(owm.wm, { window: client.window.window, revert_to: owm.xcb.inputFocus.FOCUS_PARENT,
+                                          time: owm.currentTime });
 
         const activeData = new Uint32Array(1);
-        activeData[0] = this._window.window;
-        this._owm.xcb.change_property(this._owm.wm, { window: this._window.geometry.root, mode: this._owm.xcb.propMode.REPLACE,
-                                                      property: this._owm.xcb.atom._NET_ACTIVE_WINDOW, type: this._owm.xcb.atom.WINDOW,
-                                                      format: 32, data: activeData });
-        this._owm.xcb.flush(this._owm.wm);
+        activeData[0] = client.window.window;
+        owm.xcb.change_property(owm.wm, { window: client.window.geometry.root, mode: owm.xcb.propMode.REPLACE,
+                                          property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
+                                          format: 32, data: activeData });
+        owm.xcb.flush(owm.wm);
 
-        this._owm.focused = this;
+        owm.focused = client;
 
         return true;
     }

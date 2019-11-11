@@ -11,12 +11,12 @@ export namespace XCB {
         }
 
         export interface Geometry {
-            root: number;
-            border_width: number;
-            x: number;
-            y: number;
-            width: number;
-            height: number;
+            readonly root: number;
+            readonly border_width: number;
+            readonly x: number;
+            readonly y: number;
+            readonly width: number;
+            readonly height: number;
         }
 
         export interface SizeHints {
