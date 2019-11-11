@@ -449,6 +449,22 @@ declare interface SetInputFocusArgs {
     readonly time?: number;
 }
 
+declare interface GrabButtonArgs {
+    readonly window: number;
+    readonly owner_events: number;
+    readonly modifiers: number;
+    readonly event_mask: number;
+    readonly button: number;
+    readonly pointer_mode: number;
+    readonly keyboard_mode: number;
+}
+
+declare interface UngrabButtonArgs {
+    readonly window: number;
+    readonly modifiers: number;
+    readonly button: number;
+}
+
 declare interface GrabKeyArgs {
     readonly window: number;
     readonly owner_events: number;
@@ -467,6 +483,15 @@ declare interface UngrabKeyArgs {
 declare interface GrabKeyboardArgs {
     readonly window: number;
     readonly owner_events: number;
+    readonly pointer_mode: number;
+    readonly keyboard_mode: number;
+    readonly time?: number;
+}
+
+declare interface GrabPointerArgs {
+    readonly window: number;
+    readonly owner_events: number;
+    readonly event_mask: number;
     readonly pointer_mode: number;
     readonly keyboard_mode: number;
     readonly time?: number;
@@ -519,7 +544,7 @@ export namespace OWM {
         readonly buttonMask: {[key: string]: number};
         readonly grabMode: {[key: string]: number};
         readonly grabStatus: {[key: string]: number};
-        readonly allows: {[key: string]: number};
+        readonly allow: {[key: string]: number};
         readonly configWindow: {[key: string]: number};
         readonly stackMode: {[key: string]: number};
         readonly setMode: {[key: string]: number};
@@ -545,10 +570,14 @@ export namespace OWM {
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
         poly_fill_rectangle(wm: OWM.WM, args: PolyRectangleArgs): void;
+        grab_button(wm: OWM.WM, args: GrabButtonArgs): void;
+        ungrab_button(wm: OWM.WM, args: UngrabButtonArgs): void;
         grab_key(wm: OWM.WM, args: GrabKeyArgs): void;
         ungrab_key(wm: OWM.WM, args: UngrabKeyArgs): void;
-        grab_keyboard(wm: OWM.WM, args: GrabKeyboardArgs): void;
+        grab_keyboard(wm: OWM.WM, args: GrabKeyboardArgs): number;
         ungrab_keyboard(wm: OWM.WM, time?: number): void;
+        grab_pointer(wm: OWM.WM, args: GrabPointerArgs): number;
+        ungrab_pointer(wm: OWM.WM, time?: number): void;
         key_symbols_get_keycode(wm: OWM.WM, sym: number): number[];
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;

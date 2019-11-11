@@ -64,6 +64,7 @@ function event(e: OWM.Event) {
         Promise.all(promises).then(() => {
             process.nextTick(() => {
                 lib.settled();
+                lib.createMoveGrab();
                 lib.bindings.enable();
             });
         }).catch(err => {

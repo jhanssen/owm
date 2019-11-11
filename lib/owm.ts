@@ -44,6 +44,9 @@ export class OWMLib {
     private _inactiveColor: number;
     private _display: string | undefined;
     private _groups: Map<number, ClientGroup>;
+    private _moveModifier: string;
+    private _moveModifierMask: number;
+    private _moving: { client: Client, x: number, y: number } | undefined;
 
     public readonly Workspace = Workspace;
     public readonly Match = Match;
@@ -74,6 +77,9 @@ export class OWMLib {
 
         this._activeColor = makePixel("#00f");
         this._inactiveColor = makePixel("#555");
+
+        this._moveModifierMask = this._parseMoveModifier("Alt");
+        this._moveModifier = "Alt";
     };
 
     get wm() {
@@ -144,6 +150,18 @@ export class OWMLib {
         return this._monitors;
     }
 
+    get moveModifier() {
+        return this._moveModifier;
+    }
+
+    set moveModifier(mod: string) {
+        this._moveModifierMask = this._parseMoveModifier(mod);
+        this._moveModifier = mod;
+
+        this._releaseMoveGrab();
+        this.createMoveGrab();
+    }
+
     findClient(window: number): Client | undefined {
         let client = this._clientsByWindow.get(window);
         if (!client) {
@@ -160,22 +178,36 @@ export class OWMLib {
         return this._clientsByFrame.get(window);
     }
 
+    findClientByPosition(x: number, y: number) {
+        // we'll eventually have to do some stacking checking here
+        let candidate: Client | undefined;
+        for (const [window, client] of this._clientsByFrame) {
+            const geom = client.frameGeometry;
+            if (x >= geom.x && x <= geom.x + geom.width &&
+                y >= geom.y && y <= geom.y + geom.height) {
+                if (candidate === undefined || !candidate.floating)
+                    candidate = client;
+            }
+        }
+        return candidate;
+    }
+
     addClient(win: XCB.Window, focus?: boolean) {
         this._log.debug("client", win);
 
         // reparent to new window
         const border = 10;
-        const parent = this.xcb.create_window(this.wm, { x: win.geometry.x, y: win.geometry.y,
+        const parent = this._xcb.create_window(this._wm, { x: win.geometry.x, y: win.geometry.y,
                                                          width: win.geometry.width + (border * 2),
                                                          height: win.geometry.height + (border * 2),
                                                          parent: win.geometry.root });
 
-        this.xcb.change_window_attributes(this.wm, { window: parent, override_redirect: 1, back_pixel: 0 });
+        this._xcb.change_window_attributes(this._wm, { window: parent, override_redirect: 1, back_pixel: 0 });
         // make sure we don't get an unparent notify for this window when we reparent
-        this.xcb.change_window_attributes(this.wm, { window: win.window, event_mask: 0 });
-        this.xcb.reparent_window(this.wm, { window: win.window, parent: parent, x: border, y: border });
-        this.xcb.change_save_set(this.wm, { window: win.window, mode: this.xcb.setMode.INSERT });
-        this.xcb.flush(this.wm);
+        this._xcb.change_window_attributes(this._wm, { window: win.window, event_mask: 0 });
+        this._xcb.reparent_window(this._wm, { window: win.window, parent: parent, x: border, y: border });
+        this._xcb.change_save_set(this._wm, { window: win.window, mode: this._xcb.setMode.INSERT });
+        this._xcb.flush(this._wm);
 
         const leader = win.leader || win.transientFor || win.window;
         let grp = this._groups.get(leader);
@@ -222,7 +254,7 @@ export class OWMLib {
             if (!focused) {
                 client.framePixel = this._inactiveColor;
             }
-            this.xcb.send_expose(this.wm, { window: client.frame, width: client.frameWidth, height: client.frameHeight });
+            this._xcb.send_expose(this._wm, { window: client.frame, width: client.frameWidth, height: client.frameHeight });
         } else {
             // no, this window is withdrawn
             client.state = Client.State.Withdrawn;
@@ -252,11 +284,11 @@ export class OWMLib {
         if (client)
             return;
 
-        const win = this.xcb.request_window_information(this.wm, event.window);
+        const win = this._xcb.request_window_information(this._wm, event.window);
         this._log.info("maprequest", event.window, win);
         if (!win || win.attributes.override_redirect) {
-            this.xcb.map_window(this.wm, event.window);
-            this.xcb.flush(this.wm);
+            this._xcb.map_window(this._wm, event.window);
+            this._xcb.flush(this._wm);
             return;
         }
         this.addClient(win);
@@ -273,27 +305,27 @@ export class OWMLib {
                      sibling?: number,
                      stack_mode?: number
                    } = { window: event.window };
-        if (event.value_mask & this.xcb.configWindow.X)
+        if (event.value_mask & this._xcb.configWindow.X)
             cfg.x = event.x;
-        if (event.value_mask & this.xcb.configWindow.Y)
+        if (event.value_mask & this._xcb.configWindow.Y)
             cfg.y = event.y;
-        if (event.value_mask & this.xcb.configWindow.WIDTH)
+        if (event.value_mask & this._xcb.configWindow.WIDTH)
             cfg.width = event.width;
-        if (event.value_mask & this.xcb.configWindow.HEIGHT)
+        if (event.value_mask & this._xcb.configWindow.HEIGHT)
             cfg.height = event.height;
-        if (event.value_mask & this.xcb.configWindow.BORDER_WIDTH)
+        if (event.value_mask & this._xcb.configWindow.BORDER_WIDTH)
             cfg.border_width = event.border_width;
-        if (event.value_mask & this.xcb.configWindow.SIBLING)
+        if (event.value_mask & this._xcb.configWindow.SIBLING)
             cfg.sibling = event.sibling;
-        if (event.value_mask & this.xcb.configWindow.STACK_MODE)
+        if (event.value_mask & this._xcb.configWindow.STACK_MODE)
             cfg.stack_mode = event.stack_mode;
 
         const client = this.findClient(event.window);
         if (client) {
             client.configure(cfg);
         } else {
-            this.xcb.configure_window(this.wm, cfg);
-            this.xcb.flush(this.wm);
+            this._xcb.configure_window(this._wm, cfg);
+            this._xcb.flush(this._wm);
         }
     }
 
@@ -327,19 +359,61 @@ export class OWMLib {
         const gc = client.frameGC;
         if (gc === undefined)
             return;
-        this.xcb.poly_fill_rectangle(this.wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
-        this.xcb.flush(this.wm);
+        this._xcb.poly_fill_rectangle(this._wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
+        this._xcb.flush(this._wm);
     }
 
     buttonPress(event: XCB.ButtonPress) {
         this._log.info("press", event);
         this._currentTime = event.time;
-        this._policy.buttonPress(event);
+
+        // if this is our move grab, process that
+        if (event.detail === 1 && event.state === this._moveModifierMask) {
+            // yup.
+            this._log.info("moving window");
+            const client = this.findClientByPosition(event.root_x, event.root_y);
+            if (!client || !client.floating) {
+                // keep processing events
+                this._xcb.allow_events(this._wm, { mode: this._xcb.allow.ASYNC_POINTER, time: event.time });
+                this._xcb.flush(this._wm);
+                return;
+            }
+
+            // grab the pointer, asking for move and release events
+            const events = this._xcb.eventMask.BUTTON_RELEASE | this._xcb.eventMask.POINTER_MOTION;
+            const asyncMode = this._xcb.grabMode.ASYNC;
+            this._xcb.grab_pointer(this._wm, { window: this._root, owner_events: 1, event_mask: events,
+                                               pointer_mode: asyncMode, keyboard_mode: asyncMode,
+                                               time: event.time });
+            this._xcb.allow_events(this._wm, { mode: this._xcb.allow.ASYNC_POINTER, time: event.time });
+            this._xcb.flush(this._wm);
+
+            const geom = client.frameGeometry;
+            this._moving = { client: client, x: geom.x - event.root_x, y: geom.y - event.root_y };
+        } else {
+            this._policy.buttonPress(event);
+        }
     }
 
     buttonRelease(event: XCB.ButtonPress) {
+        this._log.info("release", event);
         this._currentTime = event.time;
-        this._policy.buttonRelease(event);
+        if (this._moving) {
+            this._moving.client.move(this._moving.x + event.root_x, this._moving.y + event.root_y);
+            this._xcb.ungrab_pointer(this._wm, event.time);
+            this._moving = undefined;
+        } else {
+            this._policy.buttonRelease(event);
+        }
+    }
+
+    motionNotify(event: XCB.MotionNotify) {
+        this._log.info("motion", event);
+        this._currentTime = event.time;
+        if (this._moving) {
+            // move
+            this._moving.client.move(this._moving.x + event.root_x, this._moving.y + event.root_y);
+        }
     }
 
     keyPress(event: XCB.KeyPress) {
@@ -375,8 +449,8 @@ export class OWMLib {
         let gc;
         if (this._focused) {
             this._focused.framePixel = this._inactiveColor;
-            this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
-            this.xcb.flush(this.wm);
+            this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
+            this._xcb.flush(this._wm);
 
             this._events.emit("clientFocusOut", this._focused);
         }
@@ -384,8 +458,8 @@ export class OWMLib {
         this._focused = client;
 
         this._focused.framePixel = this._activeColor;
-        this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
-        this.xcb.flush(this.wm);
+        this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
+        this._xcb.flush(this._wm);
 
         this._events.emit("clientFocusIn", this._focused);
     }
@@ -395,22 +469,22 @@ export class OWMLib {
             return;
 
         this._focused.framePixel = this._inactiveColor;
-        this.xcb.send_expose(this.wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
-        this.xcb.flush(this.wm);
+        this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
+        this._xcb.flush(this._wm);
 
         this._events.emit("clientFocusOut", this._focused);
 
         const root = this._focused.root;
         this._focused = undefined;
 
-        this.xcb.set_input_focus(this.wm, { window: root, revert_to: this.xcb.inputFocus.NONE, time: this.currentTime });
+        this._xcb.set_input_focus(this._wm, { window: root, revert_to: this._xcb.inputFocus.NONE, time: this.currentTime });
 
         const activeData = new Uint32Array(1);
         activeData[0] = root;
-        this.xcb.change_property(this.wm, { window: root, mode: this.xcb.propMode.REPLACE,
-                                            property: this.xcb.atom._NET_ACTIVE_WINDOW, type: this.xcb.atom.WINDOW,
+        this._xcb.change_property(this._wm, { window: root, mode: this._xcb.propMode.REPLACE,
+                                            property: this._xcb.atom._NET_ACTIVE_WINDOW, type: this._xcb.atom.WINDOW,
                                             format: 32, data: activeData });
-        this.xcb.flush(this.wm);
+        this._xcb.flush(this._wm);
     }
 
     relayout() {
@@ -452,17 +526,29 @@ export class OWMLib {
         subprocess.unref();
     }
 
+    createMoveGrab() {
+        const grabMode = this._xcb.grabMode;
+        const events = this._xcb.eventMask.BUTTON_PRESS;
+
+        console.log("create move grab", grabMode.SYNC, this._moveModifierMask, this._root);
+
+        this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
+                                          button: 1, owner_events: 1, event_mask: events,
+                                          pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
+        this._xcb.flush(this._wm);
+    }
+
     cleanup() {
         for (const client of this._clients) {
             const window = ((client as unknown) as ClientInternal)._window.window;
-            this.xcb.change_window_attributes(this.wm, { window: window, event_mask: 0 });
-            this.xcb.reparent_window(this.wm, {
+            this._xcb.change_window_attributes(this._wm, { window: window, event_mask: 0 });
+            this._xcb.reparent_window(this._wm, {
                 window: window,
                 parent: ((client as unknown) as ClientInternal)._window.geometry.root,
                 x: ((client as unknown) as ClientInternal)._window.geometry.x,
                 y: ((client as unknown) as ClientInternal)._window.geometry.y
             });
-            this.xcb.flush(this.wm);
+            this._xcb.flush(this._wm);
         }
         this._clients.clear();
     }
@@ -471,52 +557,55 @@ export class OWMLib {
         if (!e.xcb)
             return;
         switch (e.xcb.type) {
-        case this.xcb.event.BUTTON_PRESS:
+        case this._xcb.event.BUTTON_PRESS:
             this.buttonPress(e.xcb as XCB.ButtonPress);
             break;
-        case this.xcb.event.BUTTON_RELEASE:
+        case this._xcb.event.BUTTON_RELEASE:
             this.buttonRelease(e.xcb as XCB.ButtonPress);
             break;
-        case this.xcb.event.KEY_PRESS:
+        case this._xcb.event.MOTION_NOTIFY:
+            this.motionNotify(e.xcb as XCB.MotionNotify);
+            break;
+        case this._xcb.event.KEY_PRESS:
             this.keyPress(e.xcb as XCB.KeyPress);
             break;
-        case this.xcb.event.KEY_RELEASE:
+        case this._xcb.event.KEY_RELEASE:
             this.keyRelease(e.xcb as XCB.KeyPress);
             break;
-        case this.xcb.event.ENTER_NOTIFY:
+        case this._xcb.event.ENTER_NOTIFY:
             this.enterNotify(e.xcb as XCB.EnterNotify);
             break;
-        case this.xcb.event.LEAVE_NOTIFY:
+        case this._xcb.event.LEAVE_NOTIFY:
             this.leaveNotify(e.xcb as XCB.EnterNotify);
             break;
-        case this.xcb.event.MAP_REQUEST:
+        case this._xcb.event.MAP_REQUEST:
             this.mapRequest(e.xcb as XCB.MapRequest);
             break;
-        case this.xcb.event.CONFIGURE_REQUEST:
+        case this._xcb.event.CONFIGURE_REQUEST:
             this.configureRequest(e.xcb as XCB.ConfigureRequest);
             break;
-        case this.xcb.event.CONFIGURE_NOTIFY:
+        case this._xcb.event.CONFIGURE_NOTIFY:
             this.configureNotify(e.xcb as XCB.ConfigureNotify);
             break;
-        case this.xcb.event.UNMAP_NOTIFY:
+        case this._xcb.event.UNMAP_NOTIFY:
             this.unmapNotify(e.xcb as XCB.UnmapNotify);
             break;
-        case this.xcb.event.DESTROY_NOTIFY:
+        case this._xcb.event.DESTROY_NOTIFY:
             this.destroyNotify(e.xcb as XCB.DestroyNotify);
             break;
-        case this.xcb.event.FOCUS_IN:
+        case this._xcb.event.FOCUS_IN:
             this.focusIn(e.xcb as XCB.FocusIn);
             break;
-        case this.xcb.event.FOCUS_OUT:
+        case this._xcb.event.FOCUS_OUT:
             this.focusOut(e.xcb as XCB.FocusIn);
             break;
-        case this.xcb.event.EXPOSE:
+        case this._xcb.event.EXPOSE:
             this.expose(e.xcb as XCB.Expose);
             break;
         }
     }
 
-    _destroyClient(window: number) {
+    private _destroyClient(window: number) {
         const client = this.findClient(window);
         if (!client)
             return;
@@ -538,14 +627,45 @@ export class OWMLib {
 
         this._events.emit("clientRemoved", client);
 
-        this.xcb.change_window_attributes(this.wm, { window: window, event_mask: 0 });
-        this.xcb.unmap_window(this.wm, client.frame);
-        this.xcb.reparent_window(this.wm, { window: window, parent: client.root, x: 0, y: 0 });
+        this._xcb.change_window_attributes(this._wm, { window: window, event_mask: 0 });
+        this._xcb.unmap_window(this._wm, client.frame);
+        this._xcb.reparent_window(this._wm, { window: window, parent: client.root, x: 0, y: 0 });
         const gc = client.frameGC;
         if (gc !== undefined) {
-            this.xcb.free_gc(this.wm, gc)
+            this._xcb.free_gc(this._wm, gc)
         }
-        this.xcb.destroy_window(this.wm, client.frame);
-        this.xcb.flush(this.wm);
+        this._xcb.destroy_window(this._wm, client.frame);
+        this._xcb.flush(this._wm);
+    }
+
+    private _parseMoveModifier(mod: string) {
+        const mask = this._xcb.modMask;
+        switch (mod.toLowerCase()) {
+        case "shift":
+            return mask.SHIFT;
+        case "ctrl":
+        case "control":
+            return mask.CONTROL;
+        case "mod1":
+        case "alt":
+            return mask["1"];
+        case "mod2":
+            return mask["2"];
+        case "mod3":
+            return mask["3"];
+        case "mod4":
+            return mask["4"];
+        case "mod5":
+            return mask["5"];
+        case "lock":
+            return mask.LOCK;
+        default:
+            throw new Error("Couldn't parse keybinding mask");
+        }
+    }
+
+    private _releaseMoveGrab() {
+        this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 1 });
+        this._xcb.flush(this._wm);
     }
 };

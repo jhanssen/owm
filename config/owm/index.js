@@ -37,6 +37,7 @@ function init(owmlib) {
     owmlib.policy.layout.setConfig(cfg);
 
     owmlib.activeColor = "#33c";
+    owmlib.moveModifier = "Ctrl";
 
     const xtermMatchCondition = new owmlib.Match.MatchWMClass({ class: "XTerm" });
     const xtermMatch = new owmlib.Match((client) => {

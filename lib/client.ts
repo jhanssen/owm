@@ -69,6 +69,22 @@ export class Client implements ContainerItem
         return this._geometry;
     }
 
+    get frameGeometry() {
+        if (!this._border)
+            return this._geometry;
+
+        const g = new Geometry();
+        g.x = this._geometry.x - this._border;
+        g.y = this._geometry.y - this._border;
+        g.width = this._geometry.width + (this._border * 2);
+        g.height = this._geometry.height + (this._border * 2);
+        return g;
+    }
+
+    get border() {
+        return this._border;
+    }
+
     get frame() {
         return this._parent;
     }

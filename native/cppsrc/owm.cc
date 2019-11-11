@@ -1654,16 +1654,97 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
 
         if (!arg.Has("modifiers")) {
-            throw Napi::TypeError::New(env, "grab_key requires a modifiers");
+            throw Napi::TypeError::New(env, "ungrab_key requires a modifiers");
         }
         const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
 
         if (!arg.Has("key")) {
-            throw Napi::TypeError::New(env, "grab_key requires a key");
+            throw Napi::TypeError::New(env, "ungrab_key requires a key");
         }
         const uint32_t key = arg.Get("key").As<Napi::Number>().Uint32Value();
 
         xcb_ungrab_key(wm->conn, key, window, modifiers);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("grab_button", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "grab_button requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "grab_button requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("owner_events")) {
+            throw Napi::TypeError::New(env, "grab_button requires a owner_events");
+        }
+        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("modifiers")) {
+            throw Napi::TypeError::New(env, "grab_button requires a modifiers");
+        }
+        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("event_mask")) {
+            throw Napi::TypeError::New(env, "grab_button requires a event_mask");
+        }
+        const uint32_t event_mask = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("button")) {
+            throw Napi::TypeError::New(env, "grab_button requires a button");
+        }
+        const uint32_t button = arg.Get("button").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("pointer_mode")) {
+            throw Napi::TypeError::New(env, "grab_button requires a pointer_mode");
+        }
+        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("keyboard_mode")) {
+            throw Napi::TypeError::New(env, "grab_button requires a keyboard_mode");
+        }
+        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+        xcb_grab_button(wm->conn, owner_events, window, event_mask, pointer_mode, keyboard_mode,
+                        XCB_NONE, XCB_NONE, button, modifiers);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("ungrab_button", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "ungrab_button requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "ungrab_button requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("modifiers")) {
+            throw Napi::TypeError::New(env, "ungrab_button requires a modifiers");
+        }
+        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("button")) {
+            throw Napi::TypeError::New(env, "ungrab_button requires a key");
+        }
+        const uint32_t button = arg.Get("button").As<Napi::Number>().Uint32Value();
+
+        xcb_ungrab_button(wm->conn, button, window, modifiers);
 
         return env.Undefined();
     }));
@@ -1731,6 +1812,78 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         xcb_ungrab_keyboard(wm->conn, time);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("grab_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "grab_pointer requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "grab_pointer requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("owner_events")) {
+            throw Napi::TypeError::New(env, "grab_pointer requires a owner_events");
+        }
+        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("event_mask")) {
+            throw Napi::TypeError::New(env, "grab_pointer requires a event_mask");
+        }
+        const uint32_t event_mask = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("pointer_mode")) {
+            throw Napi::TypeError::New(env, "grab_pointer requires a pointer_mode");
+        }
+        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("keyboard_mode")) {
+            throw Napi::TypeError::New(env, "grab_pointer requires a keyboard_mode");
+        }
+        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+        uint32_t time = XCB_TIME_CURRENT_TIME;
+        if (arg.Has("time")) {
+            time = arg.Get("time").As<Napi::Number>().Uint32Value();
+        }
+
+        auto cookie = xcb_grab_pointer(wm->conn, owner_events, window, event_mask, pointer_mode, keyboard_mode, XCB_NONE, XCB_NONE, time);
+        auto reply = xcb_grab_pointer_reply(wm->conn, cookie, nullptr);
+        if (!reply) {
+            throw Napi::TypeError::New(env, "grab_pointer no reply");
+        }
+
+        const auto status = reply->status;
+
+        free(reply);
+
+        return Napi::Number::New(env, status);
+    }));
+
+    xcb.Set("ungrab_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "ungrab_pointer requires one argument");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uint32_t time = XCB_TIME_CURRENT_TIME;
+        if (info.Length() > 1 && info[1].IsNumber()) {
+            time = info[1].As<Napi::Number>().Uint32Value();
+        }
+
+        xcb_ungrab_pointer(wm->conn, time);
 
         return env.Undefined();
     }));
