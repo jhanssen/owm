@@ -32,8 +32,9 @@ export class Client implements ContainerItem
     private _state: Client.State;
     private _workspace: Workspace | undefined;
     private _floating: boolean;
+    private _group: ClientGroup;
 
-    constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
+    constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number, group: ClientGroup) {
         this._owm = owm;
         this._parent = parent;
         this._window = window;
@@ -46,6 +47,7 @@ export class Client implements ContainerItem
         };
         this._floating = false;
         this._type = "Client";
+        this._group = group;
 
         this._noinput = false;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
@@ -211,6 +213,10 @@ export class Client implements ContainerItem
 
     set workspace(ws: Workspace | undefined) {
         this._workspace = ws;
+    }
+
+    get group() {
+        return this._group;
     }
 
     move(x: number, y: number) {
@@ -385,4 +391,80 @@ export namespace Client {
 
 export function isClient(o: any): o is Client {
     return o._type === "Client";
+}
+
+export class ClientGroup {
+    private _transients: Map<number, number>;
+    private _followers: Set<number>;
+    private _leader: number;
+    private _ref: number;
+    private _owm: OWMLib;
+
+    constructor(owm: OWMLib, leader: number) {
+        this._transients = new Map<number, number>();
+        this._followers = new Set<number>();
+        this._ref = 1;
+        this._owm = owm;
+        this._leader = leader;
+    }
+
+    get leaderClient(): Client | undefined {
+        return this._owm.findClientByWindow(this._leader);
+    }
+
+    get leaderWindow() {
+        return this._leader;
+    }
+
+    transientsForClient(client: Client): Client[] {
+        const ret: Client[] = [];
+        const cid = client.window.window;
+        for (const [f, t] of this._transients) {
+            if (t === cid) {
+                const c = this._owm.findClientByWindow(f);
+                if (c) {
+                    ret.push(c);
+                }
+            }
+        }
+        return ret;
+    }
+
+    followerClients(): Client[] {
+        const ret: Client[] = [];
+        for (const f of this._followers) {
+            const c = this._owm.findClientByWindow(f);
+            if (c) {
+                ret.push(c);
+            }
+        }
+        return ret;
+    }
+
+    addTransient(from: number, to: number) {
+        if (this._transients.has(from)) {
+            throw new Error(`Group already has a transient with id ${from} (to ${to})`);
+        }
+        this._transients.set(from, to);
+    }
+
+    removeTransient(from: number) {
+        this._transients.delete(from);
+    }
+
+    addFollower(follower: number) {
+        this._followers.add(follower);
+    }
+
+    removeFollower(follower: number) {
+        this._followers.delete(follower);
+    }
+
+    ref() {
+        ++this._ref;
+    }
+
+    deref() {
+        return !--this._ref;
+    }
 }

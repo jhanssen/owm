@@ -4,7 +4,7 @@ import { Keybindings } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
 import { Workspace } from "./workspace";
 import { Monitors } from "./monitor";
-import { Client } from "./client";
+import { Client, ClientGroup } from "./client";
 import { Match } from "./match";
 import { EventEmitter } from "events";
 import { spawn } from "child_process";
@@ -43,6 +43,7 @@ export class OWMLib {
     private _activeColor: number;
     private _inactiveColor: number;
     private _display: string | undefined;
+    private _groups: Map<number, ClientGroup>;
 
     public readonly Workspace = Workspace;
     public readonly Match = Match;
@@ -66,6 +67,7 @@ export class OWMLib {
         this._monitors = new Monitors(this);
         this._clientsByWindow = new Map<number, Client>();
         this._clientsByFrame = new Map<number, Client>();
+        this._groups = new Map<number, ClientGroup>();
         this._currentTime = 0;
         this._focused = undefined;
         this._bindings = new Keybindings(this);
@@ -150,6 +152,14 @@ export class OWMLib {
         return client;
     }
 
+    findClientByWindow(window: number): Client | undefined {
+        return this._clientsByWindow.get(window);
+    }
+
+    findClientByFrame(window: number): Client | undefined {
+        return this._clientsByFrame.get(window);
+    }
+
     addClient(win: XCB.Window, focus?: boolean) {
         this._log.debug("client", win);
 
@@ -167,10 +177,21 @@ export class OWMLib {
         this.xcb.change_save_set(this.wm, { window: win.window, mode: this.xcb.setMode.INSERT });
         this.xcb.flush(this.wm);
 
-        const client = new Client(this, parent, win, border);
+        const leader = win.leader || win.transientFor || win.window;
+        let grp = this._groups.get(leader);
+        if (!grp) {
+            grp = new ClientGroup(this, leader);
+            this._groups.set(leader, grp);
+        } else {
+            grp.ref();
+        }
+        grp.addFollower(win.window);
 
-        if (win.transientFor !== 0) {
+        const client = new Client(this, parent, win, border, grp);
+
+        if (win.transientFor !== 0 && win.transientFor !== win.window) {
             client.floating = true;
+            grp.addTransient(win.window, win.transientFor);
         }
 
         this._clientsByWindow.set(win.window, client);
@@ -497,6 +518,9 @@ export class OWMLib {
         // if this is our focused client, revert focus somewhere else
         if (client === this._focused) {
             this.revertFocus();
+        }
+        if (client.group.deref()) {
+            this._groups.delete(client.group.leaderWindow);
         }
 
         this._clientsByWindow.delete(window);
