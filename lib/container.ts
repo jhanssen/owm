@@ -11,7 +11,7 @@ export interface ContainerItem
     readonly geometry: Geometry;
     workspace: Workspace | undefined;
     visible: boolean;
-    skipLayout: boolean;
+    floating: boolean;
 }
 
 export class Container implements ContainerItem
@@ -23,7 +23,7 @@ export class Container implements ContainerItem
     private _type: string;
     private _workspace: Workspace | undefined;
     private _visible: boolean;
-    private _skipLayout: boolean;
+    private _floating: boolean;
 
     constructor(owm: OWMLib, geom: Geometry = {} as Geometry) {
         this._items = [];
@@ -32,7 +32,7 @@ export class Container implements ContainerItem
         this._log = owm.logger.prefixed("Container");
         this._type = "Container";
         this._visible = false;
-        this._skipLayout = false;
+        this._floating = false;
     }
 
     get layout() {
@@ -60,12 +60,12 @@ export class Container implements ContainerItem
         this._workspace = ws;
     }
 
-    get skipLayout() {
-        return this._skipLayout;
+    get floating() {
+        return this._floating;
     }
 
-    set skipLayout(s: boolean) {
-        this._skipLayout = s;
+    set floating(s: boolean) {
+        this._floating = s;
         this.relayout();
     }
 

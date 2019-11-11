@@ -170,7 +170,7 @@ export class OWMLib {
         const client = new Client(this, parent, win, border);
 
         if (win.transientFor !== 0) {
-            client.skipLayout = true;
+            client.floating = true;
         }
 
         this._clientsByWindow.set(win.window, client);

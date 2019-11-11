@@ -31,7 +31,7 @@ export class Client implements ContainerItem
     private _prevPixel: number | undefined;
     private _state: Client.State;
     private _workspace: Workspace | undefined;
-    private _skipLayout: boolean;
+    private _floating: boolean;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
         this._owm = owm;
@@ -44,7 +44,7 @@ export class Client implements ContainerItem
             width: window.geometry.width,
             height: window.geometry.height
         };
-        this._skipLayout = false;
+        this._floating = false;
         this._type = "Client";
 
         this._noinput = false;
@@ -168,14 +168,14 @@ export class Client implements ContainerItem
         this.state = v ? Client.State.Normal : Client.State.Withdrawn;
     }
 
-    get skipLayout() {
-        return this._skipLayout;
+    get floating() {
+        return this._floating;
     }
 
-    set skipLayout(s: boolean) {
-        if (this._skipLayout === s)
+    set floating(s: boolean) {
+        if (this._floating === s)
             return;
-        this._skipLayout = s;
+        this._floating = s;
         if (this._workspace) {
             this._workspace.relayout();
         }
@@ -247,7 +247,7 @@ export class Client implements ContainerItem
         if (cfg.window !== this._window.window) {
             throw new Error("configuring wrong window");
         }
-        if (this._skipLayout) {
+        if (this._floating) {
             // let's do it
             let x, y, width, height;
             if (cfg.x !== undefined) {

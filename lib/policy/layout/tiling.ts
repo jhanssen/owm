@@ -40,7 +40,7 @@ export class TilingLayoutPolicy implements LayoutPolicy
 
     layout(items: ContainerItem[], geometry: Geometry) {
         const filtered = items.filter((item: ContainerItem) => {
-            return !item.skipLayout;
+            return !item.floating;
         });
 
         let rows = 0, columns = 0;
