@@ -76,7 +76,9 @@ export class Client implements ContainerItem
             monitor.addItem(this);
         }
 
-        this._noinput = true;
+        const dock = window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
+
+        this._noinput = dock;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
             this._noinput = window.wmHints.input === 0;
 
