@@ -346,6 +346,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             std::vector<xcb_get_property_cookie_t> stateCookies;
             std::vector<xcb_get_property_cookie_t> typeCookies;
             std::vector<xcb_get_property_cookie_t> pidCookies;
+            std::vector<xcb_get_property_cookie_t> desktopCookies;
 
             xcb_query_tree_cookie_t cookie = xcb_query_tree_unchecked(conn, root);
             xcb_query_tree_reply_t *tree = xcb_query_tree_reply(conn, cookie, nullptr);
@@ -365,9 +366,11 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             stateCookies.reserve(tree->children_len);
             typeCookies.reserve(tree->children_len);
             pidCookies.reserve(tree->children_len);
+            desktopCookies.reserve(tree->children_len);
 
             const auto wm_client_leader = atoms.at("WM_CLIENT_LEADER");
             const auto wm_protocols = atoms.at("WM_PROTOCOLS");
+            const auto net_wm_desktop = atoms.at("_NET_WM_DESKTOP");
 
             for (unsigned int i = 0; i < tree->children_len; ++i) {
                 attribCookies.push_back(xcb_get_window_attributes_unchecked(conn, wins[i]));
@@ -384,6 +387,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 stateCookies.push_back(xcb_ewmh_get_wm_state(ewmh, wins[i]));
                 typeCookies.push_back(xcb_ewmh_get_wm_window_type(ewmh, wins[i]));
                 pidCookies.push_back(xcb_ewmh_get_wm_pid(ewmh, wins[i]));
+                desktopCookies.push_back(xcb_get_property(conn, 0, wins[i], net_wm_desktop, XCB_ATOM_CARDINAL, 0, 1));
             }
 
             xcb_size_hints_t normalHints;
@@ -395,7 +399,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             xcb_ewmh_get_extents_reply_t ewmhStrut;
             xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
             xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
-            uint32_t pid;
+            uint32_t pid, desktop;
 
             for (unsigned int i = 0; i < tree->children_len; ++i) {
                 xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(conn, attribCookies[i], nullptr);
@@ -410,16 +414,16 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                     free(geom);
                     continue;
                 }
-                xcb_get_property_reply_t* leader = xcb_get_property_reply(conn, leaderCookies[i], nullptr);
-                if (!leader) {
+                xcb_get_property_reply_t* leaderReply = xcb_get_property_reply(conn, leaderCookies[i], nullptr);
+                if (!leaderReply) {
                     leaderWin = XCB_NONE;
                 } else {
-                    if (leader->type != XCB_ATOM_WINDOW || leader->format != 32 || !leader->length) {
+                    if (leaderReply->type != XCB_ATOM_WINDOW || leaderReply->format != 32 || !leaderReply->length) {
                         leaderWin = XCB_NONE;
                     } else {
-                        leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leader));
+                        leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leaderReply));
                     }
-                    free(leader);
+                    free(leaderReply);
                 }
                 if (!xcb_icccm_get_wm_normal_hints_reply(conn, normalHintsCookies[i], &normalHints, nullptr)) {
                     memset(&normalHints, 0, sizeof(normalHints));
@@ -454,6 +458,17 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 if (!xcb_ewmh_get_wm_pid_reply(ewmh, pidCookies[i], &pid, nullptr)) {
                     pid = 0;
                 }
+                xcb_get_property_reply_t* desktopReply = xcb_get_property_reply(conn, desktopCookies[i], nullptr);
+                if (!desktopReply) {
+                    desktop = 0;
+                } else {
+                    if (desktopReply->type != XCB_ATOM_CARDINAL || desktopReply->format != 32 || !desktopReply->length) {
+                        desktop = 0;
+                    } else {
+                        desktop = *static_cast<uint32_t*>(xcb_get_property_value(desktopReply));
+                    }
+                    free(desktopReply);
+                }
 
                 windows->push_back({
                         wins[i],
@@ -482,7 +497,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                         owm::makeAtoms(ewmhWindowType),
                         owm::makeExtents(ewmhStrut),
                         owm::makeStrutPartial(ewmhStrutPartial),
-                        pid, transientWin, leaderWin
+                        pid, transientWin, leaderWin, desktop
                 });
 
 

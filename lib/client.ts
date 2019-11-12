@@ -2,7 +2,7 @@ import { OWMLib } from "./owm";
 import { Logger } from "./logger";
 import { ContainerItem } from "./container";
 import { Workspace } from "./workspace";
-import { Geometry } from "./utils";
+import { Geometry, Strut } from "./utils";
 import { XCB } from "native";
 
 interface ConfigureArgs {
@@ -25,6 +25,7 @@ export class Client implements ContainerItem
     private _geometry: Geometry;
     private _frameGeometry: Geometry;
     private _floatingGeometry: Geometry;
+    private _strut: Strut;
     private _noinput: boolean;
     private _log: Logger;
     private _type: string;
@@ -34,6 +35,7 @@ export class Client implements ContainerItem
     private _state: Client.State;
     private _workspace: Workspace | undefined;
     private _floating: boolean;
+    private _ignoreWorkspace: boolean;
     private _group: ClientGroup;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number, group: ClientGroup) {
@@ -60,8 +62,23 @@ export class Client implements ContainerItem
             height: window.geometry.height + (border * 2)
         };
         this._floating = false;
+        this._ignoreWorkspace = false;
         this._type = "Client";
         this._group = group;
+
+        const monitors = owm.monitors;
+        const monitor = monitors.monitorByPosition(window.geometry.x, window.geometry.y);
+
+        if (Strut.hasStrut(window.ewmhStrutPartial)) {
+            this._strut = new Strut(window.ewmhStrutPartial);
+        } else {
+            this._strut = new Strut(window.ewmhStrut);
+            this._strut.fillPartial(monitor.screen);
+        }
+
+        if (window.ewmhDesktop === 0xffffffff) {
+            this._ignoreWorkspace = true;
+        }
 
         this._noinput = false;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
@@ -69,6 +86,33 @@ export class Client implements ContainerItem
 
         this._log = owm.logger.prefixed("Client");
         this._state = Client.State.Withdrawn;
+
+        if (Strut.hasStrut(this._strut)) {
+            const strut = this._strut;
+            if (strut.left > 0) {
+                // place this at the left position
+                this._geometry.x = 0;
+                this._geometry.y = strut.left_start_y;
+                this._geometry.width = strut.left;
+                this._geometry.height = strut.left_end_y - strut.left_start_y;
+            } else if (strut.right > 0) {
+                this._geometry.x = monitor.screen.x + monitor.screen.width - strut.right;
+                this._geometry.y = strut.right_start_y;
+                this._geometry.width = strut.right;
+                this._geometry.height = strut.right_end_y - strut.right_start_y;
+            } else if (strut.top > 0) {
+                this._geometry.x = strut.top_start_x;
+                this._geometry.y = 0;
+                this._geometry.width = strut.top_end_x - strut.top_start_x;
+                this._geometry.height = strut.top;
+            } else if (strut.bottom > 0) {
+                this._geometry.x = strut.bottom_start_x;
+                this._geometry.y = monitor.screen.y + monitor.screen.height - strut.bottom;
+                this._geometry.width = strut.bottom_end_x - strut.bottom_start_x;
+                this._geometry.height = strut.bottom;
+            }
+            this.configure(Object.assign({ window: window.window }, this._geometry));
+        }
     }
 
     get root() {
@@ -84,7 +128,11 @@ export class Client implements ContainerItem
     }
 
     get modal() {
-        return this._window.transientFor !== 0 && this._window.ewmhState.includes(this._owm.xcb.atom["_NET_WM_STATE_MODAL"]);
+        return this._window.transientFor !== 0 && this._window.ewmhState.includes(this._owm.xcb.atom._NET_WM_STATE_MODAL);
+    }
+
+    get strut() {
+        return this._strut;
     }
 
     get geometry() {
@@ -200,6 +248,17 @@ export class Client implements ContainerItem
         this.state = v ? Client.State.Normal : Client.State.Withdrawn;
     }
 
+    get ignoreWorkspace() {
+        return this._ignoreWorkspace;
+    }
+
+    set ignoreWorkspace(ignore: boolean) {
+        this._ignoreWorkspace = ignore;
+        if (this._workspace) {
+            this._workspace.relayout();
+        }
+    }
+
     get floating() {
         return this._floating;
     }
@@ -208,6 +267,7 @@ export class Client implements ContainerItem
         if (this._floating === s)
             return;
         this._floating = s;
+        this._owm.relayout();
         if (this._workspace) {
             this._workspace.relayout();
         }
@@ -316,7 +376,7 @@ export class Client implements ContainerItem
         if (cfg.window !== this._window.window) {
             throw new Error("configuring wrong window");
         }
-        if (this._floating) {
+        if (this._floating || this._ignoreWorkspace) {
             // let's do it
             let x, y, width, height;
             if (cfg.x !== undefined) {
@@ -352,6 +412,8 @@ export class Client implements ContainerItem
             const py = this._frameGeometry.y = y - this._border;
             const pwidth = this._frameGeometry.width = width + (this._border * 2);
             const pheight = this._frameGeometry.height = height + (this._border * 2);
+
+            this._log.info("configuring", cfg);
 
             this._owm.xcb.configure_window(this._owm.wm, {
                 window: this._parent,

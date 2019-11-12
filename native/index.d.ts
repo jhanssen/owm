@@ -93,6 +93,7 @@ export namespace XCB {
         readonly ewmhWindowType: number[];
         readonly ewmhStrut: WindowTypes.EWMHExtents;
         readonly ewmhStrutPartial: WindowTypes.EWMHStrutPartial;
+        readonly ewmhDesktop: number;
         readonly geometry: WindowTypes.Geometry;
     }
 

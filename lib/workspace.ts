@@ -23,7 +23,7 @@ export class Workspace
             this._id = id;
         }
         this._name = name;
-        this._container = new Container(owm, monitor.screen);
+        this._container = new Container(owm, Container.Type.TopLevel, monitor.screen);
     }
 
     get id() {

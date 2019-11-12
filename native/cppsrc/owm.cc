@@ -603,6 +603,7 @@ Napi::Value makeWindow(napi_env env, const Window& win)
     nwin.Set("wmProtocols", makeAtomArray(win.wmProtocols));
     nwin.Set("ewmhState", makeAtomArray(win.ewmhState));
     nwin.Set("ewmhWindowType", makeAtomArray(win.ewmhWindowType));
+    nwin.Set("ewmhDesktop", Napi::Number::New(env, win.desktop));
 
     Napi::Object nattributes = Napi::Object::New(env);
     nattributes.Set("bit_gravity", Napi::Number::New(env, win.attributes.bit_gravity));
@@ -2287,7 +2288,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             throw Napi::TypeError::New(env, "request_window_information requires two argument");
         }
 
-#warning should grab the server for this so we don't get any property updates while this all happens
+#warning should grab the server for this so we dont get any property updates while this all happens
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         const uint32_t window = info[1].As<Napi::Number>().Uint32Value();
@@ -2306,6 +2307,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto stateCookie = xcb_ewmh_get_wm_state(wm->ewmh, window);
         auto typeCookie = xcb_ewmh_get_wm_window_type(wm->ewmh, window);
         auto pidCookie = xcb_ewmh_get_wm_pid(wm->ewmh, window);
+        auto desktopCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("_NET_WM_DESKTOP"), XCB_ATOM_CARDINAL, 0, 1);
 
         xcb_size_hints_t normalHints;
         xcb_icccm_wm_hints_t wmHints;
@@ -2316,7 +2318,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         xcb_ewmh_get_extents_reply_t ewmhStrut;
         xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
         xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
-        uint32_t pid;
+        uint32_t pid, desktop;
 
         xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(wm->conn, attribCookie, nullptr);
         xcb_get_geometry_reply_t* geom = xcb_get_geometry_reply(wm->conn, geomCookie, nullptr);
@@ -2325,16 +2327,16 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             free(geom);
             return env.Undefined();
         }
-        xcb_get_property_reply_t* leader = xcb_get_property_reply(wm->conn, leaderCookie, nullptr);
-        if (!leader) {
+        xcb_get_property_reply_t* leaderReply = xcb_get_property_reply(wm->conn, leaderCookie, nullptr);
+        if (!leaderReply) {
             leaderWin = XCB_NONE;
         } else {
-            if (leader->type != XCB_ATOM_WINDOW || leader->format != 32 || !leader->length) {
+            if (leaderReply->type != XCB_ATOM_WINDOW || leaderReply->format != 32 || !leaderReply->length) {
                 leaderWin = XCB_NONE;
             } else {
-                leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leader));
+                leaderWin = *static_cast<xcb_window_t*>(xcb_get_property_value(leaderReply));
             }
-            free(leader);
+            free(leaderReply);
         }
         if (!xcb_icccm_get_wm_normal_hints_reply(wm->conn, normalHintsCookie, &normalHints, nullptr)) {
             memset(&normalHints, 0, sizeof(normalHints));
@@ -2369,6 +2371,17 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         if (!xcb_ewmh_get_wm_pid_reply(wm->ewmh, pidCookie, &pid, nullptr)) {
             pid = 0;
         }
+        xcb_get_property_reply_t* desktopReply = xcb_get_property_reply(wm->conn, desktopCookie, nullptr);
+        if (!desktopReply) {
+            desktop = 0;
+        } else {
+            if (desktopReply->type != XCB_ATOM_CARDINAL || desktopReply->format != 32 || !desktopReply->length) {
+                desktop = 0;
+            } else {
+                desktop = *static_cast<uint32_t*>(xcb_get_property_value(desktopReply));
+            }
+            free(desktopReply);
+        }
 
         const Window win = {
             window,
@@ -2397,7 +2410,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             owm::makeAtoms(ewmhWindowType),
             owm::makeExtents(ewmhStrut),
             owm::makeStrutPartial(ewmhStrutPartial),
-            pid, transientWin, leaderWin
+            pid, transientWin, leaderWin, desktop
         };
 
         if (wmName.name && wmName.name_len) {

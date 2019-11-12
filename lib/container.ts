@@ -1,7 +1,7 @@
 import { OWMLib } from "./owm";
 import { Logger } from "./logger";
 import { LayoutPolicy } from "./policy/layout";
-import { Geometry } from "./utils";
+import { Geometry, Strut } from "./utils";
 import { Workspace } from "./workspace";
 
 export interface ContainerItem
@@ -9,13 +9,16 @@ export interface ContainerItem
     move(x: number, y: number): void;
     resize(width: number, height: number): void;
     readonly geometry: Geometry;
+    readonly strut: Strut;
     workspace: Workspace | undefined;
     visible: boolean;
     floating: boolean;
+    ignoreWorkspace: boolean;
 }
 
 export class Container implements ContainerItem
 {
+    private _owm: OWMLib;
     private _items: ContainerItem[];
     private _layout: LayoutPolicy;
     private _geometry: Geometry;
@@ -24,8 +27,11 @@ export class Container implements ContainerItem
     private _workspace: Workspace | undefined;
     private _visible: boolean;
     private _floating: boolean;
+    private _ignoreWorkspace: boolean;
+    private _containerType: Container.Type;
 
-    constructor(owm: OWMLib, geom: Geometry = {} as Geometry) {
+    constructor(owm: OWMLib, containerType: Container.Type, geom: Geometry = {} as Geometry) {
+        this._owm = owm;
         this._items = [];
         this._layout = owm.policy.layout;
         this._geometry = geom;
@@ -33,6 +39,8 @@ export class Container implements ContainerItem
         this._type = "Container";
         this._visible = false;
         this._floating = false;
+        this._ignoreWorkspace = false;
+        this._containerType = containerType;
     }
 
     get layout() {
@@ -52,6 +60,14 @@ export class Container implements ContainerItem
         this.resize(g.width, g.height);
     }
 
+    get strut() {
+        const strut = new Strut();
+        for (let item of this._items) {
+            strut.unite(item.strut);
+        }
+        return strut;
+    }
+
     get workspace() {
         return this._workspace;
     }
@@ -69,6 +85,15 @@ export class Container implements ContainerItem
         this.relayout();
     }
 
+    get ignoreWorkspace() {
+        return this._ignoreWorkspace;
+    }
+
+    set ignoreWorkspace(ignore: boolean) {
+        this._ignoreWorkspace = ignore;
+        this.relayout();
+    }
+
     get visible() {
         return this._visible;
     }
@@ -77,7 +102,9 @@ export class Container implements ContainerItem
         this._visible = v;
 
         for (let item of this._items) {
-            item.visible = v;
+            if (!item.ignoreWorkspace) {
+                item.visible = v;
+            }
         }
     }
 
@@ -123,7 +150,29 @@ export class Container implements ContainerItem
     relayout() {
         if (!this._layout)
             return;
-        this._layout.layout(this._items, this._geometry);
+        this._layout.layout(this._items, this._calculateGeometry());
+    }
+
+    private _calculateGeometry() {
+        if (this._containerType === Container.Type.TopLevel) {
+            const s = this.strut;
+            if (Strut.hasStrut(s)) {
+                const geom = new Geometry(this._geometry);
+                geom.x += s.left;
+                geom.width -= (s.left + s.right);
+                geom.y += s.top;
+                geom.height -= (s.top + s.bottom);
+                return geom;
+            }
+        }
+        return this._geometry;
+    }
+}
+
+export namespace Container {
+    export enum Type {
+        TopLevel,
+        Item
     }
 }
 

@@ -131,6 +131,7 @@ struct Window
     uint32_t pid;
 
     xcb_window_t transientFor, leader;
+    uint32_t desktop;
 };
 
 typedef std::unordered_map<std::string, xcb_atom_t> Atoms;
