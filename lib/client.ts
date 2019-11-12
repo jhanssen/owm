@@ -357,46 +357,60 @@ export class Client implements ContainerItem
 
     move(x: number, y: number) {
         if (this._constrained) {
-            if (x > this._constrainedGeometry.x)
-                x = this._constrainedGeometry.x;
-            if (y > this._constrainedGeometry.y)
-                y = this._constrainedGeometry.y;
+            this._frameGeometry.x = x;
+            this._frameGeometry.y = y;
+            this._frameGeometry.constrain(this._constrainedGeometry);
+
+            this._geometry.x = this._frameGeometry.x + this._border;
+            this._geometry.y = this._frameGeometry.y + this._border;
+            this._geometry.width = this._frameGeometry.width - (this._border * 2);
+            this._geometry.height = this._frameGeometry.height - (this._border * 2);
+        } else {
+            this._frameGeometry.x = x;
+            this._frameGeometry.y = y;
+            this._geometry.x = x + this._border;
+            this._geometry.y = y + this._border;
         }
 
-        this._log.info("configuring4", this._window.window, x, y);
+        this._log.info("configuring4", this._window.window, this._frameGeometry);
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,
-            x: x,
-            y: y
+            x: this._frameGeometry.x,
+            y: this._frameGeometry.y,
+            width: this._frameGeometry.width,
+            height: this._frameGeometry.height
         });
-        this._frameGeometry.x = x;
-        this._frameGeometry.y = y;
-        this._geometry.x = x + this._border;
-        this._geometry.y = y + this._border;
         this._owm.xcb.flush(this._owm.wm);
     }
 
     resize(width: number, height: number) {
         if (this._constrained) {
-            if (this._geometry.x + width > this._constrainedGeometry.x + this._constrainedGeometry.width)
-                width = (this._constrainedGeometry.x + this._constrainedGeometry.width) - this._geometry.x;
-            if (this._geometry.y + height > this._constrainedGeometry.y + this._constrainedGeometry.height)
-                height = (this._constrainedGeometry.y + this._constrainedGeometry.height) - this._geometry.y;
+            this._frameGeometry.width = width;
+            this._frameGeometry.height = height;
+            this._frameGeometry.constrain(this._constrainedGeometry);
+
+            this._geometry.x = this._frameGeometry.x + this._border;
+            this._geometry.y = this._frameGeometry.y + this._border;
+            this._geometry.width = this._frameGeometry.width - (this._border * 2);
+            this._geometry.height = this._frameGeometry.height - (this._border * 2);
+        } else {
+            this._frameGeometry.width = width;
+            this._frameGeometry.height = height;
+            this._geometry.width = width - (this._border * 2);
+            this._geometry.height = height - (this._border * 2);
         }
 
-        if (width <= (this._border * 2) || height <= (this._border * 2)) {
+        if (this._frameGeometry.width <= (this._border * 2) || this._frameGeometry.height <= (this._border * 2)) {
             throw new Error("size too small");
         }
-        this._log.info("configuring5", this._window.window, width, height);
+        this._log.info("configuring5", this._window.window, this._frameGeometry);
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,
-            width: width,
-            height: height
+            x: this._frameGeometry.x,
+            y: this._frameGeometry.y,
+            width: this._frameGeometry.width,
+            height: this._frameGeometry.height
         });
-        this._frameGeometry.width = width;
-        this._frameGeometry.height = height;
-        this._geometry.width = width - (this._border * 2);
-        this._geometry.height = height - (this._border * 2);
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._window.window,
             width: this._geometry.width,
