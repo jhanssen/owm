@@ -25,6 +25,7 @@ export class Client implements ContainerItem
     private _geometry: Geometry;
     private _frameGeometry: Geometry;
     private _floatingGeometry: Geometry;
+    private _constrainedGeometry: Geometry;
     private _strut: Strut;
     private _noinput: boolean;
     private _log: Logger;
@@ -36,6 +37,7 @@ export class Client implements ContainerItem
     private _workspace: Workspace | undefined;
     private _floating: boolean;
     private _ignoreWorkspace: boolean;
+    private _constrained: boolean;
     private _group: ClientGroup;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number, group: ClientGroup) {
@@ -43,28 +45,19 @@ export class Client implements ContainerItem
         this._parent = parent;
         this._window = window;
         this._border = border;
-        this._geometry = {
-            x: window.geometry.x,
-            y: window.geometry.y,
-            width: window.geometry.width,
-            height: window.geometry.height
-        };
-        this._floatingGeometry = {
-            x: window.geometry.x,
-            y: window.geometry.y,
-            width: window.geometry.width,
-            height: window.geometry.height
-        };
-        this._frameGeometry = {
+        this._geometry = new Geometry(window.geometry);
+        this._floatingGeometry = new Geometry(window.geometry);
+        this._frameGeometry = new Geometry({
             x: window.geometry.x - border,
             y: window.geometry.y - border,
             width: window.geometry.width + (border * 2),
             height: window.geometry.height + (border * 2)
-        };
+        });
         this._floating = false;
         this._ignoreWorkspace = false;
         this._type = "Client";
         this._group = group;
+        this._constrained = false;
 
         const monitors = owm.monitors;
         const monitor = monitors.monitorByPosition(window.geometry.x, window.geometry.y);
@@ -89,30 +82,38 @@ export class Client implements ContainerItem
         this._state = Client.State.Withdrawn;
 
         if (Strut.hasStrut(this._strut)) {
+            this._constrainedGeometry = new Geometry();
+
             const strut = this._strut;
             if (strut.left > 0) {
                 // place this at the left position
-                this._geometry.x = 0;
-                this._geometry.y = strut.left_start_y;
-                this._geometry.width = strut.left;
-                this._geometry.height = strut.left_end_y - strut.left_start_y;
+                this._constrainedGeometry.x = 0;
+                this._constrainedGeometry.y = strut.left_start_y;
+                this._constrainedGeometry.width = strut.left;
+                this._constrainedGeometry.height = strut.left_end_y - strut.left_start_y;
             } else if (strut.right > 0) {
-                this._geometry.x = monitor.screen.x + monitor.screen.width - strut.right;
-                this._geometry.y = strut.right_start_y;
-                this._geometry.width = strut.right;
-                this._geometry.height = strut.right_end_y - strut.right_start_y;
+                this._constrainedGeometry.x = monitor.screen.x + monitor.screen.width - strut.right;
+                this._constrainedGeometry.y = strut.right_start_y;
+                this._constrainedGeometry.width = strut.right;
+                this._constrainedGeometry.height = strut.right_end_y - strut.right_start_y;
             } else if (strut.top > 0) {
-                this._geometry.x = strut.top_start_x;
-                this._geometry.y = 0;
-                this._geometry.width = strut.top_end_x - strut.top_start_x;
-                this._geometry.height = strut.top;
+                this._constrainedGeometry.x = strut.top_start_x;
+                this._constrainedGeometry.y = 0;
+                this._constrainedGeometry.width = strut.top_end_x - strut.top_start_x;
+                this._constrainedGeometry.height = strut.top;
             } else if (strut.bottom > 0) {
-                this._geometry.x = strut.bottom_start_x;
-                this._geometry.y = monitor.screen.y + monitor.screen.height - strut.bottom;
-                this._geometry.width = strut.bottom_end_x - strut.bottom_start_x;
-                this._geometry.height = strut.bottom;
+                this._constrainedGeometry.x = strut.bottom_start_x;
+                this._constrainedGeometry.y = monitor.screen.y + monitor.screen.height - strut.bottom;
+                this._constrainedGeometry.width = strut.bottom_end_x - strut.bottom_start_x;
+                this._constrainedGeometry.height = strut.bottom;
             }
+
+            this._constrained = true;
+            this._geometry.constrain(this._constrainedGeometry);
+
             this.configure(Object.assign({ window: window.window }, this._geometry));
+        } else {
+            this._constrainedGeometry = new Geometry(window.geometry);
         }
     }
 
@@ -257,6 +258,10 @@ export class Client implements ContainerItem
         return this._ignoreWorkspace;
     }
 
+    get constrained() {
+        return this._constrained;
+    }
+
     set ignoreWorkspace(ignore: boolean) {
         this._ignoreWorkspace = ignore;
         if (this._workspace) {
@@ -290,6 +295,7 @@ export class Client implements ContainerItem
             const pwidth = this._frameGeometry.width = width + (this._border * 2);
             const pheight = this._frameGeometry.height = height + (this._border * 2);
 
+            this._log.info("configuring2", this._window.window, px, py, pwidth, pheight);
             this._owm.xcb.configure_window(this._owm.wm, {
                 window: this._parent,
                 x: px, y: py, width: pwidth, height: pheight
@@ -315,6 +321,9 @@ export class Client implements ContainerItem
     }
 
     centerOn(client: Client) {
+        if (this._constrained) {
+            throw new Error("Can't center a constrained client");
+        }
         const cg = client.geometry;
         const cx = ((cg.width / 2) - (this._geometry.width / 2)) + cg.x;
         const cy = ((cg.height / 2) - (this._geometry.height / 2)) + cg.y;
@@ -332,6 +341,7 @@ export class Client implements ContainerItem
         this._frameGeometry.x = px;
         this._frameGeometry.y = py;
 
+        this._log.info("configuring3", this._window.window, px, py, pwidth, pheight);
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,
             x: px, y: py, width: pwidth, height: pheight
@@ -344,6 +354,14 @@ export class Client implements ContainerItem
     }
 
     move(x: number, y: number) {
+        if (this._constrained) {
+            if (x > this._constrainedGeometry.x)
+                x = this._constrainedGeometry.x;
+            if (y > this._constrainedGeometry.y)
+                y = this._constrainedGeometry.y;
+        }
+
+        this._log.info("configuring4", this._window.window, x, y);
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,
             x: x,
@@ -357,9 +375,17 @@ export class Client implements ContainerItem
     }
 
     resize(width: number, height: number) {
+        if (this._constrained) {
+            if (this._geometry.x + width > this._constrainedGeometry.x + this._constrainedGeometry.width)
+                width = (this._constrainedGeometry.x + this._constrainedGeometry.width) - this._geometry.x;
+            if (this._geometry.y + height > this._constrainedGeometry.y + this._constrainedGeometry.height)
+                height = (this._constrainedGeometry.y + this._constrainedGeometry.height) - this._geometry.y;
+        }
+
         if (width <= (this._border * 2) || height <= (this._border * 2)) {
             throw new Error("size too small");
         }
+        this._log.info("configuring5", this._window.window, width, height);
         this._owm.xcb.configure_window(this._owm.wm, {
             window: this._parent,
             width: width,
@@ -381,44 +407,49 @@ export class Client implements ContainerItem
         if (cfg.window !== this._window.window) {
             throw new Error("configuring wrong window");
         }
-        if (this._floating || this._ignoreWorkspace) {
+        let geom: Geometry | undefined;
+        if ((this._floating || this._ignoreWorkspace) && !this._constrained) {
+            geom = new Geometry(this._geometry);
             // let's do it
-            let x, y, width, height;
             if (cfg.x !== undefined) {
-                x = cfg.x;
+                geom.x = cfg.x;
                 this._geometry.x = cfg.x;
                 this._floatingGeometry.x = cfg.x;
-            } else {
-                x = this._geometry.x;
             }
             if (cfg.y !== undefined) {
-                y = cfg.y;
+                geom.y = cfg.y;
                 this._geometry.y = cfg.y;
                 this._floatingGeometry.y = cfg.y;
-            } else {
-                y = this._geometry.y;
             }
             if (cfg.width !== undefined) {
-                width = cfg.width;
+                geom.width = cfg.width;
                 this._geometry.width = cfg.width;
                 this._floatingGeometry.width = cfg.width;
-            } else {
-                width = this._geometry.width;
             }
             if (cfg.height !== undefined) {
-                height = cfg.height;
+                geom.height = cfg.height;
                 this._geometry.height = cfg.height;
                 this._floatingGeometry.height = cfg.height;
-            } else {
-                height = this._geometry.height;
             }
+        } else if ((this._floating || this._ignoreWorkspace) && this._constrained) {
+            // we're constrained by this._constrainedGeometry
+            geom = new Geometry();
+            geom.x = cfg.x !== undefined ? cfg.x : this._geometry.x;
+            geom.y = cfg.y !== undefined ? cfg.y : this._geometry.y;
+            geom.width = cfg.width !== undefined ? cfg.width : this._geometry.width;
+            geom.height = cfg.height !== undefined ? cfg.height : this._geometry.height;
+            geom.constrain(this._constrainedGeometry);
 
-            const px = this._frameGeometry.x = x - this._border;
-            const py = this._frameGeometry.y = y - this._border;
-            const pwidth = this._frameGeometry.width = width + (this._border * 2);
-            const pheight = this._frameGeometry.height = height + (this._border * 2);
+            this._floatingGeometry = new Geometry(geom);
+            this._geometry = new Geometry(geom);
+        }
+        if (geom !== undefined) {
+            const px = this._frameGeometry.x = geom.x - this._border;
+            const py = this._frameGeometry.y = geom.y - this._border;
+            const pwidth = this._frameGeometry.width = geom.width + (this._border * 2);
+            const pheight = this._frameGeometry.height = geom.height + (this._border * 2);
 
-            this._log.info("configuring", cfg);
+            this._log.info("configuring1", this._window.window, cfg, px, py, pwidth, pheight);
 
             this._owm.xcb.configure_window(this._owm.wm, {
                 window: this._parent,
@@ -426,7 +457,7 @@ export class Client implements ContainerItem
             });
             this._owm.xcb.configure_window(this._owm.wm, {
                 window: cfg.window,
-                x: this._border, y: this._border, width: width, height: height
+                x: this._border, y: this._border, width: geom.width, height: geom.height
             });
             this._owm.xcb.flush(this._owm.wm);
         } else {

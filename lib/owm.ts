@@ -543,8 +543,6 @@ export class OWMLib {
         const grabMode = this._xcb.grabMode;
         const events = this._xcb.eventMask.BUTTON_PRESS;
 
-        console.log("create move grab", grabMode.SYNC, this._moveModifierMask, this._root);
-
         this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
                                           button: 1, owner_events: 1, event_mask: events,
                                           pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });

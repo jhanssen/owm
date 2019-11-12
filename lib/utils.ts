@@ -1,3 +1,11 @@
+interface GeometryData
+{
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+}
+
 export class Geometry
 {
     public x: number;
@@ -5,7 +13,7 @@ export class Geometry
     public width: number;
     public height: number;
 
-    constructor(geom: Geometry = {} as Geometry) {
+    constructor(geom: GeometryData = {} as GeometryData) {
         let {
             x = 0,
             y = 0,
@@ -17,6 +25,23 @@ export class Geometry
         this.y = y;
         this.height = height;
         this.width = width;
+    }
+
+    constrain(geom: Geometry) {
+        if (geom.x > this.x) {
+            this.width -= geom.x - this.x;
+            this.x = geom.x;
+        }
+        if (geom.y > this.y) {
+            this.width -= geom.y - this.y;
+            this.y = geom.y;
+        }
+        if (geom.x + geom.width < this.x + this.width) {
+            this.width -= Math.max((this.x + this.width) - (geom.x + geom.width), 0);
+        }
+        if (geom.y + geom.height < this.y + this.height) {
+            this.height -= Math.max((this.y + this.height) - (geom.y + geom.height), 0);
+        }
     }
 }
 

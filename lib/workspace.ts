@@ -1,6 +1,7 @@
 import { XCB } from "native";
 import { OWMLib } from "./owm";
 import { Container, ContainerItem } from "./container";
+import { Geometry } from "./utils";
 import { Client } from "./client";
 import { Monitor } from "./monitor";
 
@@ -102,7 +103,7 @@ export class Workspace
     }
 
     update() {
-        this._container.geometry = this._monitor.screen;
+        this._container.geometry = new Geometry(this._monitor.screen);
         this._container.relayout();
     }
 }
