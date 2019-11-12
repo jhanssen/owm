@@ -651,6 +651,10 @@ export class OWMLib {
         }
         this._xcb.destroy_window(this._wm, client.frame);
         this._xcb.flush(this._wm);
+
+        if (client.ignoreWorkspace) {
+            this.relayout();
+        }
     }
 
     private _parseMoveModifier(mod: string) {
