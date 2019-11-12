@@ -57,7 +57,7 @@ function event(e: OWM.Event) {
     } else if (e.type === "settled") {
         const configDirs = xdgBaseDir.configDirs.slice(0);
         // not sure about cwd() but ok for now
-        configDirs.push(path.join(process.cwd(), "config"));
+        // configDirs.push(path.join(process.cwd(), "config"));
 
         const promises: Promise<void>[] = [];
         configDirs.forEach(dir => { promises.push(loadConfig(dir, lib)); });
