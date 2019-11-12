@@ -29,11 +29,9 @@ export class Geometry
 
     constrain(geom: Geometry) {
         if (geom.x > this.x) {
-            this.width -= geom.x - this.x;
             this.x = geom.x;
         }
         if (geom.y > this.y) {
-            this.width -= geom.y - this.y;
             this.y = geom.y;
         }
         if (geom.x + geom.width < this.x + this.width) {

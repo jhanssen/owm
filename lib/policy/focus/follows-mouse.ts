@@ -31,7 +31,7 @@ export class FocusFollowsMousePolicy implements FocusPolicy
         if (client) {
             client.focus();
         } else {
-            this._policy.owm.revertFocus();
+            // this._policy.owm.revertFocus();
         }
     }
 

@@ -76,7 +76,7 @@ export class Client implements ContainerItem
             monitor.addItem(this);
         }
 
-        this._noinput = false;
+        this._noinput = true;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
             this._noinput = window.wmHints.input === 0;
 
