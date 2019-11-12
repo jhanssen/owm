@@ -23,7 +23,7 @@ export class Workspace
             this._id = id;
         }
         this._name = name;
-        this._container = new Container(owm, Container.Type.TopLevel, monitor.screen);
+        this._container = new Container(owm, Container.Type.TopLevel, monitor);
     }
 
     get id() {
@@ -79,6 +79,9 @@ export class Workspace
     }
 
     addItem(item: ContainerItem) {
+        if (item.ignoreWorkspace) {
+            return;
+        }
         if (item.workspace !== undefined) {
             throw new Error("Item is already on a workspace!");
         }

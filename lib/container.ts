@@ -3,6 +3,7 @@ import { Logger } from "./logger";
 import { LayoutPolicy } from "./policy/layout";
 import { Geometry, Strut } from "./utils";
 import { Workspace } from "./workspace";
+import { Monitor } from "./monitor";
 
 export interface ContainerItem
 {
@@ -21,6 +22,7 @@ export class Container implements ContainerItem
     private _owm: OWMLib;
     private _items: ContainerItem[];
     private _layout: LayoutPolicy;
+    private _monitor: Monitor;
     private _geometry: Geometry;
     private _log: Logger;
     private _type: string;
@@ -30,11 +32,12 @@ export class Container implements ContainerItem
     private _ignoreWorkspace: boolean;
     private _containerType: Container.Type;
 
-    constructor(owm: OWMLib, containerType: Container.Type, geom: Geometry = {} as Geometry) {
+    constructor(owm: OWMLib, containerType: Container.Type, monitor: Monitor) {
         this._owm = owm;
         this._items = [];
         this._layout = owm.policy.layout;
-        this._geometry = geom;
+        this._monitor = monitor;
+        this._geometry = new Geometry(monitor.screen);
         this._log = owm.logger.prefixed("Container");
         this._type = "Container";
         this._visible = false;
@@ -63,6 +66,9 @@ export class Container implements ContainerItem
     get strut() {
         const strut = new Strut();
         for (let item of this._items) {
+            strut.unite(item.strut);
+        }
+        for (let item of this._monitor.items) {
             strut.unite(item.strut);
         }
         return strut;
@@ -128,6 +134,9 @@ export class Container implements ContainerItem
     }
 
     add(item: ContainerItem) {
+        if (item.ignoreWorkspace) {
+            throw new Error("item ignores workspaces");
+        }
         if (this._items.indexOf(item) !== -1) {
             throw new Error("item already exists");
         }

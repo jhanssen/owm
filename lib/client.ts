@@ -78,6 +78,7 @@ export class Client implements ContainerItem
 
         if (window.ewmhDesktop === 0xffffffff) {
             this._ignoreWorkspace = true;
+            monitor.addItem(this);
         }
 
         this._noinput = false;
@@ -188,6 +189,9 @@ export class Client implements ContainerItem
         case Client.State.Normal:
             buf[0] = xcb.icccm.state.NORMAL;
             break;
+        case Client.State.Iconic:
+            buf[0] = xcb.icccm.state.ICONIC;
+            break;
         case Client.State.Withdrawn:
             buf[0] = xcb.icccm.state.WITHDRAWN;
             break;
@@ -206,7 +210,7 @@ export class Client implements ContainerItem
 
         this._state = state;
 
-        let winMask = 0;
+        let winMask = xcb.eventMask.STRUCTURE_NOTIFY;
         let frameMask = 0;
 
         if (state === Client.State.Normal) {
@@ -228,13 +232,14 @@ export class Client implements ContainerItem
             xcb.map_window(this._owm.wm, this._window.window);
             xcb.map_window(this._owm.wm, this._parent);
         } else {
-            // make sure we change the window attributes before unmapping,
-            // otherwise we'll destroy the client when we get the unmap notify
-            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
+            // make sure we don't get an unmap notify
+            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: 0 });
             xcb.change_window_attributes(this._owm.wm, { window: this._parent, event_mask: frameMask });
 
             xcb.unmap_window(this._owm.wm, this._parent);
             xcb.unmap_window(this._owm.wm, this._window.window);
+
+            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
         }
 
         xcb.flush(this._owm.wm);
@@ -245,7 +250,7 @@ export class Client implements ContainerItem
     }
 
     set visible(v: boolean) {
-        this.state = v ? Client.State.Normal : Client.State.Withdrawn;
+        this.state = v ? Client.State.Normal : Client.State.Iconic;
     }
 
     get ignoreWorkspace() {
@@ -523,6 +528,7 @@ export class Client implements ContainerItem
 export namespace Client {
     export enum State {
         Normal,
+        Iconic,
         Withdrawn
     }
 }

@@ -247,7 +247,7 @@ export class OWMLib {
 
         // is this client in a visible workspace?
         const ws = client.workspace;
-        if (ws && ws.visible) {
+        if (client.ignoreWorkspace || (ws && ws.visible)) {
             client.state = Client.State.Normal;
             let focused = false;
             if (focus === true || focus === undefined) {
@@ -259,8 +259,12 @@ export class OWMLib {
             }
             this._xcb.send_expose(this._wm, { window: client.frame, width: client.frameWidth, height: client.frameHeight });
         } else {
-            // no, this window is withdrawn
-            client.state = Client.State.Withdrawn;
+            // no, this window is iconic
+            client.state = Client.State.Iconic;
+        }
+
+        if (client.ignoreWorkspace) {
+            this.relayout();
         }
     }
 
@@ -338,12 +342,18 @@ export class OWMLib {
 
     unmapNotify(event: XCB.UnmapNotify) {
         this._log.info("unmapnotify", event);
-        this._destroyClient(event.window);
+        const client = this.findClient(event.window);
+        if (!client)
+            return;
+        this._destroyClient(client);
     }
 
     destroyNotify(event: XCB.DestroyNotify) {
         this._log.info("destroynotify", event);
-        this._destroyClient(event.window);
+        const client = this.findClient(event.window);
+        if (!client)
+            return;
+        this._destroyClient(client);
     }
 
     focusIn(event: XCB.FocusIn) {
@@ -608,13 +618,15 @@ export class OWMLib {
         }
     }
 
-    private _destroyClient(window: number) {
-        const client = this.findClient(window);
-        if (!client)
-            return;
+    private _destroyClient(client: Client) {
         // if this is our focused client, revert focus somewhere else
+        const window = client.window.window;
         if (client === this._focused) {
             this.revertFocus();
+        }
+        if (client.ignoreWorkspace) {
+            const monitor = this._monitors.monitorByPosition(client.geometry.x, client.geometry.y);
+            monitor.removeItem(client);
         }
         client.group.remove(window);
         if (client.group.deref()) {

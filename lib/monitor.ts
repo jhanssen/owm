@@ -9,11 +9,13 @@ export class Monitor
     private _workspaces: Workspaces;
     private _workspace: Workspace | undefined;
     private _monitors: Monitors;
+    private _items: Set<ContainerItem>;
 
     constructor(monitors: Monitors, screen: XCB.Screen) {
         this._screen = screen;
         this._monitors = monitors;
         this._workspaces = new Workspaces(monitors.owm, this);
+        this._items = new Set<ContainerItem>()
     }
 
     get monitors() {
@@ -35,6 +37,10 @@ export class Monitor
 
     get workspace() {
         return this._workspace;
+    }
+
+    get items() {
+        return this._items;
     }
 
     set workspace(ws: Workspace | undefined) {
@@ -59,6 +65,15 @@ export class Monitor
 
     workspaceByName(name: string): Workspace | undefined {
         return this._workspaces.workspaceByName(name);
+    }
+
+    // for items that skip workspaces
+    addItem(item: ContainerItem) {
+        this._items.add(item);
+    }
+
+    removeItem(item: ContainerItem) {
+        this._items.delete(item);
     }
 }
 
