@@ -66,7 +66,9 @@ export class Client implements ContainerItem
             this._strut = new Strut(window.ewmhStrutPartial);
         } else {
             this._strut = new Strut(window.ewmhStrut);
-            this._strut.fillPartial(monitor.screen);
+            if (Strut.hasStrut(window.ewmhStrut)) {
+                this._strut.fillPartial(monitor.screen);
+            }
         }
 
         if (window.ewmhDesktop === 0xffffffff) {
