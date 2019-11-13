@@ -2,6 +2,7 @@ import { OWMLib } from "./owm";
 import { Logger } from "./logger";
 import { ContainerItem } from "./container";
 import { Workspace } from "./workspace";
+import { Container } from "./container";
 import { Geometry, Strut } from "./utils";
 import { XCB } from "native";
 
@@ -28,6 +29,7 @@ export class Client implements ContainerItem
     private _constrainedGeometry: Geometry;
     private _strut: Strut;
     private _noinput: boolean;
+    private _staysOnTop: boolean;
     private _log: Logger;
     private _type: string;
     private _gc: number | undefined;
@@ -35,6 +37,7 @@ export class Client implements ContainerItem
     private _prevPixel: number | undefined;
     private _state: Client.State;
     private _workspace: Workspace | undefined;
+    private _container: Container | undefined;
     private _floating: boolean;
     private _ignoreWorkspace: boolean;
     private _constrained: boolean;
@@ -54,6 +57,7 @@ export class Client implements ContainerItem
             height: window.geometry.height + (border * 2)
         });
         this._floating = false;
+        this._staysOnTop = false;
         this._ignoreWorkspace = false;
         this._type = "Client";
         this._group = group;
@@ -74,6 +78,10 @@ export class Client implements ContainerItem
         if (window.ewmhDesktop === 0xffffffff) {
             this._ignoreWorkspace = true;
             monitor.addItem(this);
+        }
+
+        if (window.ewmhState.includes(owm.xcb.atom._NET_WM_STATE_ABOVE)) {
+            this._staysOnTop = true;
         }
 
         const dock = window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
@@ -292,6 +300,19 @@ export class Client implements ContainerItem
         }
     }
 
+    get staysOnTop() {
+        return this._staysOnTop;
+    }
+
+    set staysOnTop(s: boolean) {
+        if (this._staysOnTop === s)
+            return;
+        this._staysOnTop = s;
+        if (this._container) {
+            this._container.circulateToTop(this);
+        }
+    }
+
     get floating() {
         return this._floating;
     }
@@ -339,8 +360,46 @@ export class Client implements ContainerItem
         this._workspace = ws;
     }
 
+    get container() {
+        return this._container;
+    }
+
+    set container(ws: Container | undefined) {
+        this._container = ws;
+    }
+
     get group() {
         return this._group;
+    }
+
+    raise(sibling: Client | undefined) {
+        if (!sibling) {
+            if (this._container) {
+                this._container.circulateToTop(this);
+            }
+        } else {
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: this._parent,
+                sibling: sibling._parent,
+                stack_mode: this._owm.xcb.stackMode.ABOVE
+            });
+            this._owm.xcb.flush(this._owm.wm);
+        }
+    }
+
+    lower(sibling: Client | undefined) {
+        if (!sibling) {
+            if (this._container) {
+                this._container.circulateToBottom(this);
+            }
+        } else {
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: this._parent,
+                sibling: sibling._parent,
+                stack_mode: this._owm.xcb.stackMode.BELOW
+            });
+            this._owm.xcb.flush(this._owm.wm);
+        }
     }
 
     centerOn(client: Client) {

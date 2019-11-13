@@ -35,6 +35,9 @@ function loadConfig(dir: string, lib: OWMLib)
 let owm: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB };
 let lib: OWMLib;
 
+const display = stringOption("display");
+const extraConfig = stringOption("config");
+
 function event(e: OWM.Event) {
     //console.log("got event2", e);
 
@@ -56,8 +59,9 @@ function event(e: OWM.Event) {
         });
     } else if (e.type === "settled") {
         const configDirs = xdgBaseDir.configDirs.slice(0);
-        // not sure about cwd() but ok for now
-        // configDirs.push(path.join(process.cwd(), "config"));
+        if (extraConfig) {
+            configDirs.push(extraConfig);
+        }
 
         const promises: Promise<void>[] = [];
         configDirs.forEach(dir => { promises.push(loadConfig(dir, lib)); });
@@ -78,8 +82,6 @@ function event(e: OWM.Event) {
         lib.recreateKeyBindings();
     }
 }
-
-const display = stringOption("display");
 
 native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB }) => {
     console.log("owm started");
