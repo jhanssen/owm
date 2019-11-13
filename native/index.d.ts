@@ -618,11 +618,17 @@ export namespace OWM {
 
 declare function nativeCallback(data: OWM.Event): void;
 
+interface PromiseArgs
+{
+    readonly wm: OWM.WM;
+    readonly xcb: OWM.XCB;
+    readonly xkb: OWM.XKB;
+    readonly ewmh: number;
+}
+
 declare namespace Native
 {
-    export function start(callback: typeof nativeCallback, display?: string): Promise<{ readonly wm: OWM.WM,
-                                                                                        readonly xcb: OWM.XCB
-                                                                                        readonly xkb: OWM.XKB }>;
+    export function start(callback: typeof nativeCallback, display?: string): Promise<PromiseArgs>;
     export function stop(): void;
 }
 

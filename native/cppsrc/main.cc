@@ -24,6 +24,7 @@ struct Data
     std::vector<owm::Request*> requests;
     int wakeup[2];
     Napi::ThreadSafeFunction tsfn;
+    xcb_window_t ewmhWindow;
 };
 
 static Data data;
@@ -251,6 +252,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                                               [](Napi::Env) { // finalizer
                                                   data.thread.join();
                                               });
+    data.ewmhWindow = XCB_WINDOW_NONE;
 
     int ret = pipe2(data.wakeup, O_NONBLOCK);
     if (ret == -1) {
@@ -540,7 +542,6 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 deferred->Reject("Unable to change attributes on the root window");
                 return;
             }
-            xcb_ewmh_set_wm_pid(wm->ewmh, root, getpid());
         }
 
         {
@@ -650,11 +651,24 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             }
         }
 
-        deferred->Resolve([wm](napi_env env) -> Napi::Value {
+        // make our supporting window
+        data.ewmhWindow = xcb_generate_id(wm->conn);
+        xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, data.ewmhWindow, wm->defaultScreen->root, -1, -1, 1, 1, 0,
+                          XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, nullptr);
+        xcb_icccm_set_wm_class(wm->conn, data.ewmhWindow, 7, "owm\0Owm");
+
+        xcb_ewmh_set_supporting_wm_check(wm->ewmh, wm->defaultScreen->root, data.ewmhWindow);
+        xcb_ewmh_set_supporting_wm_check(wm->ewmh, data.ewmhWindow, data.ewmhWindow);
+        xcb_ewmh_set_wm_name(wm->ewmh, data.ewmhWindow, 3, "owm");
+        xcb_ewmh_set_wm_pid(wm->ewmh, data.ewmhWindow, getpid());
+
+        const auto ewmhWindow = data.ewmhWindow;
+        deferred->Resolve([wm, ewmhWindow](napi_env env) -> Napi::Value {
             Napi::Object obj = Napi::Object::New(env);
             obj.Set("xcb", owm::makeXcb(env, wm));
             obj.Set("xkb", owm::makeXkb(env, wm));
             obj.Set("wm", owm::Wrap<std::shared_ptr<owm::WM> >::wrap(env, wm));
+            obj.Set("ewmh", Napi::Number::New(env, ewmhWindow));
             return obj;
         });
         deferred.reset();
@@ -696,11 +710,30 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
         data.tsfn.BlockingCall(settledCallback);
 
+        std::vector<std::function<void()> > cleanups;
+
+        auto cleanup = [&cleanups]() {
+            for (const auto& f : cleanups) {
+                f();
+            }
+        };
+
+        cleanups.push_back([&wm]() {
+            xcb_ewmh_connection_wipe(wm->ewmh);
+            xcb_destroy_window(wm->conn, data.ewmhWindow);
+            free(wm->ewmh);
+            xcb_flush(wm->conn);
+            xcb_disconnect(wm->conn);
+        });
+
         enum { MaxEvents = 5 };
         epoll_event events[MaxEvents];
 
         const auto xkbevent = wm->xkb.event;
         const auto randrevent = wm->randr.event;
+
+        // flush out everything before we enter the event loop
+        xcb_flush(wm->conn);
 
         for (;;) {
             const int count = epoll_wait(epoll, events, MaxEvents, -1);
@@ -751,8 +784,10 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                     }
 
                     std::unique_lock locker(data.mutex);
-                    if (!data.started)
+                    if (!data.started) {
+                        cleanup();
                         return;
+                    }
                     if (!data.requests.empty()) {
                         auto requests = std::move(data.requests);
                         locker.unlock();
