@@ -215,7 +215,7 @@ export class OWMLib {
         const dock = win.ewmhWindowType.includes(this._xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
 
         // reparent to new window
-        const border = dock ? 0 : 10;
+        const border = dock ? 0 : 2;
         const parent = this._xcb.create_window(this._wm, { x: win.geometry.x, y: win.geometry.y,
                                                          width: win.geometry.width + (border * 2),
                                                          height: win.geometry.height + (border * 2),
