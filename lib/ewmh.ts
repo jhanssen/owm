@@ -160,6 +160,7 @@ export class EWMH {
             atom._NET_WM_WINDOW_TYPE_DIALOG,
             atom._NET_WM_STRUT_PARTIAL,
             atom._NET_CLIENT_LIST,
+            atom._NET_WM_DESKTOP,
             atom._NET_CURRENT_DESKTOP,
             atom._NET_NUMBER_OF_DESKTOPS,
             atom._NET_DESKTOP_NAMES,
