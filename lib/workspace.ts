@@ -1,7 +1,7 @@
 import { XCB } from "native";
 import { OWMLib } from "./owm";
 import { Container, ContainerItem } from "./container";
-import { Geometry } from "./utils";
+import { Geometry, Strut } from "./utils";
 import { Client } from "./client";
 import { Monitor } from "./monitor";
 
@@ -12,14 +12,16 @@ export class Workspace
     private _name: string | undefined;
     private _workspaces: Workspaces | undefined;
     private _container: Container;
+    private _owm: OWMLib;
 
     constructor(owm: OWMLib, id: number, name?: string) {
         // to protect from usages from config js
-        if (typeof id !== "number") {
-            throw new Error("Workspace id needs to be a number");
+        if (typeof id !== "number" || id <= 0) {
+            throw new Error("Workspace id needs to be a number > 0");
         }
         this._id = id;
         this._name = name;
+        this._owm = owm;
         this._container = new Container(owm, Container.Type.TopLevel);
     }
 
@@ -68,6 +70,10 @@ export class Workspace
         return this._container;
     }
 
+    get geometry() {
+        return this._container.geometry;
+    }
+
     get visible() {
         return this._container.visible;
     }
@@ -86,6 +92,10 @@ export class Workspace
         }
         item.workspace = this;
         this._container.add(item);
+
+        if (Strut.hasStrut(item.strut)) {
+            this._owm.ewmh.updateWorkarea();
+        }
     }
 
     removeItem(item: ContainerItem) {
@@ -94,6 +104,10 @@ export class Workspace
         }
         item.workspace = undefined;
         this._container.remove(item);
+
+        if (Strut.hasStrut(item.strut)) {
+            this._owm.ewmh.updateWorkarea();
+        }
     }
 
     relayout() {
@@ -107,6 +121,8 @@ export class Workspace
             this._container.geometry = new Geometry();
         }
         this._container.relayout();
+
+        this._owm.ewmh.updateWorkarea();
     }
 
     activate() {
@@ -175,6 +191,9 @@ export class Workspaces
         ws.workspaces = this;
         ws.monitor = this._monitor;
         this._workspaces.add(ws);
+
+        this._owm.ewmh.updateWorkspaces();
+        this._owm.ewmh.updateWorkarea();
     }
 
     removeById(id: number) {
@@ -183,6 +202,9 @@ export class Workspaces
         if (old) {
             old.monitor = undefined;
             this._workspaces.delete(old);
+
+            this._owm.ewmh.updateWorkspaces();
+            this._owm.ewmh.updateWorkarea();
         }
     }
 
@@ -192,6 +214,9 @@ export class Workspaces
         if (old) {
             old.monitor = undefined;
             this._workspaces.delete(old);
+
+            this._owm.ewmh.updateWorkspaces();
+            this._owm.ewmh.updateWorkarea();
         }
     }
 

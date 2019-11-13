@@ -1,10 +1,14 @@
 import { OWMLib } from "./owm";
+import { Geometry } from "./utils";
+import { Workspace } from "./workspace";
 
 export class EWMH {
     private _owm: OWMLib;
+    private _currentWorkspace: number;
 
     constructor(owm: OWMLib) {
         this._owm = owm;
+        this._currentWorkspace = 0;
     }
 
     updateClientList() {
@@ -24,6 +28,112 @@ export class EWMH {
     }
 
     updateWorkarea() {
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        const geoms = new Map<number, Geometry>();
+
+        owm.monitors.forEachWorkspace((ws: Workspace) => {
+            if (geoms.has(ws.id)) {
+                throw new Error(`geom already has workspace ${ws.id}`);
+            }
+            geoms.set(ws.id, ws.geometry);
+            console.log("pre work area", ws.id, ws.geometry, ws.monitor !== undefined, ws.container !== undefined);
+            return true;
+        });
+
+        const waData = new Uint32Array(geoms.size * 4);
+        for (const [num, geom] of geoms) {
+            console.log("work area", num, geom);
+            waData[((num - 1) * 4)] = geom.x;
+            waData[((num - 1) * 4) + 1] = geom.y;
+            waData[((num - 1) * 4) + 2] = geom.width;
+            waData[((num - 1) * 4) + 3] = geom.height;
+        }
+
+        xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
+                                      property: xcb.atom._NET_WORKAREA, type: xcb.atom.CARDINAL,
+                                      format: 32, data: waData });
+        xcb.flush(owm.wm);
+    }
+
+    updateWorkspaces() {
+        // count'em
+
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        let high = 0;
+        const names = new Map<number, string>();
+
+        owm.monitors.forEachWorkspace((ws: Workspace) => {
+            if (ws.id > high) {
+                high = ws.id;
+            }
+            if (ws.name !== undefined) {
+                if (ws.id <= 0 || names.has(ws.id - 1)) {
+                    throw new Error(`error collecting workspace names ${ws.id}`);
+                }
+                names.set(ws.id - 1, ws.name);
+            }
+            return true;
+        });
+
+        if (high <= 0) {
+            throw new Error(`highest workspace ${high}?`);;
+        }
+
+        const wsData = new Uint32Array(1);
+        wsData[0] = high;
+
+        xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
+                                      property: xcb.atom._NET_NUMBER_OF_DESKTOPS, type: xcb.atom.CARDINAL,
+                                      format: 32, data: wsData });
+
+        const nullBuffer = Buffer.alloc(1);
+
+        const nameArray: Buffer[] = [];
+        for (let i = 0; i < high; ++i) {
+            const n = names.get(i);
+            if (n) {
+                nameArray.push(Buffer.from(n));
+            } else {
+                nameArray.push(Buffer.from(`${i + 1}`));
+            }
+            nameArray.push(nullBuffer);
+        }
+
+        const nameBuffer = Buffer.concat(nameArray);
+        console.log("whoa", nameBuffer, nameBuffer instanceof Buffer);
+
+        xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
+                                      property: xcb.atom._NET_DESKTOP_NAMES, type: xcb.atom.UTF8_STRING,
+                                      format: 8, data: nameBuffer });
+        console.log("done whoa");
+
+        xcb.flush(owm.wm);
+    }
+
+    updateCurrentWorkspace(ws: number) {
+        if (ws <= 0) {
+            throw new Error(`can't update current workspace to ${ws}`);
+        }
+        if (ws === this._currentWorkspace) {
+            return;
+        }
+
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        const wsData = new Uint32Array(1);
+        wsData[0] = ws - 1;
+
+        xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
+                                      property: xcb.atom._NET_CURRENT_DESKTOP, type: xcb.atom.CARDINAL,
+                                      format: 32, data: wsData });
+        xcb.flush(owm.wm);
+
+        this._currentWorkspace = ws;
     }
 
     updateSupported() {

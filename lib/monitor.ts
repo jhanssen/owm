@@ -1,6 +1,7 @@
 import { Workspace, Workspaces } from "./workspace";
 import { OWMLib } from "./owm";
 import { ContainerItem } from "./container";
+import { Strut } from "./utils";
 import { XCB, OWM } from "native";
 
 export class Monitor
@@ -56,6 +57,8 @@ export class Monitor
         this._workspace = ws;
         if (this._workspace) {
             this._workspace.visible = true;
+
+            this._monitors.owm.ewmh.updateCurrentWorkspace(this._workspace.id);
         }
     }
 
@@ -70,10 +73,18 @@ export class Monitor
     // for items that skip workspaces
     addItem(item: ContainerItem) {
         this._items.add(item);
+
+        if (Strut.hasStrut(item.strut)) {
+            this._monitors.owm.ewmh.updateWorkarea();
+        }
     }
 
     removeItem(item: ContainerItem) {
         this._items.delete(item);
+
+        if (Strut.hasStrut(item.strut)) {
+            this._monitors.owm.ewmh.updateWorkarea();
+        }
     }
 }
 
@@ -194,7 +205,7 @@ export class Monitors
             this._monitors.delete(key);
         }
 
-        this._owm.events.emit("monitors", { added: newMonitors, deleted: oldMonitors, modified: this._monitors });
         this._monitors = new Map<string, Monitor>([...this._monitors, ...newMonitors]);
+        this._owm.events.emit("monitors", { added: newMonitors, deleted: oldMonitors, modified: this._monitors });
     }
 }

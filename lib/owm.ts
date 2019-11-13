@@ -505,6 +505,12 @@ export class OWMLib {
             this.revertFocus();
             return;
         }
+
+        const ws = client.workspace;
+        if (ws === undefined) {
+            throw new Error("tried to focus client with no workspace");
+        }
+
         let gc;
         if (this._focused) {
             this._focused.framePixel = this._inactiveColor;
@@ -521,6 +527,8 @@ export class OWMLib {
         this._xcb.flush(this._wm);
 
         this._events.emit("clientFocusIn", this._focused);
+
+        this._ewmh.updateCurrentWorkspace(ws.id);
     }
 
     revertFocus() {

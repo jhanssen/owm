@@ -75,9 +75,22 @@ export class Container implements ContainerItem
             this._geometry = new Geometry(monitor.screen);
         }
         this.relayout();
+
+        this._owm.ewmh.updateWorkarea();
     }
 
     get geometry() {
+        if (this._containerType === Container.Type.TopLevel) {
+            const s = this.strut;
+            if (Strut.hasStrut(s)) {
+                const geom = new Geometry(this._geometry);
+                geom.x += s.left;
+                geom.width -= (s.left + s.right);
+                geom.y += s.top;
+                geom.height -= (s.top + s.bottom);
+                return geom;
+            }
+        }
         return this._geometry;
     }
 
@@ -309,22 +322,7 @@ export class Container implements ContainerItem
     relayout() {
         if (!this._layout)
             return;
-        this._layout.layout(this._items, this._calculateGeometry());
-    }
-
-    private _calculateGeometry() {
-        if (this._containerType === Container.Type.TopLevel) {
-            const s = this.strut;
-            if (Strut.hasStrut(s)) {
-                const geom = new Geometry(this._geometry);
-                geom.x += s.left;
-                geom.width -= (s.left + s.right);
-                geom.y += s.top;
-                geom.height -= (s.top + s.bottom);
-                return geom;
-            }
-        }
-        return this._geometry;
+        this._layout.layout(this._items, this.geometry);
     }
 }
 

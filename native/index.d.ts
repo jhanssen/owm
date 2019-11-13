@@ -380,7 +380,7 @@ interface ChangeWindowAttributesArgs {
 interface SendClientMessageArgs {
     readonly window: number;
     readonly type: number;
-    readonly data: ArrayBuffer | XCB_TypedArray;
+    readonly data: ArrayBuffer | XCB_TypedArray | Buffer;
 }
 
 interface SendExposeArgs {
@@ -442,7 +442,7 @@ interface ChangePropertyArgs {
     readonly property: number;
     readonly type: number;
     readonly format: number;
-    readonly data: ArrayBuffer | XCB_TypedArray;
+    readonly data: ArrayBuffer | XCB_TypedArray | Buffer;
 }
 
 interface SetInputFocusArgs {
