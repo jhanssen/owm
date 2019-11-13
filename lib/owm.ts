@@ -34,6 +34,13 @@ interface LaunchOptions
     stdio?: string;
 };
 
+interface OWMOptions
+{
+    display: string | undefined,
+    level: Logger.Level,
+    killTimeout: number
+};
+
 export class OWMLib {
     private readonly _wm: OWM.WM;
     private readonly _xcb: OWM.XCB;
@@ -55,8 +62,8 @@ export class OWMLib {
     private _onsettled: { (): void }[];
     private _activeColor: number;
     private _inactiveColor: number;
-    private _display: string | undefined;
     private _groups: Map<number, ClientGroup>;
+    private _options: OWMOptions;
     private _moveModifier: string;
     private _moveModifierMask: number;
     private _moving: { client: Client, x: number, y: number } | undefined;
@@ -66,15 +73,15 @@ export class OWMLib {
     public readonly Match = Match;
     public readonly KeybindingsMode = KeybindingsMode;
 
-    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, display: string | undefined, loglevel: Logger.Level) {
+    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, options: OWMOptions) {
         this._wm = wm;
         this._xcb = xcb;
         this._xkb = xkb;
         this._settled = false;
-        this._display = display;
         this._onsettled = [];
+        this._options = options;
 
-        this._log = new ConsoleLogger(loglevel);
+        this._log = new ConsoleLogger(options.level);
         this._root = 0;
         this._events = new EventEmitter();
 
@@ -116,7 +123,7 @@ export class OWMLib {
     }
 
     get display() {
-        return this._display || process.env.DISPLAY;
+        return this._options.display || process.env.DISPLAY;
     }
 
     get root() {
@@ -185,6 +192,10 @@ export class OWMLib {
 
         this._releaseMoveGrab();
         this.createMoveGrab();
+    }
+
+    get options() {
+        return this._options;
     }
 
     findClient(window: number): Client | undefined {
@@ -591,9 +602,9 @@ export class OWMLib {
             stdio = "ignore"
         } = opts;
 
-        if (this._display !== undefined) {
+        if (this._options.display !== undefined) {
             env = Object.assign({}, env);
-            env.DISPLAY = this._display;
+            env.DISPLAY = this._options.display;
         }
         const spawnArgs = shellArgs.concat([`${quote([ opts.command ].concat(args))}`]);
         let stdioValue: StdioOptions;

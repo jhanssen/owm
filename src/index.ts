@@ -115,7 +115,11 @@ native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XK
         }
     }
 
-    lib = new OWMLib(data.wm, data.xcb, data.xkb, display, level);
+    lib = new OWMLib(data.wm, data.xcb, data.xkb, {
+        display: display,
+        level: level,
+        killTimeout: options.int("kill-timeout", 1000)
+    });
 }).catch((err: Error) => {
     console.log("error", err);
     native.stop();
