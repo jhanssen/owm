@@ -7,34 +7,24 @@ import { Monitor } from "./monitor";
 
 export class Workspace
 {
-    private _monitor: Monitor;
-    private _id: number | undefined;
+    private _monitor: Monitor | undefined;
+    private _id: number;
     private _name: string | undefined;
     private _workspaces: Workspaces | undefined;
     private _container: Container;
 
-    constructor(owm: OWMLib, monitor: Monitor, id?: number | string, name?: string) {
-        if (typeof id === "string" && name) {
-            throw new Error("Workspace name passed twice");
+    constructor(owm: OWMLib, id: number, name?: string) {
+        // to protect from usages from config js
+        if (typeof id !== "number") {
+            throw new Error("Workspace id needs to be a number");
         }
-        this._monitor = monitor;
-        if (typeof id === "string") {
-            this._name = id;
-        } else {
-            this._id = id;
-        }
+        this._id = id;
         this._name = name;
-        this._container = new Container(owm, Container.Type.TopLevel, monitor);
+        this._container = new Container(owm, Container.Type.TopLevel);
     }
 
     get id() {
         return this._id;
-    }
-
-    set id(id: number | undefined) {
-        if (this._workspaces && id)
-            this._workspaces.removeById(id);
-        this._id = id;
     }
 
     get name() {
@@ -62,7 +52,15 @@ export class Workspace
         return this._monitor;
     }
 
+    set monitor(monitor: Monitor | undefined) {
+        this._monitor = monitor;
+        this._container.monitor = monitor;
+    }
+
     get outputs() {
+        if (!this._monitor) {
+            return [];
+        }
         return this._monitor.screen.outputs;
     }
 
@@ -103,12 +101,17 @@ export class Workspace
     }
 
     update() {
-        this._container.geometry = new Geometry(this._monitor.screen);
+        if (this._monitor) {
+            this._container.geometry = new Geometry(this._monitor.screen);
+        } else {
+            this._container.geometry = new Geometry();
+        }
         this._container.relayout();
     }
 
     activate() {
-        this._monitor.workspace = this;
+        if (this._monitor)
+            this._monitor.workspace = this;
     }
 }
 
@@ -161,9 +164,8 @@ export class Workspaces
         const name = ws.name;
         const id = ws.id;
         if (name || id) {
-            ws.monitor.monitors.forEachWorkspace((sub: Workspace) => {
-                if (name && sub.name === name ||
-                    id && sub.id === id) {
+            this._monitor.monitors.forEachWorkspace((sub: Workspace) => {
+                if (sub.id === id || name && sub.name === name) {
                     throw new Error(`Workspace not uniquely named ${id} ${name}`);
                 }
                 return true;
@@ -171,6 +173,7 @@ export class Workspaces
         }
 
         ws.workspaces = this;
+        ws.monitor = this._monitor;
         this._workspaces.add(ws);
     }
 
@@ -178,6 +181,7 @@ export class Workspaces
         // remove any workspace existing with newId
         const old = this.workspaceById(id);
         if (old) {
+            old.monitor = undefined;
             this._workspaces.delete(old);
         }
     }
@@ -186,6 +190,7 @@ export class Workspaces
         // remove any workspace existing with newId
         const old = this.workspaceByName(name);
         if (old) {
+            old.monitor = undefined;
             this._workspaces.delete(old);
         }
     }

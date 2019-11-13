@@ -68,11 +68,11 @@ function init(owmlib) {
         // console.log("got screens?", screens, owmlib.Workspace);
         if (monitors.added) {
             for (const [key, monitor] of monitors.added) {
-                const ws1 = new owmlib.Workspace(owmlib, monitor, 1);
+                const ws1 = new owmlib.Workspace(owmlib, 1);
                 monitor.workspaces.add(ws1);
                 monitor.workspace = ws1;
 
-                const ws2 = new owmlib.Workspace(owmlib, monitor, 2);
+                const ws2 = new owmlib.Workspace(owmlib, 2);
                 monitor.workspaces.add(ws2);
             }
         }

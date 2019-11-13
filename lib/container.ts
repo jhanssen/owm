@@ -26,7 +26,7 @@ export class Container implements ContainerItem
     private _owm: OWMLib;
     private _items: ContainerItem[];
     private _layout: LayoutPolicy;
-    private _monitor: Monitor;
+    private _monitor: Monitor | undefined;
     private _geometry: Geometry;
     private _log: Logger;
     private _type: string;
@@ -38,12 +38,16 @@ export class Container implements ContainerItem
     private _ignoreWorkspace: boolean;
     private _containerType: Container.Type;
 
-    constructor(owm: OWMLib, containerType: Container.Type, monitor: Monitor) {
+    constructor(owm: OWMLib, containerType: Container.Type, monitor?: Monitor) {
         this._owm = owm;
         this._items = [];
         this._layout = owm.policy.layout;
         this._monitor = monitor;
-        this._geometry = new Geometry(monitor.screen);
+        if (monitor) {
+            this._geometry = new Geometry(monitor.screen);
+        } else {
+            this._geometry = new Geometry();
+        }
         this._log = owm.logger.prefixed("Container");
         this._type = "Container";
         this._visible = false;
@@ -61,6 +65,18 @@ export class Container implements ContainerItem
         this._layout = policy;
     }
 
+    get monitor() {
+        return this._monitor;
+    }
+
+    set monitor(monitor: Monitor | undefined) {
+        this._monitor = monitor;
+        if (monitor) {
+            this._geometry = new Geometry(monitor.screen);
+        }
+        this.relayout();
+    }
+
     get geometry() {
         return this._geometry;
     }
@@ -75,8 +91,10 @@ export class Container implements ContainerItem
         for (let item of this._items) {
             strut.unite(item.strut);
         }
-        for (let item of this._monitor.items) {
-            strut.unite(item.strut);
+        if (this._monitor) {
+            for (let item of this._monitor.items) {
+                strut.unite(item.strut);
+            }
         }
         return strut;
     }
