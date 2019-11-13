@@ -1,4 +1,5 @@
 import { XCB, OWM } from "native";
+import { EWMH } from "./ewmh";
 import { Policy } from "./policy";
 import { Keybindings, KeybindingsMode } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
@@ -37,6 +38,7 @@ export class OWMLib {
     private readonly _wm: OWM.WM;
     private readonly _xcb: OWM.XCB;
     private readonly _xkb: OWM.XKB;
+    private _ewmh: EWMH;
     private _clients: Client[];
     private _matches: Set<Match>;
     private _monitors: Monitors;
@@ -78,6 +80,8 @@ export class OWMLib {
 
         this._policy = new Policy(this);
 
+        this._ewmh = new EWMH(this);
+
         this._clients = [];
         this._matches = new Set<Match>();
         this._monitors = new Monitors(this);
@@ -105,6 +109,10 @@ export class OWMLib {
 
     get xkb() {
         return this._xkb;
+    }
+
+    get ewmh() {
+        return this._ewmh;
     }
 
     get display() {
@@ -260,7 +268,7 @@ export class OWMLib {
         this._log.info("client", win.window, win.wmClass, parent);
         this._clients.push(client);
 
-        this._updateClientList();
+        this._ewmh.updateClientList();
 
         for (let m of this._matches) {
             m.match(client);
@@ -308,7 +316,8 @@ export class OWMLib {
         this._monitors.update(screens.entries);
 
         process.nextTick(() => {
-            this._updateSupported();
+            this._ewmh.updateSupported();
+            this._ewmh.updateViewport();
         });
     }
 
@@ -699,7 +708,7 @@ export class OWMLib {
 
         this._clients.splice(idx, 1);
 
-        this._updateClientList();
+        this._ewmh.updateClientList();
 
         this._clientsByWindow.delete(window);
         this._clientsByFrame.delete(client.frame);
@@ -753,61 +762,6 @@ export class OWMLib {
 
     private _releaseMoveGrab() {
         this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 1 });
-        this._xcb.flush(this._wm);
-    }
-
-    private _updateClientList() {
-        const clients = this._clients;
-        const clientData = new Uint32Array(clients.length);
-        for (let i = 0; i < clients.length; ++i) {
-            clientData[i] = clients[i].window.window;
-        }
-
-        this._xcb.change_property(this._wm, { window: this._root, mode: this._xcb.propMode.REPLACE,
-                                              property: this._xcb.atom._NET_CLIENT_LIST, type: this._xcb.atom.WINDOW,
-                                              format: 32, data: clientData });
-        this._xcb.flush(this._wm);
-    }
-
-    private _updateSupported() {
-        const atom = this._xcb.atom;
-
-        const supportedAtoms = [
-            atom._NET_SUPPORTED,
-            atom._NET_SUPPORTING_WM_CHECK,
-            atom._NET_FRAME_EXTENTS,
-            atom._NET_WM_ALLOWED_ACTIONS,
-            atom._NET_WM_NAME,
-            atom._NET_WM_MOVERESIZE,
-            atom._NET_WM_PID,
-            atom._NET_WM_STATE_FULLSCREEN,
-            atom._NET_WM_STATE_MODAL,
-            atom._NET_WM_STATE_HIDDEN,
-            atom._NET_WM_STATE_FOCUSED,
-            atom._NET_WM_STATE,
-            atom._NET_WM_WINDOW_TYPE,
-            atom._NET_WM_WINDOW_TYPE_NORMAL,
-            atom._NET_WM_WINDOW_TYPE_DOCK,
-            atom._NET_WM_WINDOW_TYPE_DIALOG,
-            atom._NET_WM_STRUT_PARTIAL,
-            atom._NET_CLIENT_LIST,
-            atom._NET_CURRENT_DESKTOP,
-            atom._NET_NUMBER_OF_DESKTOPS,
-            atom._NET_DESKTOP_NAMES,
-            atom._NET_DESKTOP_VIEWPORT,
-            atom._NET_ACTIVE_WINDOW,
-            atom._NET_CLOSE_WINDOW,
-            atom._NET_MOVERESIZE_WINDOW
-        ];
-
-        const supportedData = new Uint32Array(supportedAtoms.length);
-        for (let i = 0; i < supportedAtoms.length; ++i) {
-            supportedData[i] = supportedAtoms[i];
-        }
-
-        this._xcb.change_property(this._wm, { window: this._root, mode: this._xcb.propMode.REPLACE,
-                                              property: this._xcb.atom._NET_SUPPORTED, type: this._xcb.atom.ATOM,
-                                              format: 32, data: supportedData });
         this._xcb.flush(this._wm);
     }
 };
