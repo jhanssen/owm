@@ -306,6 +306,10 @@ export class OWMLib {
         this._log.info("screens", screens);
         this._root = screens.root;
         this._monitors.update(screens.entries);
+
+        process.nextTick(() => {
+            this._updateSupported();
+        });
     }
 
     mapRequest(event: XCB.MapRequest) {
@@ -762,6 +766,46 @@ export class OWMLib {
         this._xcb.change_property(this._wm, { window: this._root, mode: this._xcb.propMode.REPLACE,
                                               property: this._xcb.atom._NET_CLIENT_LIST, type: this._xcb.atom.WINDOW,
                                               format: 32, data: clientData });
+        this._xcb.flush(this._wm);
+    }
+
+    private _updateSupported() {
+        const atom = this._xcb.atom;
+
+        const supportedAtoms = [
+            atom._NET_SUPPORTED,
+            atom._NET_SUPPORTING_WM_CHECK,
+            atom._NET_WM_NAME,
+            atom._NET_WM_MOVERESIZE,
+            atom._NET_WM_STATE_STICKY,
+            atom._NET_WM_STATE_FULLSCREEN,
+            atom._NET_WM_STATE_MODAL,
+            atom._NET_WM_STATE_HIDDEN,
+            atom._NET_WM_STATE_FOCUSED,
+            atom._NET_WM_STATE,
+            atom._NET_WM_WINDOW_TYPE,
+            atom._NET_WM_WINDOW_TYPE_NORMAL,
+            atom._NET_WM_WINDOW_TYPE_DOCK,
+            atom._NET_WM_WINDOW_TYPE_DIALOG,
+            atom._NET_WM_STRUT_PARTIAL,
+            atom._NET_CLIENT_LIST,
+            atom._NET_CURRENT_DESKTOP,
+            atom._NET_NUMBER_OF_DESKTOPS,
+            atom._NET_DESKTOP_NAMES,
+            atom._NET_DESKTOP_VIEWPORT,
+            atom._NET_ACTIVE_WINDOW,
+            atom._NET_CLOSE_WINDOW,
+            atom._NET_MOVERESIZE_WINDOW
+        ];
+
+        const supportedData = new Uint32Array(supportedAtoms.length);
+        for (let i = 0; i < supportedAtoms.length; ++i) {
+            supportedData[i] = supportedAtoms[i];
+        }
+
+        this._xcb.change_property(this._wm, { window: this._root, mode: this._xcb.propMode.REPLACE,
+                                              property: this._xcb.atom._NET_SUPPORTED, type: this._xcb.atom.ATOM,
+                                              format: 32, data: supportedData });
         this._xcb.flush(this._wm);
     }
 };
