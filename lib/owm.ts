@@ -37,7 +37,7 @@ export class OWMLib {
     private readonly _wm: OWM.WM;
     private readonly _xcb: OWM.XCB;
     private readonly _xkb: OWM.XKB;
-    private _clients: Set<Client>;
+    private _clients: Client[];
     private _matches: Set<Match>;
     private _monitors: Monitors;
     private _currentTime: number;
@@ -78,7 +78,7 @@ export class OWMLib {
 
         this._policy = new Policy(this);
 
-        this._clients = new Set<Client>();
+        this._clients = [];
         this._matches = new Set<Match>();
         this._monitors = new Monitors(this);
         this._clientsByWindow = new Map<number, Client>();
@@ -115,7 +115,7 @@ export class OWMLib {
         return this._root;
     }
 
-    get clients(): Set<Client> {
+    get clients() {
         return this._clients;
     }
 
@@ -258,7 +258,9 @@ export class OWMLib {
         this._clientsByWindow.set(win.window, client);
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, win.wmClass, parent);
-        this._clients.add(client);
+        this._clients.push(client);
+
+        this._updateClientList();
 
         for (let m of this._matches) {
             m.match(client);
@@ -613,7 +615,7 @@ export class OWMLib {
             });
             this._xcb.flush(this._wm);
         }
-        this._clients.clear();
+        this._clients = [];
     }
 
     handleXCB(e: OWM.Event) {
@@ -686,6 +688,15 @@ export class OWMLib {
             this._groups.delete(client.group.leaderWindow);
         }
 
+        const idx = this._clients.indexOf(client);
+        if (idx === -1) {
+            throw new Error("client not in list of clients?");
+        }
+
+        this._clients.splice(idx, 1);
+
+        this._updateClientList();
+
         this._clientsByWindow.delete(window);
         this._clientsByFrame.delete(client.frame);
         const ws = client.workspace;
@@ -738,6 +749,19 @@ export class OWMLib {
 
     private _releaseMoveGrab() {
         this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 1 });
+        this._xcb.flush(this._wm);
+    }
+
+    private _updateClientList() {
+        const clients = this._clients;
+        const clientData = new Uint32Array(clients.length);
+        for (let i = 0; i < clients.length; ++i) {
+            clientData[i] = clients[i].window.window;
+        }
+
+        this._xcb.change_property(this._wm, { window: this._root, mode: this._xcb.propMode.REPLACE,
+                                              property: this._xcb.atom._NET_CLIENT_LIST, type: this._xcb.atom.WINDOW,
+                                              format: 32, data: clientData });
         this._xcb.flush(this._wm);
     }
 };
