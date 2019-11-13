@@ -666,9 +666,9 @@ export class Client implements ContainerItem
         return true;
     }
 
-    kill() {
+    kill(force?: boolean) {
         const deleteWindow = this._owm.xcb.atom.WM_DELETE_WINDOW;
-        if (this._window.wmProtocols.includes(deleteWindow)) {
+        if (!force && this._window.wmProtocols.includes(deleteWindow)) {
             this._log.info("sending client delete message");
             const data = new Uint32Array(1);
             data[0] = deleteWindow;
@@ -676,11 +676,22 @@ export class Client implements ContainerItem
                                                               type: this._owm.xcb.atom.WM_PROTOCOLS,
                                                               data: data });
             this._owm.xcb.flush(this._owm.wm);
+
+            // make sure the client dies
+            const win = this._window.window;
+            const owm = this._owm;
+            setTimeout(() => {
+                const client = owm.findClientByWindow(win);
+                if (client) {
+                    client.kill(true);
+                }
+            }, this._owm.options.killTimeout);
         } else if (this._window.pid > 0) {
             this._log.info("killing pid");
             process.kill(this._window.pid);
         } else {
-            this._log.error("can't kill, maybe do xcb_destroy_window()?", this._window.wmClass);
+            this._log.info("killing client");
+            this._owm.xcb.kill_client(this._owm.wm, this._window.window);
         }
     }
 

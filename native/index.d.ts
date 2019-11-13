@@ -598,6 +598,7 @@ export namespace OWM {
         unmap_window(wm: OWM.WM, window: number): void;
         destroy_window(wm: OWM.WM, window: number): void;
         request_window_information(wm: OWM.WM, window: number): XCB.Window | undefined;
+        kill_client(wm: OWM.WM, window: number): void;
         free_gc(wm: OWM.WM, gc: number): void;
         flush(wm: OWM.WM): void;
     }

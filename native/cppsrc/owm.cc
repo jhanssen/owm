@@ -1587,6 +1587,21 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("kill_client", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "kill_client requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        const auto resource = info[1].As<Napi::Number>().Uint32Value();
+
+        xcb_kill_client(wm->conn, resource);
+
+        return env.Undefined();
+    }));
+
     xcb.Set("change_save_set", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
