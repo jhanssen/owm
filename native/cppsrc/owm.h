@@ -109,6 +109,7 @@ struct Window
     } wmClass;
 
     std::string wmName;
+    std::string ewmhName;
 
     std::vector<xcb_atom_t> wmProtocols, ewmhState, ewmhWindowType;
 
@@ -551,6 +552,14 @@ inline std::string makeString(const xcb_icccm_get_text_property_reply_t& in)
 {
     if (in.format == 8 && in.name && in.name_len > 0) {
         return std::string(in.name, in.name_len);
+    }
+    return std::string();
+}
+
+inline std::string makeString(const xcb_ewmh_get_utf8_strings_reply_t& in)
+{
+    if (in.strings && in.strings_len > 0) {
+        return std::string(in.strings, in.strings_len);
     }
     return std::string();
 }

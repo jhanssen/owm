@@ -601,6 +601,7 @@ Napi::Value makeWindow(napi_env env, const Window& win)
     nwin.Set("leader", Napi::Number::New(env, win.leader));
     nwin.Set("wmName", Napi::String::New(env, win.wmName));
     nwin.Set("wmProtocols", makeAtomArray(win.wmProtocols));
+    nwin.Set("ewmhName", Napi::String::New(env, win.ewmhName));
     nwin.Set("ewmhState", makeAtomArray(win.ewmhState));
     nwin.Set("ewmhWindowType", makeAtomArray(win.ewmhWindowType));
     nwin.Set("ewmhDesktop", Napi::Number::New(env, win.desktop));
@@ -2340,6 +2341,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto classCookie = xcb_icccm_get_wm_class(wm->conn, window);
         auto nameCookie = xcb_icccm_get_wm_name(wm->conn, window);
         auto protocolsCookie = xcb_icccm_get_wm_protocols(wm->conn, window, wm->atoms.at("WM_PROTOCOLS"));
+        auto ewmhNameCookie = xcb_ewmh_get_wm_name(wm->ewmh, window);
         auto strutCookie = xcb_ewmh_get_wm_strut(wm->ewmh, window);
         auto partialStrutCookie = xcb_ewmh_get_wm_strut_partial(wm->ewmh, window);
         auto stateCookie = xcb_ewmh_get_wm_state(wm->ewmh, window);
@@ -2351,6 +2353,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         xcb_icccm_wm_hints_t wmHints;
         xcb_icccm_get_wm_class_reply_t wmClass;
         xcb_icccm_get_text_property_reply_t wmName;
+        xcb_ewmh_get_utf8_strings_reply_t ewmhName;
         xcb_window_t transientWin, leaderWin;
         xcb_icccm_get_wm_protocols_reply_t wmProtocols;
         xcb_ewmh_get_extents_reply_t ewmhStrut;
@@ -2390,6 +2393,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
         if (!xcb_icccm_get_wm_name_reply(wm->conn, nameCookie, &wmName, nullptr)) {
             memset(&wmName, 0, sizeof(wmName));
+        }
+        if (!xcb_ewmh_get_wm_name_reply(wm->ewmh, ewmhNameCookie, &ewmhName, nullptr)) {
+            memset(&ewmhName, 0, sizeof(ewmhName));
         }
         if (!xcb_icccm_get_wm_protocols_reply(wm->conn, protocolsCookie, &wmProtocols, nullptr)) {
             memset(&wmProtocols, 0, sizeof(wmProtocols));
@@ -2443,6 +2449,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             owm::makeWMHints(wmHints),
             owm::makeWMClass(wmClass),
             owm::makeString(wmName),
+            owm::makeString(ewmhName),
             owm::makeAtoms(wmProtocols),
             owm::makeAtoms(ewmhState),
             owm::makeAtoms(ewmhWindowType),
@@ -2459,6 +2466,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
         if (wmProtocols.atoms && wmProtocols.atoms_len) {
             xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
+        }
+        if (ewmhName.strings && ewmhName.strings_len) {
+            xcb_ewmh_get_utf8_strings_reply_wipe(&ewmhName);
         }
         if (ewmhState.atoms && ewmhState.atoms_len) {
             xcb_ewmh_get_atoms_reply_wipe(&ewmhState);

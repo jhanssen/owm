@@ -89,6 +89,7 @@ export namespace XCB {
         readonly wmClass: WindowTypes.WMClass;
         readonly wmName: string;
         readonly wmProtocols: number[];
+        readonly ewmhName: string;
         readonly ewmhState: number[];
         readonly ewmhWindowType: number[];
         readonly ewmhStrut: WindowTypes.EWMHExtents;

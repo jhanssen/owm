@@ -342,6 +342,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             std::vector<xcb_get_property_cookie_t> hintsCookies;
             std::vector<xcb_get_property_cookie_t> classCookies;
             std::vector<xcb_get_property_cookie_t> nameCookies;
+            std::vector<xcb_get_property_cookie_t> ewmhNameCookies;
             std::vector<xcb_get_property_cookie_t> protocolsCookies;
             std::vector<xcb_get_property_cookie_t> strutCookies;
             std::vector<xcb_get_property_cookie_t> partialStrutCookies;
@@ -362,6 +363,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             hintsCookies.reserve(tree->children_len);
             classCookies.reserve(tree->children_len);
             nameCookies.reserve(tree->children_len);
+            ewmhNameCookies.reserve(tree->children_len);
             protocolsCookies.reserve(tree->children_len);
             strutCookies.reserve(tree->children_len);
             partialStrutCookies.reserve(tree->children_len);
@@ -383,6 +385,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 hintsCookies.push_back(xcb_icccm_get_wm_hints(conn, wins[i]));
                 classCookies.push_back(xcb_icccm_get_wm_class(conn, wins[i]));
                 nameCookies.push_back(xcb_icccm_get_wm_name(conn, wins[i]));
+                ewmhNameCookies.push_back(xcb_ewmh_get_wm_name(ewmh, wins[i]));
                 protocolsCookies.push_back(xcb_icccm_get_wm_protocols(conn, wins[i], wm_protocols));
                 strutCookies.push_back(xcb_ewmh_get_wm_strut(ewmh, wins[i]));
                 partialStrutCookies.push_back(xcb_ewmh_get_wm_strut_partial(ewmh, wins[i]));
@@ -401,6 +404,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             xcb_ewmh_get_extents_reply_t ewmhStrut;
             xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
             xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
+            xcb_ewmh_get_utf8_strings_reply_t ewmhName;
             uint32_t pid, desktop;
 
             for (unsigned int i = 0; i < tree->children_len; ++i) {
@@ -441,6 +445,9 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 }
                 if (!xcb_icccm_get_wm_name_reply(conn, nameCookies[i], &wmName, nullptr)) {
                     memset(&wmName, 0, sizeof(wmName));
+                }
+                if (!xcb_ewmh_get_wm_name_reply(ewmh, ewmhNameCookies[i], &ewmhName, nullptr)) {
+                    memset(&ewmhName, 0, sizeof(ewmhName));
                 }
                 if (!xcb_icccm_get_wm_protocols_reply(conn, protocolsCookies[i], &wmProtocols, nullptr)) {
                     memset(&wmProtocols, 0, sizeof(wmProtocols));
@@ -494,6 +501,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                         owm::makeWMHints(wmHints),
                         owm::makeWMClass(wmClass),
                         owm::makeString(wmName),
+                        owm::makeString(ewmhName),
                         owm::makeAtoms(wmProtocols),
                         owm::makeAtoms(ewmhState),
                         owm::makeAtoms(ewmhWindowType),
@@ -511,6 +519,9 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 }
                 if (wmProtocols.atoms && wmProtocols.atoms_len) {
                     xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
+                }
+                if (ewmhName.strings && ewmhName.strings_len) {
+                    xcb_ewmh_get_utf8_strings_reply_wipe(&ewmhName);
                 }
                 if (ewmhState.atoms && ewmhState.atoms_len) {
                     xcb_ewmh_get_atoms_reply_wipe(&ewmhState);
