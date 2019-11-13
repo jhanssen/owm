@@ -106,6 +106,10 @@ export class Workspace
         this._container.geometry = new Geometry(this._monitor.screen);
         this._container.relayout();
     }
+
+    activate() {
+        this._monitor.workspace = this;
+    }
 }
 
 export class Workspaces

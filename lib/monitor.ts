@@ -96,13 +96,18 @@ export class Monitors
     }
 
     monitorByPosition(x: number, y: number): Monitor {
+        let first: Monitor | undefined;
         for (const [key, monitor] of this._monitors) {
+            if (!first)
+                first = monitor;
             if (x >= monitor.screen.x && x <= monitor.screen.x + monitor.screen.width &&
                 y >= monitor.screen.y && y <= monitor.screen.y + monitor.screen.height) {
                 return monitor;
             }
         }
-        throw new Error(`No monitor matching x/y ${x}/${y}`);
+        if (!first)
+            throw new Error(`No monitor matching x/y ${x}/${y}`);
+        return first;
     }
 
     monitorByOutput(name: string) {

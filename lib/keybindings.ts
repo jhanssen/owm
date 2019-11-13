@@ -145,6 +145,7 @@ export class KeybindingsMode
             this._parent.enterMode(mode);
             this._parent.owm.xcb.allow_events(this._parent.owm.wm, { mode: this._parent.owm.xcb.allow.ASYNC_KEYBOARD,
                                                                      time: this._parent.owm.currentTime });
+            this._parent.owm.xcb.flush(this._parent.owm.wm);
         }, true);
         keybinding.recreate();
         this._bindings.set(binding, keybinding);
@@ -186,6 +187,7 @@ export class Keybindings
         this._add(binding, (bindings: Keybindings, binding: string) => {
             this.enterMode(mode);
             this._owm.xcb.allow_events(this._owm.wm, { mode: this._owm.xcb.allow.ASYNC_KEYBOARD, time: this._owm.currentTime });
+            this._owm.xcb.flush(this._owm.wm);
         }, true);
     }
 

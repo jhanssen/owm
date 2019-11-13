@@ -7,8 +7,9 @@ import { Monitors } from "./monitor";
 import { Client, ClientGroup } from "./client";
 import { Match } from "./match";
 import { EventEmitter } from "events";
-import { spawn } from "child_process";
+import { spawn, StdioOptions } from "child_process";
 import { default as hexRgb } from "hex-rgb";
+import { quote } from "shell-quote";
 
 interface ClientInternal
 {
@@ -21,6 +22,16 @@ function makePixel(hex: string): number
     const rgba = hexRgb(hex);
     return ((rgba.alpha * 255) << 24) | (rgba.red << 16) | (rgba.green << 8) | rgba.blue;
 }
+
+interface LaunchOptions
+{
+    command: string;
+    detached?: boolean;
+    shell?: string;
+    shellArgs?: string[];
+    env?: { [key: string]: string };
+    stdio?: string;
+};
 
 export class OWMLib {
     private readonly _wm: OWM.WM;
@@ -48,6 +59,7 @@ export class OWMLib {
     private _moveModifierMask: number;
     private _moving: { client: Client, x: number, y: number } | undefined;
 
+    public readonly Client = Client;
     public readonly Workspace = Workspace;
     public readonly Match = Match;
     public readonly KeybindingsMode = KeybindingsMode;
@@ -93,6 +105,10 @@ export class OWMLib {
 
     get xkb() {
         return this._xkb;
+    }
+
+    get display() {
+        return this._display || process.env.DISPLAY;
     }
 
     get root() {
@@ -340,6 +356,16 @@ export class OWMLib {
         this._log.info("configurenotify", event.window);
     }
 
+    mapNotify(event: XCB.MapNotify) {
+        this._log.info("mapnotify", event);
+        const client = this.findClient(event.window);
+        if (!client)
+            return;
+        if (this.focused == client) {
+            client.focus();
+        }
+    }
+
     unmapNotify(event: XCB.UnmapNotify) {
         this._log.info("unmapnotify", event);
         const client = this.findClient(event.window);
@@ -524,19 +550,40 @@ export class OWMLib {
         this._onsettled = [];
     }
 
-    launch(cmd: string, ...args: string[]) {
-        let env = process.env;
+    launch(opts: string | LaunchOptions, ...args: string[]) {
+        if (typeof opts === "string")
+            opts = { command: opts };
+
+        let {
+            env = process.env,
+            command = opts.command,
+            detached = true,
+            shell = "/bin/sh",
+            shellArgs = [ "-c" ],
+            stdio = "ignore"
+        } = opts;
+
         if (this._display !== undefined) {
             env = Object.assign({}, env);
             env.DISPLAY = this._display;
         }
-        const subprocess = spawn(cmd, args, {
-            detached: true,
-            stdio: 'ignore',
+        const spawnArgs = shellArgs.concat([`${quote([ opts.command ].concat(args))}`]);
+        let stdioValue: StdioOptions;
+        switch (stdio) {
+        case "ignore": stdioValue = "ignore"; break;
+        case "pipe": stdioValue = "pipe"; break;
+        case "inherit": stdioValue = "inherit"; break;
+        default: throw new Error(`Bad stdio ${stdio}`); break;
+        }
+
+        const subprocess = spawn(shell, spawnArgs, {
+            detached: detached,
+            stdio: stdioValue,
             env: env
         });
 
-        subprocess.unref();
+        if (detached)
+            subprocess.unref();
     }
 
     createMoveGrab() {
@@ -597,6 +644,9 @@ export class OWMLib {
             break;
         case this._xcb.event.CONFIGURE_NOTIFY:
             this.configureNotify(e.xcb as XCB.ConfigureNotify);
+            break;
+        case this._xcb.event.MAP_NOTIFY:
+            this.mapNotify(e.xcb as XCB.MapNotify);
             break;
         case this._xcb.event.UNMAP_NOTIFY:
             this.unmapNotify(e.xcb as XCB.UnmapNotify);

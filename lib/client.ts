@@ -21,7 +21,7 @@ export class Client implements ContainerItem
     private readonly _parent: number;
     private readonly _window: XCB.Window;
     private readonly _owm: OWMLib;
-    private readonly _border: number;
+    private _border: number;
     private _geometry: Geometry;
     private _frameGeometry: Geometry;
     private _floatingGeometry: Geometry;
@@ -151,6 +151,25 @@ export class Client implements ContainerItem
 
     get border() {
         return this._border;
+    }
+
+    set border(value: number) {
+        this._frameGeometry.width -= (this._border - value) * 2;
+        this._frameGeometry.height -= (this._border - value) * 2;
+
+        this._log.info("configuring6", this._window.window, this._frameGeometry);
+        this._owm.xcb.configure_window(this._owm.wm, {
+            window: this._parent,
+            width: this._frameGeometry.width,
+            height: this._frameGeometry.height
+        });
+        this._owm.xcb.configure_window(this._owm.wm, {
+            window: this._window.window,
+            x: value, y: value,
+        });
+        this._owm.xcb.flush(this._owm.wm);
+        this._border = value;
+        this._owm.relayout();
     }
 
     get frame() {
