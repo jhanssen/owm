@@ -775,9 +775,11 @@ export class OWMLib {
         const supportedAtoms = [
             atom._NET_SUPPORTED,
             atom._NET_SUPPORTING_WM_CHECK,
+            atom._NET_FRAME_EXTENTS,
+            atom._NET_WM_ALLOWED_ACTIONS,
             atom._NET_WM_NAME,
             atom._NET_WM_MOVERESIZE,
-            atom._NET_WM_STATE_STICKY,
+            atom._NET_WM_PID,
             atom._NET_WM_STATE_FULLSCREEN,
             atom._NET_WM_STATE_MODAL,
             atom._NET_WM_STATE_HIDDEN,

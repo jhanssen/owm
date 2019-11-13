@@ -127,6 +127,18 @@ export class Client implements ContainerItem
         } else {
             this._constrainedGeometry = new Geometry(window.geometry);
         }
+
+        const borderData = new Uint32Array(4);
+        borderData[0] = border;
+        borderData[1] = border;
+        borderData[2] = border;
+        borderData[3] = border;
+        owm.xcb.change_property(owm.wm, { window: window.window, mode: owm.xcb.propMode.REPLACE,
+                                          property: owm.xcb.atom._NET_FRAME_EXTENTS, type: owm.xcb.atom.CARDINAL,
+                                          format: 32, data: borderData });
+        owm.xcb.flush(owm.wm);
+
+        this._updateAllowed();
     }
 
     get root() {
@@ -143,6 +155,10 @@ export class Client implements ContainerItem
 
     get modal() {
         return this._window.transientFor !== 0 && this._window.ewmhState.includes(this._owm.xcb.atom._NET_WM_STATE_MODAL);
+    }
+
+    get dock() {
+        return this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
     }
 
     get strut() {
@@ -175,7 +191,18 @@ export class Client implements ContainerItem
             window: this._window.window,
             x: value, y: value,
         });
+
+        const borderData = new Uint32Array(4);
+        borderData[0] = value;
+        borderData[1] = value;
+        borderData[2] = value;
+        borderData[3] = value;
+        this._owm.xcb.change_property(this._owm.wm, { window: this._window.window, mode: this._owm.xcb.propMode.REPLACE,
+                                          property: this._owm.xcb.atom._NET_FRAME_EXTENTS, type: this._owm.xcb.atom.CARDINAL,
+                                          format: 32, data: borderData });
+
         this._owm.xcb.flush(this._owm.wm);
+
         this._border = value;
         this._owm.relayout();
     }
@@ -298,6 +325,7 @@ export class Client implements ContainerItem
         if (this._workspace) {
             this._workspace.relayout();
         }
+        this._updateAllowed();
     }
 
     get staysOnTop() {
@@ -350,6 +378,7 @@ export class Client implements ContainerItem
             });
             this._owm.xcb.flush(this._owm.wm);
         }
+        this._updateAllowed();
     }
 
     get workspace() {
@@ -639,20 +668,57 @@ export class Client implements ContainerItem
 
     kill() {
         const deleteWindow = this._owm.xcb.atom.WM_DELETE_WINDOW;
-        if (this.window.wmProtocols.includes(deleteWindow)) {
+        if (this._window.wmProtocols.includes(deleteWindow)) {
             this._log.info("sending client delete message");
             const data = new Uint32Array(1);
             data[0] = deleteWindow;
-            this._owm.xcb.send_client_message(this._owm.wm, { window: this.window.window,
+            this._owm.xcb.send_client_message(this._owm.wm, { window: this._window.window,
                                                               type: this._owm.xcb.atom.WM_PROTOCOLS,
                                                               data: data });
             this._owm.xcb.flush(this._owm.wm);
-        } else if (this.window.pid > 0) {
+        } else if (this._window.pid > 0) {
             this._log.info("killing pid");
-            process.kill(this.window.pid);
+            process.kill(this._window.pid);
         } else {
-            this._log.error("can't kill, maybe do xcb_destroy_window()?", this.window.wmClass);
+            this._log.error("can't kill, maybe do xcb_destroy_window()?", this._window.wmClass);
         }
+    }
+
+    private _updateAllowed() {
+        const owm = this._owm;
+        const atom = owm.xcb.atom;
+
+        let allowed = [ atom._NET_WM_ACTION_CLOSE ]
+
+        if (!this._ignoreWorkspace) {
+            allowed.push(atom._NET_WM_ACTION_CHANGE_DESKTOP);
+        }
+
+        if (!this.dock) {
+            allowed = allowed.concat([
+                atom._NET_WM_ACTION_MINIMIZE,
+                atom._NET_WM_ACTION_FULLSCREEN,
+                atom._NET_WM_ACTION_ABOVE,
+                atom._NET_WM_ACTION_BELOW
+            ]);
+        }
+
+        if (this._floating) {
+            allowed = allowed.concat([
+                atom._NET_WM_ACTION_MOVE,
+                atom._NET_WM_ACTION_RESIZE
+            ]);
+        }
+
+        const allowedData = new Uint32Array(allowed.length);
+        for (let i = 0; i < allowed.length; ++i) {
+            allowedData[i] = allowed[i];
+        }
+
+        owm.xcb.change_property(owm.wm, { window: this._window.window, mode: owm.xcb.propMode.REPLACE,
+                                          property: atom._NET_WM_ALLOWED_ACTIONS, type: owm.xcb.atom.ATOM,
+                                          format: 32, data: allowedData });
+        owm.xcb.flush(owm.wm);
     }
 
     private _createGC() {
