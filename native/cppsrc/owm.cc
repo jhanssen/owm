@@ -1282,42 +1282,31 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             throw Napi::TypeError::New(env, "send_client_message requires a data");
         }
 
-        auto send = [&](size_t size, void* data) {
-            if (size % 4) {
-                throw Napi::TypeError::New(env, "send_client_message data must be divisible by 4");
-            }
-            memcpy(&event.data.data8, data, size);
-
-            xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
-                           reinterpret_cast<char*>(&event));
-        };
+        size_t size;
+        size_t offset;
 
         const auto ndata = arg.Get("data");
-        if (ndata.IsArrayBuffer() || ndata.IsTypedArray()) {
-            napi_typedarray_type typedType;
-            size_t typedLength;
-            void* typedData;
-            if (ndata.IsTypedArray() && napi_get_typedarray_info(env, ndata, &typedType, &typedLength, &typedData, nullptr, nullptr) == napi_ok) {
-                if (typedType == napi_uint8_array) {
-                    // bug in node? looks like buffer objects gets a bogus arraybuffer returned to them,
-                    // but the length and data from the above function looks fine
-
-                    send(typedLength, typedData);
-                    return env.Undefined();
-                }
-            }
-
-            Napi::ArrayBuffer data;
-            if (ndata.IsArrayBuffer()) {
-                data = ndata.As<Napi::ArrayBuffer>();
-            } else if (ndata.IsTypedArray()) {
-                data = ndata.As<Napi::TypedArray>().ArrayBuffer();
-            }
-
-            send(data.ByteLength(), data.Data());
+        Napi::ArrayBuffer data;
+        if (ndata.IsArrayBuffer()) {
+            data = ndata.As<Napi::ArrayBuffer>();
+            size = data.ByteLength();
+            offset = 0;
+        } else if (ndata.IsTypedArray()) {
+            const auto tdata = ndata.As<Napi::TypedArray>();
+            size = tdata.ByteLength();
+            offset = tdata.ByteOffset();
+            data = tdata.ArrayBuffer();
         } else {
             throw Napi::TypeError::New(env, "send_client_message data must be an arraybuffer or typedarray");
         }
+
+        if (size % 4) {
+            throw Napi::TypeError::New(env, "send_client_message data must be divisible by 4");
+        }
+        memcpy(&event.data.data8, data, size);
+
+        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
+                       reinterpret_cast<char*>(&event) + offset);
 
         return env.Undefined();
     }));
@@ -1458,43 +1447,31 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         const uint32_t bpe = format / 8;
 
-        auto change = [&](size_t size, void* data) {
-            if (size % bpe) {
-                throw Napi::TypeError::New(env, "change_property data must be divisible by format/8");
-            }
-
-            const uint32_t elems = size / bpe;
-
-            xcb_change_property(wm->conn, mode, window, property, type, format, elems, data);
-        };
+        size_t offset;
+        size_t size;
 
         const auto ndata = arg.Get("data");
-        if (ndata.IsArrayBuffer() || ndata.IsTypedArray()) {
-            napi_typedarray_type typedType;
-            size_t typedLength;
-            void* typedData;
-            if (ndata.IsTypedArray() && napi_get_typedarray_info(env, ndata, &typedType, &typedLength, &typedData, nullptr, nullptr) == napi_ok) {
-                if (typedType == napi_uint8_array) {
-                    // bug in node? looks like buffer objects gets a bogus arraybuffer returned to them,
-                    // but the length and data from the above function looks fine
-
-                    change(typedLength, typedData);
-                    return env.Undefined();
-                }
-            }
-
-            Napi::ArrayBuffer data;
-            if (ndata.IsArrayBuffer()) {
-                data = ndata.As<Napi::ArrayBuffer>();
-            } else if (ndata.IsTypedArray()) {
-                data = ndata.As<Napi::TypedArray>().ArrayBuffer();
-            }
-
-            change(data.ByteLength(), data.Data());
+        Napi::ArrayBuffer data;
+        if (ndata.IsArrayBuffer()) {
+            data = ndata.As<Napi::ArrayBuffer>();
+            offset = 0;
+            size = data.ByteLength();
+        } else if (ndata.IsTypedArray()) {
+            const auto tdata = ndata.As<Napi::TypedArray>();
+            data = tdata.ArrayBuffer();
+            offset = tdata.ByteOffset();
+            size = tdata.ByteLength();
         } else {
             throw Napi::TypeError::New(env, "change_property data must be an arraybuffer, typedarray or node buffer");
         }
 
+        if (size % bpe) {
+            throw Napi::TypeError::New(env, "change_property data must be divisible by format/8");
+        }
+
+        const uint32_t elems = size / bpe;
+
+        xcb_change_property(wm->conn, mode, window, property, type, format, elems, reinterpret_cast<uint8_t*>(data.Data()) + offset);
 
         return env.Undefined();
     }));
