@@ -517,6 +517,18 @@ declare interface PolyRectangleArgs
     readonly rects: Rectangle | Rectangle[];
 }
 
+declare interface QueryPointer
+{
+    readonly same_screen: number;
+    readonly root: number;
+    readonly child: number;
+    readonly root_x: number;
+    readonly root_y: number;
+    readonly win_x: number;
+    readonly win_y: number;
+    readonly mask: number;
+}
+
 declare interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
@@ -571,6 +583,7 @@ export namespace OWM {
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
         poly_fill_rectangle(wm: OWM.WM, args: PolyRectangleArgs): void;
+        query_pointer(wm: OWM.WM, window?: number): QueryPointer;
         grab_button(wm: OWM.WM, args: GrabButtonArgs): void;
         ungrab_button(wm: OWM.WM, args: UngrabButtonArgs): void;
         grab_key(wm: OWM.WM, args: GrabKeyArgs): void;

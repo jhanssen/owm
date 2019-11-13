@@ -209,6 +209,11 @@ export class OWMLib {
         return candidate;
     }
 
+    findClientUnderCursor() : Client | undefined {
+        const ptr = this._xcb.query_pointer(this._wm);
+        return this.findClientByPosition(ptr.root_x, ptr.root_y);
+    }
+
     addClient(win: XCB.Window, focus?: boolean) {
         this._log.debug("client", win);
 

@@ -1594,6 +1594,44 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("query_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "unmap_window requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        xcb_window_t window;
+        if (info.Length() > 1) {
+            window = info[1].As<Napi::Number>().Uint32Value();
+        } else {
+            window = wm->defaultScreen->root;
+        }
+
+        auto cookie = xcb_query_pointer(wm->conn, window);
+        auto reply = xcb_query_pointer_reply(wm->conn, cookie, nullptr);
+        if (!reply) {
+            throw Napi::TypeError::New(env, "unable to query pointer");
+        }
+
+        auto obj = Napi::Object::New(env);
+
+        obj.Set("same_screen", Napi::Number::New(env, reply->same_screen));
+        obj.Set("root", Napi::Number::New(env, reply->root));
+        obj.Set("child", Napi::Number::New(env, reply->child));
+        obj.Set("root_x", Napi::Number::New(env, reply->root_x));
+        obj.Set("root_y", Napi::Number::New(env, reply->root_y));
+        obj.Set("win_x", Napi::Number::New(env, reply->win_x));
+        obj.Set("win_y", Napi::Number::New(env, reply->win_y));
+        obj.Set("mask", Napi::Number::New(env, reply->mask));
+
+        free(reply);
+
+        return obj;
+    }));
+
     xcb.Set("grab_key", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

@@ -637,6 +637,24 @@ export class Client implements ContainerItem
         return true;
     }
 
+    kill() {
+        const deleteWindow = this._owm.xcb.atom.WM_DELETE_WINDOW;
+        if (this.window.wmProtocols.includes(deleteWindow)) {
+            this._log.info("sending client delete message");
+            const data = new Uint32Array(1);
+            data[0] = deleteWindow;
+            this._owm.xcb.send_client_message(this._owm.wm, { window: this.window.window,
+                                                              type: this._owm.xcb.atom.WM_PROTOCOLS,
+                                                              data: data });
+            this._owm.xcb.flush(this._owm.wm);
+        } else if (this.window.pid > 0) {
+            this._log.info("killing pid");
+            process.kill(this.window.pid);
+        } else {
+            this._log.error("can't kill, maybe do xcb_destroy_window()?", this.window.wmClass);
+        }
+    }
+
     private _createGC() {
         if (this._gc) {
             if (this._pixel) {
