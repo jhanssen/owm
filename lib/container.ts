@@ -179,7 +179,7 @@ export class Container implements ContainerItem
             throw new Error("item already exists");
         }
         if (item.container) {
-            throw new Error("item is already in a different workspace");
+            throw new Error("item is already in a different container");
         }
         this._log.info("got new item");
         this._items.push(item)
