@@ -294,7 +294,7 @@ export namespace XCB {
     }
 }
 
-declare type XCB_TypedArray =
+type XCB_TypedArray =
     Int8Array |
     Uint8Array |
     Int16Array |
@@ -302,7 +302,7 @@ declare type XCB_TypedArray =
     Int32Array |
     Uint32Array;
 
-declare type XCB_Type =
+type XCB_Type =
     XCB.ButtonPress |
     XCB.MotionNotify |
     XCB.KeyPress |
@@ -324,14 +324,14 @@ declare type XCB_Type =
     XCB.ClientMessage;
 
 
-declare interface Rectangle {
+interface Rectangle {
     readonly x?: number;
     readonly y?: number;
     readonly width: number;
     readonly height: number;
 }
 
-declare interface ConfigureWindowArgs {
+interface ConfigureWindowArgs {
     readonly window: number;
     readonly x?: number;
     readonly y?: number;
@@ -342,7 +342,7 @@ declare interface ConfigureWindowArgs {
     readonly stack_mode?: number;
 }
 
-declare interface CreateWindowArgs {
+interface CreateWindowArgs {
     readonly parent: number;
     readonly width: number;
     readonly height: number;
@@ -350,14 +350,14 @@ declare interface CreateWindowArgs {
     readonly y?: number;
 }
 
-declare interface ReparentWindowArgs {
+interface ReparentWindowArgs {
     readonly parent: number;
     readonly window: number;
     readonly x?: number;
     readonly y?: number;
 }
 
-declare interface ChangeWindowAttributesArgs {
+interface ChangeWindowAttributesArgs {
     readonly window: number;
     readonly back_pixmap?: number;
     readonly back_pixel?: number;
@@ -376,13 +376,13 @@ declare interface ChangeWindowAttributesArgs {
     readonly cursor?: number;
 }
 
-declare interface SendClientMessageArgs {
+interface SendClientMessageArgs {
     readonly window: number;
     readonly type: number;
     readonly data: ArrayBuffer | XCB_TypedArray;
 }
 
-declare interface SendExposeArgs {
+interface SendExposeArgs {
     readonly window: number;
     readonly x?: number;
     readonly y?: number;
@@ -390,7 +390,7 @@ declare interface SendExposeArgs {
     readonly height: number;
 }
 
-declare interface SendConfigureNotifyArgs {
+interface SendConfigureNotifyArgs {
     readonly window: number;
     readonly x: number;
     readonly y: number;
@@ -399,7 +399,7 @@ declare interface SendConfigureNotifyArgs {
     readonly border_width: number;
 }
 
-declare interface GCArgs {
+interface GCArgs {
     readonly function?: number;
     readonly plane_mask?: number;
     readonly foreground?: number;
@@ -425,17 +425,17 @@ declare interface GCArgs {
     readonly arc_mode?: number;
 }
 
-declare interface CreateGCArgs {
+interface CreateGCArgs {
     readonly window: number;
     readonly values: GCArgs;
 }
 
-declare interface ChangeGCArgs {
+interface ChangeGCArgs {
     readonly gc: number;
     readonly values: GCArgs;
 }
 
-declare interface ChangePropertyArgs {
+interface ChangePropertyArgs {
     readonly window: number;
     readonly mode: number;
     readonly property: number;
@@ -444,13 +444,13 @@ declare interface ChangePropertyArgs {
     readonly data: ArrayBuffer | XCB_TypedArray;
 }
 
-declare interface SetInputFocusArgs {
+interface SetInputFocusArgs {
     readonly window: number;
     readonly revert_to: number;
     readonly time?: number;
 }
 
-declare interface GrabButtonArgs {
+interface GrabButtonArgs {
     readonly window: number;
     readonly owner_events: number;
     readonly modifiers: number;
@@ -460,13 +460,13 @@ declare interface GrabButtonArgs {
     readonly keyboard_mode: number;
 }
 
-declare interface UngrabButtonArgs {
+interface UngrabButtonArgs {
     readonly window: number;
     readonly modifiers: number;
     readonly button: number;
 }
 
-declare interface GrabKeyArgs {
+interface GrabKeyArgs {
     readonly window: number;
     readonly owner_events: number;
     readonly modifiers: number;
@@ -475,13 +475,13 @@ declare interface GrabKeyArgs {
     readonly keyboard_mode: number;
 }
 
-declare interface UngrabKeyArgs {
+interface UngrabKeyArgs {
     readonly window: number;
     readonly modifiers: number;
     readonly key: number;
 }
 
-declare interface GrabKeyboardArgs {
+interface GrabKeyboardArgs {
     readonly window: number;
     readonly owner_events: number;
     readonly pointer_mode: number;
@@ -489,7 +489,7 @@ declare interface GrabKeyboardArgs {
     readonly time?: number;
 }
 
-declare interface GrabPointerArgs {
+interface GrabPointerArgs {
     readonly window: number;
     readonly owner_events: number;
     readonly event_mask: number;
@@ -498,26 +498,26 @@ declare interface GrabPointerArgs {
     readonly time?: number;
 }
 
-declare interface AllowEventsArgs
+interface AllowEventsArgs
 {
     readonly mode: number;
     readonly time?: number;
 }
 
-declare interface ChangeSaveSetArgs
+interface ChangeSaveSetArgs
 {
     readonly window: number;
     readonly mode: number;
 }
 
-declare interface PolyRectangleArgs
+interface PolyRectangleArgs
 {
     readonly window: number;
     readonly gc: number;
     readonly rects: Rectangle | Rectangle[];
 }
 
-declare interface QueryPointer
+interface QueryPointer
 {
     readonly same_screen: number;
     readonly root: number;
@@ -529,13 +529,13 @@ declare interface QueryPointer
     readonly mask: number;
 }
 
-declare interface ICCCMEnums {
+interface ICCCMEnums {
     readonly hint: {[key: string]: number};
     readonly sizeHint: {[key: string]: number};
     readonly state: {[key: string]: number};
 }
 
-declare interface EWMHEnums {
+interface EWMHEnums {
     readonly clientSourceType: {[key: string]: number};
     readonly desktopLayoutOrientation: {[key: string]: number};
     readonly desktopLayoutStartingCorner: {[key: string]: number};
