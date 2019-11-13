@@ -1303,10 +1303,10 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         if (size % 4) {
             throw Napi::TypeError::New(env, "send_client_message data must be divisible by 4");
         }
-        memcpy(&event.data.data8, data, size);
+        memcpy(&event.data.data8, reinterpret_cast<uint8_t*>(data.Data()) + offset, size);
 
         xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
-                       reinterpret_cast<char*>(&event) + offset);
+                       reinterpret_cast<char*>(&event));
 
         return env.Undefined();
     }));
