@@ -7,6 +7,7 @@ import { Workspace } from "./workspace";
 import { Monitors } from "./monitor";
 import { Client, ClientGroup } from "./client";
 import { Match } from "./match";
+import { Geometry } from "./utils";
 import { EventEmitter } from "events";
 import { spawn, StdioOptions } from "child_process";
 import { default as hexRgb } from "hex-rgb";
@@ -32,14 +33,22 @@ interface LaunchOptions
     shellArgs?: string[];
     env?: { [key: string]: string };
     stdio?: string;
-};
+}
 
 interface OWMOptions
 {
     display: string | undefined,
     level: Logger.Level,
     killTimeout: number
-};
+}
+
+enum ResizeHandle
+{
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight
+}
 
 export class OWMLib {
     private readonly _wm: OWM.WM;
@@ -67,6 +76,7 @@ export class OWMLib {
     private _moveModifier: string;
     private _moveModifierMask: number;
     private _moving: { client: Client, x: number, y: number } | undefined;
+    private _resizing: { client: Client, x: number, y: number, geom: Geometry, handle: ResizeHandle } | undefined;
 
     public readonly Client = Client;
     public readonly Workspace = Workspace;
@@ -427,36 +437,31 @@ export class OWMLib {
         if (gc === undefined)
             return;
         this._xcb.poly_fill_rectangle(this._wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
-        this._xcb.flush(this._wm);
     }
 
     buttonPress(event: XCB.ButtonPress) {
         this._log.info("press", event);
         this._currentTime = event.time;
 
-        // if this is our move grab, process that
-        if (event.detail === 1 && event.state === this._moveModifierMask) {
+        // if this is our modifier grab, process that
+        if (event.state === this._moveModifierMask) {
             // yup.
-            this._log.info("moving window");
             const client = this.findClientByPosition(event.root_x, event.root_y);
             if (!client || !client.floating) {
                 // keep processing events
                 this._xcb.allow_events(this._wm, { mode: this._xcb.allow.ASYNC_POINTER, time: event.time });
-                this._xcb.flush(this._wm);
                 return;
             }
 
-            // grab the pointer, asking for move and release events
-            const events = this._xcb.eventMask.BUTTON_RELEASE | this._xcb.eventMask.POINTER_MOTION;
-            const asyncMode = this._xcb.grabMode.ASYNC;
-            this._xcb.grab_pointer(this._wm, { window: this._root, owner_events: 1, event_mask: events,
-                                               pointer_mode: asyncMode, keyboard_mode: asyncMode,
-                                               time: event.time });
-            this._xcb.allow_events(this._wm, { mode: this._xcb.allow.ASYNC_POINTER, time: event.time });
-            this._xcb.flush(this._wm);
+            this._grabPointer(event.time);
 
-            const geom = client.frameGeometry;
-            this._moving = { client: client, x: geom.x - event.root_x, y: geom.y - event.root_y };
+            if (event.detail === 1) {
+                // move
+                this._moveClient(client, event);
+            } else if (event.detail === 3) {
+                // resize
+                this._resizeClient(client, event);
+            }
         } else {
             this._policy.buttonPress(event);
         }
@@ -469,6 +474,28 @@ export class OWMLib {
             this._moving.client.move(this._moving.x + event.root_x, this._moving.y + event.root_y);
             this._xcb.ungrab_pointer(this._wm, event.time);
             this._moving = undefined;
+        } else if (this._resizing) {
+            const dx = event.root_x - this._resizing.x;
+            const dy = event.root_y - this._resizing.y;
+            switch (this._resizing.handle) {
+            case ResizeHandle.TopLeft:
+                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y + dy);
+                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height - dy);
+                break;
+            case ResizeHandle.TopRight:
+                this._resizing.client.move(this._resizing.geom.x, this._resizing.geom.y + dy);
+                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height - dy);
+                break;
+            case ResizeHandle.BottomLeft:
+                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y);
+                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height + dy);
+                break;
+            case ResizeHandle.BottomRight:
+                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height + dy);
+                break;
+            }
+            this._xcb.ungrab_pointer(this._wm, event.time);
+            this._resizing = undefined;
         } else {
             this._policy.buttonRelease(event);
         }
@@ -480,6 +507,26 @@ export class OWMLib {
         if (this._moving) {
             // move
             this._moving.client.move(this._moving.x + event.root_x, this._moving.y + event.root_y);
+        } else if (this._resizing) {
+            const dx = event.root_x - this._resizing.x;
+            const dy = event.root_y - this._resizing.y;
+            switch (this._resizing.handle) {
+            case ResizeHandle.TopLeft:
+                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y + dy);
+                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height - dy);
+                break;
+            case ResizeHandle.TopRight:
+                this._resizing.client.move(this._resizing.geom.x, this._resizing.geom.y + dy);
+                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height - dy);
+                break;
+            case ResizeHandle.BottomLeft:
+                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y);
+                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height + dy);
+                break;
+            case ResizeHandle.BottomRight:
+                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height + dy);
+                break;
+            }
         }
     }
 
@@ -541,14 +588,16 @@ export class OWMLib {
         this._ewmh.updateCurrentWorkspace(ws.id);
     }
 
-    revertFocus() {
+    revertFocus(fromDestroy?: boolean) {
         if (!this._focused)
             return;
 
         this._focused.framePixel = this._inactiveColor;
         this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
 
-        this._ewmh.removeStateFocused(this._focused);
+        if (!fromDestroy) {
+            this._ewmh.removeStateFocused(this._focused);
+        }
 
         this._events.emit("clientFocusOut", this._focused);
 
@@ -628,10 +677,14 @@ export class OWMLib {
         const grabMode = this._xcb.grabMode;
         const events = this._xcb.eventMask.BUTTON_PRESS;
 
+        // left button
         this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
                                           button: 1, owner_events: 1, event_mask: events,
                                           pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
-        this._xcb.flush(this._wm);
+        // right button
+        this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
+                                          button: 3, owner_events: 1, event_mask: events,
+                                          pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
     }
 
     cleanup() {
@@ -703,11 +756,67 @@ export class OWMLib {
         }
     }
 
+    private _grabPointer(time: number) {
+        const events = this._xcb.eventMask.BUTTON_RELEASE | this._xcb.eventMask.POINTER_MOTION;
+        const asyncMode = this._xcb.grabMode.ASYNC;
+        this._xcb.grab_pointer(this._wm, { window: this._root, owner_events: 1, event_mask: events,
+                                           pointer_mode: asyncMode, keyboard_mode: asyncMode,
+                                           time: time });
+        this._xcb.allow_events(this._wm, { mode: this._xcb.allow.ASYNC_POINTER, time: time });
+    }
+
+    private _moveClient(client: Client, event: XCB.ButtonPress) {
+        // grab the pointer, asking for move and release events
+        const geom = client.frameGeometry;
+        this._moving = { client: client, x: geom.x - event.root_x, y: geom.y - event.root_y };
+    }
+
+    private _resizeClient(client: Client, event: XCB.ButtonPress) {
+        console.log("resize...", event);
+
+        const geom = client.frameGeometry;
+        const win_x = event.root_x - geom.x;
+        const win_y = event.root_y - geom.y;
+
+        if (win_x < 0 || win_y < 0 || win_x > geom.width || win_y > geom.height) {
+            this._xcb.ungrab_pointer(this._wm, event.time);
+            throw new Error("resize gone wrong");
+        }
+
+        let handle: ResizeHandle | undefined;
+        if (win_x <= geom.width / 2) {
+            // left half
+            if (win_y <= geom.height / 2) {
+                // top-left
+                handle = ResizeHandle.TopLeft;
+            } else {
+                // bottom-left
+                handle = ResizeHandle.BottomLeft;
+            }
+        } else {
+            // right half
+            if (win_y <= geom.height / 2) {
+                // top-right
+                handle = ResizeHandle.TopRight;
+            } else {
+                // bottom-right
+                handle = ResizeHandle.BottomRight;
+            }
+        }
+
+        this._resizing = {
+            client: client,
+            x: event.root_x, y: event.root_y,
+            geom: new Geometry(geom),
+            handle: handle
+        };
+    }
+
     private _destroyClient(client: Client) {
         // if this is our focused client, revert focus somewhere else
         const window = client.window.window;
         if (client === this._focused) {
-            this.revertFocus();
+            this.revertFocus(true);
         }
         if (client.ignoreWorkspace) {
             const monitor = this._monitors.monitorByPosition(client.geometry.x, client.geometry.y);
@@ -778,6 +887,6 @@ export class OWMLib {
 
     private _releaseMoveGrab() {
         this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 1 });
-        this._xcb.flush(this._wm);
+        this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 3 });
     }
 };
