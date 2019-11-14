@@ -1,14 +1,18 @@
 import { OWMLib } from "./owm";
 import { Geometry } from "./utils";
 import { Workspace } from "./workspace";
+import { Client } from "./client";
+import { Logger } from "./logger";
 
 export class EWMH {
     private _owm: OWMLib;
     private _currentWorkspace: number;
+    private _log: Logger;
 
     constructor(owm: OWMLib) {
         this._owm = owm;
         this._currentWorkspace = 0;
+        this._log = owm.logger.prefixed("EWMH");
     }
 
     updateClientList() {
@@ -190,6 +194,67 @@ export class EWMH {
         xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
                                       property: xcb.atom._NET_DESKTOP_VIEWPORT, type: xcb.atom.CARDINAL,
                                       format: 32, data: viewportData });
+        xcb.flush(owm.wm);
+    }
+
+    addStateFocused(client: Client) {
+        this._add_property_atom(client.window.window, this._owm.xcb.atom._NET_WM_STATE, this._owm.xcb.atom._NET_WM_STATE_FOCUSED);
+    }
+
+    removeStateFocused(client: Client) {
+        this._remove_property_atom(client.window.window, this._owm.xcb.atom._NET_WM_STATE, this._owm.xcb.atom._NET_WM_STATE_FOCUSED);
+    }
+
+    private _add_property_atom(window: number, property: number, atom: number) {
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        const addData = new Uint32Array(1);
+        addData[0] = atom;
+
+        xcb.change_property(owm.wm, { window: window, mode: xcb.propMode.APPEND,
+                                      property: property, type: xcb.atom.ATOM,
+                                      format: 32, data: addData });
+        xcb.flush(owm.wm);
+    }
+
+    private _remove_property_atom(window: number, property: number, atom: number) {
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        xcb.grab_server(owm.wm);
+
+        try {
+            const buffer = xcb.get_property(owm.wm, { window: window, property: property, type: xcb.atom.ATOM });
+            if (buffer !== undefined) {
+                if (buffer.byteLength % 4) {
+                    // bad
+                    throw new Error(`get_property bytelength invalid ${buffer.byteLength}`);
+                }
+
+                if (buffer.byteLength > 0) {
+                    const u32 = new Uint32Array(buffer);
+                    const n32 = new Uint32Array(u32.length);
+                    let added = 0;
+                    for (let i = 0; i < u32.length; ++i) {
+                        if (u32[i] !== atom) {
+                            n32[added++] = u32[i];
+                        }
+                    }
+                    if (added < u32.length) {
+                        // removed
+                        xcb.change_property(owm.wm, { window: window, mode: xcb.propMode.REPLACE,
+                                                      property: property, type: xcb.atom.ATOM,
+                                                      format: 32, data: n32, data_len: added });
+                    }
+                }
+            }
+        } catch (e) {
+            this._log.error("exception from _remove_property_atom", e);
+        }
+
+        xcb.ungrab_server(owm.wm);
+
         xcb.flush(owm.wm);
     }
 }

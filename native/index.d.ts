@@ -436,6 +436,14 @@ interface ChangeGCArgs {
     readonly values: GCArgs;
 }
 
+interface GetPropertyArgs {
+    readonly window: number;
+    readonly property: number;
+    readonly type?: number;
+    readonly offset?: number;
+    readonly length?: number;
+}
+
 interface ChangePropertyArgs {
     readonly window: number;
     readonly mode: number;
@@ -443,6 +451,7 @@ interface ChangePropertyArgs {
     readonly type: number;
     readonly format: number;
     readonly data: ArrayBuffer | XCB_TypedArray | Buffer;
+    readonly data_len?: number; // number of elements, not bytes
 }
 
 interface SetInputFocusArgs {
@@ -574,6 +583,7 @@ export namespace OWM {
         change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
+        get_property(wm: OWM.WM, args: GetPropertyArgs): ArrayBuffer | undefined;
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
@@ -600,6 +610,8 @@ export namespace OWM {
         request_window_information(wm: OWM.WM, window: number): XCB.Window | undefined;
         kill_client(wm: OWM.WM, window: number): void;
         free_gc(wm: OWM.WM, gc: number): void;
+        grab_server(wm: OWM.WM): void;
+        ungrab_server(wm: OWM.WM): void;
         flush(wm: OWM.WM): void;
     }
     export interface XKB {

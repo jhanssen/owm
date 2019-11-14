@@ -1406,11 +1406,67 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
+    xcb.Set("get_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "get_property requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "get_property requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("property")) {
+            throw Napi::TypeError::New(env, "get_property requires a property");
+        }
+        const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
+
+        uint32_t offset = 0;
+        uint32_t length = 4096;
+        uint32_t type = XCB_GET_PROPERTY_TYPE_ANY;
+
+        if (arg.Has("offset")) {
+            offset = arg.Get("offset").As<Napi::Number>().Uint32Value();
+        }
+
+        if (arg.Has("length")) {
+            length = arg.Get("length").As<Napi::Number>().Uint32Value();
+        }
+
+        if (arg.Has("type")) {
+            type = arg.Get("type").As<Napi::Number>().Uint32Value();
+        }
+
+        auto cookie = xcb_get_property(wm->conn, 0, window, property, type, offset, length);
+        auto reply = xcb_get_property_reply(wm->conn, cookie, nullptr);
+
+        const int rlength = xcb_get_property_value_length(reply);
+
+        if (!reply) {
+            throw Napi::TypeError::New(env, "get_property no reply");
+        }
+
+        void* rdata = rlength > 0 ? xcb_get_property_value(reply) : nullptr;
+        if (rdata && rlength) {
+            return Napi::ArrayBuffer::New(env, rdata, rlength, [reply](napi_env, void*) { free(reply); });
+        }
+
+        free(reply);
+
+        return env.Undefined();
+    }));
+
+
     xcb.Set("change_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
         if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "configure_window requires two arguments");
+            throw Napi::TypeError::New(env, "change_property requires two arguments");
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
@@ -1441,6 +1497,11 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
         const uint32_t format = arg.Get("format").As<Napi::Number>().Uint32Value();
 
+        uint32_t elems = 0;
+        if (arg.Has("data_len")) {
+            elems = arg.Get("data_len").As<Napi::Number>().Uint32Value();
+        }
+
         if (format != 8 && format != 16 && format != 32) {
             throw Napi::TypeError::New(env, "change_property format needs to be 8/16/32");
         }
@@ -1469,7 +1530,12 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             throw Napi::TypeError::New(env, "change_property data must be divisible by format/8");
         }
 
-        const uint32_t elems = size / bpe;
+        if (!elems)
+            elems = size / bpe;
+
+        if (elems * bpe > size) {
+            throw Napi::TypeError::New(env, "change_property data_len too big?");
+        }
 
         xcb_change_property(wm->conn, mode, window, property, type, format, elems, reinterpret_cast<uint8_t*>(data.Data()) + offset);
 
@@ -2350,6 +2416,34 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         const auto gcid = info[1].As<Napi::Number>().Uint32Value();
 
         xcb_free_gc(wm->conn, gcid);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("grab_server", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "grab_server requires one argument");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        xcb_grab_server(wm->conn);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("ungrab_server", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "ungrab_server requires one argument");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        xcb_ungrab_server(wm->conn);
 
         return env.Undefined();
     }));

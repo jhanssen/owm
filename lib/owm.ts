@@ -528,6 +528,8 @@ export class OWMLib {
             this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
             this._xcb.flush(this._wm);
 
+            this._ewmh.removeStateFocused(this._focused);
+
             this._events.emit("clientFocusOut", this._focused);
         }
 
@@ -536,6 +538,8 @@ export class OWMLib {
         this._focused.framePixel = this._activeColor;
         this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
         this._xcb.flush(this._wm);
+
+        this._ewmh.addStateFocused(client);
 
         this._events.emit("clientFocusIn", this._focused);
 
@@ -549,6 +553,8 @@ export class OWMLib {
         this._focused.framePixel = this._inactiveColor;
         this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
         this._xcb.flush(this._wm);
+
+        this._ewmh.removeStateFocused(this._focused);
 
         this._events.emit("clientFocusOut", this._focused);
 
