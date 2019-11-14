@@ -1464,11 +1464,11 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto cookie = xcb_get_property(wm->conn, 0, window, property, type, offset, length);
         auto reply = xcb_get_property_reply(wm->conn, cookie, nullptr);
 
-        const int rlength = xcb_get_property_value_length(reply);
-
         if (!reply) {
             throw Napi::TypeError::New(env, "get_property no reply");
         }
+
+        const int rlength = xcb_get_property_value_length(reply);
 
         void* rdata = rlength > 0 ? xcb_get_property_value(reply) : nullptr;
         if (rdata && rlength) {
