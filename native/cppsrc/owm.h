@@ -167,6 +167,21 @@ struct Wrap
     static T unwrap(const Napi::Value& value);
 };
 
+struct Connection
+{
+    xcb_connection_t* conn { nullptr };
+
+    Connection(xcb_connection_t* c)
+        : conn(c)
+    {
+    }
+    ~Connection()
+    {
+        if (conn)
+            xcb_disconnect(conn);
+    }
+};
+
 struct WM
 {
     xcb_connection_t* conn { nullptr };
@@ -175,6 +190,10 @@ struct WM
     int defaultScreenNo { 0 };
     xcb_screen_t* defaultScreen;
     Atoms atoms;
+    uv_async_t* asyncFlush { nullptr };
+
+    // hold the connection alive
+    std::shared_ptr<Connection> connection;
 
     struct XKB
     {

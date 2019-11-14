@@ -1019,6 +1019,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
+        uv_async_send(wm->asyncFlush);
+
         uint32_t window;
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "configure_window requires a window");
@@ -1074,6 +1076,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         uint32_t window;
         if (!arg.Has("window")) {
@@ -1166,6 +1170,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
 
+        uv_async_send(wm->asyncFlush);
+
         std::vector<xcb_intern_atom_cookie_t> cookies;
         if (info[1].IsString()) {
             const std::string str = info[1].As<Napi::String>();
@@ -1206,6 +1212,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         int32_t x = 0, y = 0;
         uint32_t width, height;
@@ -1248,6 +1256,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
+
         xcb_flush(wm->conn);
 
         return env.Undefined();
@@ -1262,6 +1273,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         xcb_client_message_event_t event;
         memset(&event, 0, sizeof(event));
@@ -1321,6 +1334,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
+        uv_async_send(wm->asyncFlush);
+
         xcb_expose_event_t event;
         memset(&event, 0, sizeof(event));
         event.response_type = XCB_EXPOSE;
@@ -1363,6 +1378,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         xcb_configure_notify_event_t event;
         memset(&event, 0, sizeof(event));
@@ -1415,6 +1432,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "get_property requires a window");
@@ -1471,6 +1490,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "change_property requires a window");
@@ -1552,6 +1573,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
+        uv_async_send(wm->asyncFlush);
+
         int32_t x = 0, y = 0;
         uint32_t window, parent;
 
@@ -1587,6 +1610,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
+        uv_async_send(wm->asyncFlush);
+
         uint32_t window, revert_to, time = XCB_TIME_CURRENT_TIME;
 
         if (!arg.Has("window")) {
@@ -1616,6 +1641,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
+
         const auto window = info[1].As<Napi::Number>().Uint32Value();
 
         xcb_map_window(wm->conn, window);
@@ -1631,6 +1659,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
+
         const auto window = info[1].As<Napi::Number>().Uint32Value();
 
         xcb_unmap_window(wm->conn, window);
@@ -1646,6 +1677,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
+
         const auto window = info[1].As<Napi::Number>().Uint32Value();
 
         xcb_destroy_window(wm->conn, window);
@@ -1661,6 +1695,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
+
         const auto resource = info[1].As<Napi::Number>().Uint32Value();
 
         xcb_kill_client(wm->conn, resource);
@@ -1677,6 +1714,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         uint32_t window, mode;
 
@@ -1703,6 +1742,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
 
         xcb_window_t window;
         if (info.Length() > 1) {
@@ -1742,6 +1783,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "grab_key requires a window");
@@ -1788,6 +1831,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
+        uv_async_send(wm->asyncFlush);
+
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "ungrab_key requires a window");
         }
@@ -1817,6 +1862,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "grab_button requires a window");
@@ -1869,6 +1916,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
+        uv_async_send(wm->asyncFlush);
+
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "ungrab_button requires a window");
         }
@@ -1898,6 +1947,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "grab_keyboard requires a window");
@@ -1946,6 +1997,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
 
+        uv_async_send(wm->asyncFlush);
+
         uint32_t time = XCB_TIME_CURRENT_TIME;
         if (info.Length() > 1 && info[1].IsNumber()) {
             time = info[1].As<Napi::Number>().Uint32Value();
@@ -1965,6 +2018,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         if (!arg.Has("window")) {
             throw Napi::TypeError::New(env, "grab_pointer requires a window");
@@ -2018,6 +2073,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
 
+        uv_async_send(wm->asyncFlush);
+
         uint32_t time = XCB_TIME_CURRENT_TIME;
         if (info.Length() > 1 && info[1].IsNumber()) {
             time = info[1].As<Napi::Number>().Uint32Value();
@@ -2037,6 +2094,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         if (!arg.Has("mode")) {
             throw Napi::TypeError::New(env, "allow_events requires a mode");
@@ -2061,6 +2120,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
 
         const uint32_t sym = info[1].As<Napi::Number>().Uint32Value();
 
@@ -2090,6 +2151,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         uint32_t window, gc;
         if (!arg.Has("window")) {
@@ -2162,6 +2225,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
 
         uint32_t window;
         if (!arg.Has("window")) {
@@ -2290,6 +2355,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
+        uv_async_send(wm->asyncFlush);
+
         uint32_t gc;
         if (!arg.Has("gc")) {
             throw Napi::TypeError::New(env, "change_gc requires a gc");
@@ -2413,6 +2480,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
+
         const auto gcid = info[1].As<Napi::Number>().Uint32Value();
 
         xcb_free_gc(wm->conn, gcid);
@@ -2429,6 +2499,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
 
+        uv_async_send(wm->asyncFlush);
+
         xcb_grab_server(wm->conn);
 
         return env.Undefined();
@@ -2442,6 +2514,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
 
         xcb_ungrab_server(wm->conn);
 
@@ -2458,6 +2532,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 #warning should grab the server for this so we dont get any property updates while this all happens
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+
+        uv_async_send(wm->asyncFlush);
+
         const uint32_t window = info[1].As<Napi::Number>().Uint32Value();
 
         auto attribCookie = xcb_get_window_attributes_unchecked(wm->conn, window);

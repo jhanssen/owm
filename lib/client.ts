@@ -102,7 +102,6 @@ export class Client implements ContainerItem
         owm.xcb.change_property(owm.wm, { window: window.window, mode: owm.xcb.propMode.REPLACE,
                                           property: owm.xcb.atom._NET_FRAME_EXTENTS, type: owm.xcb.atom.CARDINAL,
                                           format: 32, data: borderData });
-        owm.xcb.flush(owm.wm);
 
         this._updateAllowed();
     }
@@ -167,7 +166,6 @@ export class Client implements ContainerItem
                                           property: this._owm.xcb.atom._NET_FRAME_EXTENTS, type: this._owm.xcb.atom.CARDINAL,
                                           format: 32, data: borderData });
 
-        this._owm.xcb.flush(this._owm.wm);
 
         this._border = value;
         this._owm.relayout();
@@ -229,7 +227,6 @@ export class Client implements ContainerItem
                               format: 32, data: buf });
 
         if (this._state === state) {
-            xcb.flush(this._owm.wm);
             return;
         }
 
@@ -266,8 +263,6 @@ export class Client implements ContainerItem
 
             xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
         }
-
-        xcb.flush(this._owm.wm);
     }
 
     get visible() {
@@ -338,7 +333,6 @@ export class Client implements ContainerItem
                 window: this._window.window,
                 x: this._border, y: this._border, width: width, height: height
             });
-            this._owm.xcb.flush(this._owm.wm);
         }
         this._updateAllowed();
     }
@@ -374,7 +368,6 @@ export class Client implements ContainerItem
                 sibling: sibling._parent,
                 stack_mode: this._owm.xcb.stackMode.ABOVE
             });
-            this._owm.xcb.flush(this._owm.wm);
         }
     }
 
@@ -389,7 +382,6 @@ export class Client implements ContainerItem
                 sibling: sibling._parent,
                 stack_mode: this._owm.xcb.stackMode.BELOW
             });
-            this._owm.xcb.flush(this._owm.wm);
         }
     }
 
@@ -420,7 +412,6 @@ export class Client implements ContainerItem
             window: this._window.window,
             x: this._border, y: this._border, width: cwidth, height: cheight
         });
-        this._owm.xcb.flush(this._owm.wm);
     }
 
     move(x: number, y: number) {
@@ -437,7 +428,6 @@ export class Client implements ContainerItem
             width: this._frameGeometry.width,
             height: this._frameGeometry.height
         });
-        this._owm.xcb.flush(this._owm.wm);
     }
 
     resize(width: number, height: number) {
@@ -462,7 +452,6 @@ export class Client implements ContainerItem
             width: this._geometry.width,
             height: this._geometry.height
         });
-        this._owm.xcb.flush(this._owm.wm);
     }
 
     configure(cfg: ConfigureArgs) {
@@ -508,7 +497,6 @@ export class Client implements ContainerItem
                 window: cfg.window,
                 x: this._border, y: this._border, width: geom.width, height: geom.height
             });
-            this._owm.xcb.flush(this._owm.wm);
         } else {
             this._log.info("trying to configure window in layout, ignoring");
             // keep track of where the client really wants us
@@ -537,12 +525,10 @@ export class Client implements ContainerItem
 
     map() {
         this._owm.xcb.map_window(this._owm.wm, this._parent);
-        this._owm.xcb.flush(this._owm.wm);
     }
 
     unmap() {
         this._owm.xcb.unmap_window(this._owm.wm, this._parent);
-        this._owm.xcb.flush(this._owm.wm);
     }
 
     focus() {
@@ -583,7 +569,6 @@ export class Client implements ContainerItem
         owm.xcb.change_property(owm.wm, { window: client.window.geometry.root, mode: owm.xcb.propMode.REPLACE,
                                           property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
                                           format: 32, data: activeData });
-        owm.xcb.flush(owm.wm);
 
         owm.focused = client;
 
@@ -599,7 +584,6 @@ export class Client implements ContainerItem
             this._owm.xcb.send_client_message(this._owm.wm, { window: this._window.window,
                                                               type: this._owm.xcb.atom.WM_PROTOCOLS,
                                                               data: data });
-            this._owm.xcb.flush(this._owm.wm);
 
             // make sure the client dies
             const win = this._window.window;
@@ -653,7 +637,6 @@ export class Client implements ContainerItem
         owm.xcb.change_property(owm.wm, { window: this._window.window, mode: owm.xcb.propMode.REPLACE,
                                           property: atom._NET_WM_ALLOWED_ACTIONS, type: owm.xcb.atom.ATOM,
                                           format: 32, data: allowedData });
-        owm.xcb.flush(owm.wm);
     }
 
     private _createGC() {
@@ -667,7 +650,6 @@ export class Client implements ContainerItem
         } else if (this._pixel !== undefined) {
             this._gc = this._owm.xcb.create_gc(this._owm.wm, { window: this._parent, values: { foreground: this._pixel } })
         }
-        this._owm.xcb.flush(this._owm.wm);
     }
 }
 

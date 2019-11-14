@@ -28,7 +28,6 @@ export class EWMH {
         xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
                                       property: xcb.atom._NET_CLIENT_LIST, type: xcb.atom.WINDOW,
                                       format: 32, data: clientData });
-        xcb.flush(owm.wm);
     }
 
     updateWorkarea() {
@@ -58,7 +57,6 @@ export class EWMH {
         xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
                                       property: xcb.atom._NET_WORKAREA, type: xcb.atom.CARDINAL,
                                       format: 32, data: waData });
-        xcb.flush(owm.wm);
     }
 
     updateWorkspaces() {
@@ -115,7 +113,6 @@ export class EWMH {
                                       format: 8, data: nameBuffer });
         console.log("done whoa");
 
-        xcb.flush(owm.wm);
     }
 
     updateCurrentWorkspace(ws: number) {
@@ -135,7 +132,6 @@ export class EWMH {
         xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
                                       property: xcb.atom._NET_CURRENT_DESKTOP, type: xcb.atom.CARDINAL,
                                       format: 32, data: wsData });
-        xcb.flush(owm.wm);
 
         this._currentWorkspace = ws;
     }
@@ -181,7 +177,6 @@ export class EWMH {
         xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
                                       property: xcb.atom._NET_SUPPORTED, type: xcb.atom.ATOM,
                                       format: 32, data: supportedData });
-        xcb.flush(owm.wm);
     }
 
     updateViewport() {
@@ -194,7 +189,6 @@ export class EWMH {
         xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
                                       property: xcb.atom._NET_DESKTOP_VIEWPORT, type: xcb.atom.CARDINAL,
                                       format: 32, data: viewportData });
-        xcb.flush(owm.wm);
     }
 
     addStateFocused(client: Client) {
@@ -215,7 +209,6 @@ export class EWMH {
         xcb.change_property(owm.wm, { window: window, mode: xcb.propMode.APPEND,
                                       property: property, type: xcb.atom.ATOM,
                                       format: 32, data: addData });
-        xcb.flush(owm.wm);
     }
 
     private _remove_property_atom(window: number, property: number, atom: number) {
@@ -254,7 +247,5 @@ export class EWMH {
         }
 
         xcb.ungrab_server(owm.wm);
-
-        xcb.flush(owm.wm);
     }
 }

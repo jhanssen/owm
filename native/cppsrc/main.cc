@@ -1,7 +1,6 @@
 #include "owm.h"
 #include <thread>
-#include <mutex>
-#include <condition_variable>
+#include <atomic>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/epoll.h>
@@ -16,15 +15,13 @@
 
 struct Data
 {
-    bool started { false };
+    std::atomic<bool> started { false };
+    std::weak_ptr<owm::Connection> connection;
     std::thread thread;
-    std::mutex mutex;
-    std::condition_variable cond;
-    owm::Stack<owm::Request> requestPool;
-    std::vector<owm::Request*> requests;
     int wakeup[2];
     Napi::ThreadSafeFunction tsfn;
     xcb_window_t ewmhWindow;
+    uv_async_t asyncFlush;
 };
 
 static Data data;
@@ -231,7 +228,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 
     std::shared_ptr<Napi::AsyncContext> ctx = std::make_shared<Napi::AsyncContext>(env, "ThreadSafePromise");
     std::shared_ptr<owm::ThreadSafePromise> deferred = std::make_shared<owm::ThreadSafePromise>(env, ctx);
-    if (data.started) {
+    if (data.started.load()) {
         deferred->Reject("owm already started");
         return deferred->Promise();
     }
@@ -244,7 +241,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         display = info[1].As<Napi::String>();
     }
 
-    data.started = true;
+    data.started.store(true);
     data.tsfn = Napi::ThreadSafeFunction::New(env,
                                               info[0].As<Napi::Function>(),
                                               "owm callback",
@@ -261,6 +258,15 @@ Napi::Value Start(const Napi::CallbackInfo& info)
         deferred->Reject("unable to pipe2()");
         return deferred->Promise();
     }
+
+    auto flush = [](uv_async_t* async) {
+        auto conn = data.connection.lock();
+        if (conn) {
+            xcb_flush(conn->conn);
+        }
+    };
+
+    uv_async_init(uv_default_loop(), &data.asyncFlush, flush);
 
     auto promise = deferred->Promise();
 
@@ -287,6 +293,11 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             deferred->Reject("Unable to xcb_connect()");
             return;
         }
+
+        wm->connection = std::make_shared<owm::Connection>(wm->conn);
+        wm->asyncFlush = &data.asyncFlush;
+        data.connection = wm->connection;
+
         wm->defaultScreenNo = defaultScreen;
         wm->defaultScreen = xcb_aux_get_screen(wm->conn, wm->defaultScreenNo);
         if (!wm->defaultScreen) {
@@ -735,7 +746,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             xcb_destroy_window(wm->conn, data.ewmhWindow);
             free(wm->ewmh);
             xcb_flush(wm->conn);
-            xcb_disconnect(wm->conn);
+            wm->connection.reset();
         });
 
         enum { MaxEvents = 5 };
@@ -795,40 +806,16 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                         }
                     }
 
-                    std::unique_lock locker(data.mutex);
-                    if (!data.started) {
+                    if (!data.started.load()) {
                         cleanup();
                         return;
                     }
-                    if (!data.requests.empty()) {
-                        auto requests = std::move(data.requests);
-                        locker.unlock();
-                        for (auto req : requests) {
-                            auto resp = wm->responsePool.acquire();
-                            resp->type = owm::Response::NewWindow;
-                            auto status = data.tsfn.BlockingCall(resp, callback);
-                            if (status != napi_ok) {
-                                // error?
-                            }
-                            data.requestPool.release(req);
-                        }
-                        locker.lock();
-                    }
-                    data.cond.wait(locker);
                 }
             }
         }
 
         data.tsfn.Release();
     });
-
-    auto cmd = data.requestPool.acquire();
-    cmd->type = owm::Request::Start;
-
-    std::unique_lock locker(data.mutex);
-    data.requests.push_back(cmd);
-    locker.unlock();
-    data.cond.notify_one();
 
     return promise;
 }
@@ -837,12 +824,9 @@ void Stop(const Napi::CallbackInfo& info)
 {
     auto env = info.Env();
 
-    {
-        std::unique_lock locker(data.mutex);
-        if (!data.started)
-            throw Napi::TypeError::New(env, "Not started");
-        data.started = false;
-    }
+    if (!data.started.load())
+        throw Napi::TypeError::New(env, "Not started");
+    data.started.store(false);
 
     char c = 'q';
     EINTRWRAP(::write(data.wakeup[1], &c, 1));

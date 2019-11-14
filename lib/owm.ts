@@ -250,7 +250,6 @@ export class OWMLib {
         this._xcb.change_window_attributes(this._wm, { window: win.window, event_mask: 0 });
         this._xcb.reparent_window(this._wm, { window: win.window, parent: parent, x: border, y: border });
         this._xcb.change_save_set(this._wm, { window: win.window, mode: this._xcb.setMode.INSERT });
-        this._xcb.flush(this._wm);
 
         const leader = win.leader || win.transientFor || win.window;
         let grp = this._groups.get(leader);
@@ -342,7 +341,6 @@ export class OWMLib {
         this._log.info("maprequest", event.window, win);
         if (!win || win.attributes.override_redirect) {
             this._xcb.map_window(this._wm, event.window);
-            this._xcb.flush(this._wm);
             return;
         }
         this.addClient(win);
@@ -379,7 +377,6 @@ export class OWMLib {
             client.configure(cfg);
         } else {
             this._xcb.configure_window(this._wm, cfg);
-            this._xcb.flush(this._wm);
         }
     }
 
@@ -526,7 +523,6 @@ export class OWMLib {
         if (this._focused) {
             this._focused.framePixel = this._inactiveColor;
             this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
-            this._xcb.flush(this._wm);
 
             this._ewmh.removeStateFocused(this._focused);
 
@@ -537,7 +533,6 @@ export class OWMLib {
 
         this._focused.framePixel = this._activeColor;
         this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
-        this._xcb.flush(this._wm);
 
         this._ewmh.addStateFocused(client);
 
@@ -552,7 +547,6 @@ export class OWMLib {
 
         this._focused.framePixel = this._inactiveColor;
         this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
-        this._xcb.flush(this._wm);
 
         this._ewmh.removeStateFocused(this._focused);
 
@@ -568,7 +562,6 @@ export class OWMLib {
         this._xcb.change_property(this._wm, { window: root, mode: this._xcb.propMode.REPLACE,
                                             property: this._xcb.atom._NET_ACTIVE_WINDOW, type: this._xcb.atom.WINDOW,
                                             format: 32, data: activeData });
-        this._xcb.flush(this._wm);
     }
 
     relayout() {
@@ -651,7 +644,6 @@ export class OWMLib {
                 x: ((client as unknown) as ClientInternal)._window.geometry.x,
                 y: ((client as unknown) as ClientInternal)._window.geometry.y
             });
-            this._xcb.flush(this._wm);
         }
         this._clients = [];
     }
@@ -752,7 +744,6 @@ export class OWMLib {
             this._xcb.free_gc(this._wm, gc)
         }
         this._xcb.destroy_window(this._wm, client.frame);
-        this._xcb.flush(this._wm);
 
         if (client.ignoreWorkspace) {
             this.relayout();
