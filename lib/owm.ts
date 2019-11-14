@@ -77,6 +77,7 @@ export class OWMLib {
     private _moveModifierMask: number;
     private _moving: { client: Client, x: number, y: number } | undefined;
     private _resizing: { client: Client, x: number, y: number, geom: Geometry, handle: ResizeHandle } | undefined;
+    private _moveResizeMode: KeybindingsMode;
 
     public readonly Client = Client;
     public readonly Workspace = Workspace;
@@ -114,6 +115,16 @@ export class OWMLib {
 
         this._moveModifierMask = this._parseMoveModifier("Alt");
         this._moveModifier = "Alt";
+
+        this._moveResizeMode = new KeybindingsMode(this, "Pointer move/resize mode", false);
+        this._moveResizeMode.add("Escape", (mode: KeybindingsMode, binding: string) => {
+            if (this._moving || this._resizing) {
+                this._xcb.ungrab_pointer(this._wm, this._currentTime);
+                this._moving = undefined;
+                this._resizing = undefined;
+            }
+            mode.exit();
+        });
     };
 
     get wm() {
@@ -512,10 +523,14 @@ export class OWMLib {
         this._log.info("release", event);
         this._currentTime = event.time;
         if (this._moving) {
+            this._moveResizeMode.exit();
+
             this._moving.client.move(this._moving.x + event.root_x, this._moving.y + event.root_y);
             this._xcb.ungrab_pointer(this._wm, event.time);
             this._moving = undefined;
         } else if (this._resizing) {
+            this._moveResizeMode.exit();
+
             const dx = event.root_x - this._resizing.x;
             const dy = event.root_y - this._resizing.y;
             switch (this._resizing.handle) {
@@ -807,6 +822,9 @@ export class OWMLib {
                                            pointer_mode: asyncMode, keyboard_mode: asyncMode,
                                            time: time });
         this._xcb.allow_events(this._wm, { mode: this._xcb.allow.ASYNC_POINTER, time: time });
+
+        // also grab the escape button so that we can exit that way
+        this._bindings.enterMode(this._moveResizeMode);
     }
 
     private _moveClient(client: Client, event: XCB.ButtonPress) {

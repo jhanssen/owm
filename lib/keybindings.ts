@@ -116,11 +116,13 @@ export class KeybindingsMode
     private _parent: Keybindings;
     private _bindings: Map<string, Keybinding>;
     private _name: string | undefined;
+    private _matchModifiers: boolean;
 
-    constructor(owm: OWMLib, name?: string) {
+    constructor(owm: OWMLib, name?: string, match?: boolean) {
         this._parent = owm.bindings;
         this._bindings = new Map<string, Keybinding>();
         this._name = name;
+        this._matchModifiers = (match === undefined || match === true);
     }
 
     get bindings() {
@@ -129,6 +131,10 @@ export class KeybindingsMode
 
     get name() {
         return this._name;
+    }
+
+    get matchModifiers() {
+        return this._matchModifiers;
     }
 
     add(binding: string, callback: (mode: KeybindingsMode, binding: string) => void) {
@@ -192,8 +198,9 @@ export class Keybindings
     enterMode(mode: KeybindingsMode) {
         this._owm.events.emit("enterMode", mode);
 
+        const match = mode.matchModifiers;
         for (const [str, binding] of mode.bindings) {
-            if (this._hasSym(binding.sym, binding.mods))
+            if (match && this._hasSym(binding.sym, binding.mods))
                 continue;
 
             const codes = binding.codes;
@@ -203,8 +210,14 @@ export class Keybindings
             const mode = binding.mode;
             const grabMode = this._owm.xcb.grabMode;
             for (let code of codes) {
-                this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                       key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                if (match) {
+                    this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
+                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                } else {
+                    const mask = this._owm.xcb.modMask;
+                    this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mask.ANY,
+                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                }
             }
         }
 
@@ -218,14 +231,20 @@ export class Keybindings
 
         this._enteredModes.pop();
 
-        for (const [str, binding] of mode.bindings) {
-            if (this._hasSym(binding.sym, binding.mods))
-                continue;
+        if (mode.matchModifiers) {
+            for (const [str, binding] of mode.bindings) {
+                if (this._hasSym(binding.sym, binding.mods))
+                    continue;
 
-            const mods = binding.mods;
-            for (let code of binding.codes) {
-                this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: mods });
+                const mods = binding.mods;
+                for (let code of binding.codes) {
+                    this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: mods });
+                }
             }
+        } else {
+            // let's ditch everything and regrab all
+            this._unbind();
+            this._rebind();
         }
 
         this._owm.events.emit("exitMode", mode);
@@ -266,11 +285,13 @@ export class Keybindings
         if (!this._enabled)
             return;
 
-        const bindings = this._enteredModes.length > 0 ? this._enteredModes[this._enteredModes.length - 1].bindings : this._bindings;
+        const mode: KeybindingsMode | undefined = this._enteredModes.length > 0 ? this._enteredModes[this._enteredModes.length - 1] : undefined;
+        const bindings = mode ? mode.bindings : this._bindings;
+        const match = mode ? mode.matchModifiers : true;
 
         for (const [key, keybinding] of bindings) {
             //console.log("cand. binding", keybinding);
-            if (press.sym === keybinding.sym && press.state === keybinding.mods) {
+            if (press.sym === keybinding.sym && (!match || press.state === keybinding.mods)) {
                 keybinding.call(this);
             }
         }
