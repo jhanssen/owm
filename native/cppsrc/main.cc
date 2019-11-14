@@ -828,6 +828,8 @@ void Stop(const Napi::CallbackInfo& info)
         throw Napi::TypeError::New(env, "Not started");
     data.started.store(false);
 
+    uv_close(reinterpret_cast<uv_handle_t*>(&data.asyncFlush), nullptr);
+
     char c = 'q';
     EINTRWRAP(::write(data.wakeup[1], &c, 1));
 
