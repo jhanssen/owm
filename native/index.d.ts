@@ -290,7 +290,7 @@ export namespace XCB {
         readonly type: number;
         readonly window: number;
         readonly format: number;
-        readonly messageType: number;
+        readonly message_type: number;
         readonly data: ArrayBuffer;
     }
 }

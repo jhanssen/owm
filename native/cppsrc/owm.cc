@@ -294,7 +294,7 @@ static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* e
     obj.Set("type", event->response_type & ~0x80);
     obj.Set("window", event->window);
     obj.Set("format", event->format);
-    obj.Set("messageType", event->type);
+    obj.Set("message_type", event->type);
 
     uint8_t* ptr = new uint8_t[20];
     memcpy(ptr, event->data.data8, 20);

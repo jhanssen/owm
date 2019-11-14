@@ -439,6 +439,47 @@ export class OWMLib {
         this._xcb.poly_fill_rectangle(this._wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
     }
 
+    clientMessage(event: XCB.ClientMessage) {
+        const atom = this._xcb.atom;
+        const ewmh = this._xcb.ewmh;
+        switch (event.message_type) {
+        case atom._NET_CLOSE_WINDOW:
+            const client = this._clientsByWindow.get(event.window);
+            if (client) {
+                client.kill();
+            }
+            break;
+        case atom._NET_MOVERESIZE_WINDOW:
+            // use Int32Array here, x and y can be negative
+            const i32 = new Int32Array(event.data);
+            if (i32.length >= 5) {
+                // 0: gravity, 1: x, 2: y, 3: width, 4: height
+                const client = this._clientsByWindow.get(event.window);
+                if (client) {
+                    // yay
+                    const flags = i32[0];
+                    const cfg: {
+                        window: number,
+                        x?: number,
+                        y?: number,
+                        width?: number,
+                        height?: number
+                    } = { window: event.window };
+                    if (flags & ewmh.moveResizeWindow.X)
+                        cfg.x = i32[1];
+                    if (flags & ewmh.moveResizeWindow.X)
+                        cfg.y = i32[2];
+                    if (flags & ewmh.moveResizeWindow.WIDTH)
+                        cfg.width = i32[3];
+                    if (flags & ewmh.moveResizeWindow.HEIGHT)
+                        cfg.height = i32[4];
+                    client.configure(cfg);
+                }
+            }
+            break;
+        }
+    }
+
     buttonPress(event: XCB.ButtonPress) {
         this._log.info("press", event);
         this._currentTime = event.time;
@@ -752,6 +793,9 @@ export class OWMLib {
             break;
         case this._xcb.event.EXPOSE:
             this.expose(e.xcb as XCB.Expose);
+            break;
+        case this._xcb.event.CLIENT_MESSAGE:
+            this.clientMessage(e.xcb as XCB.ClientMessage);
             break;
         }
     }
