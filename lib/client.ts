@@ -718,7 +718,7 @@ export class Client implements ContainerItem
     private _updateWmHints(buffer: ArrayBuffer) {
         const dv = new DataView(buffer);
         if (dv.byteLength != 9 * 4) {
-            throw new Error(`incorrect number of WM_NORMAL_HINTS arguments ${dv.byteLength / 4} should be 9`);
+            throw new Error(`incorrect number of WM_HINTS arguments ${dv.byteLength / 4} should be 9`);
         }
 
         const isLE = endianness() === "LE";
