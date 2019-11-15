@@ -50,6 +50,32 @@ enum ResizeHandle
     BottomRight
 }
 
+class MoveResize {
+    public moving: { client: Client, x: number, y: number } | undefined;
+    public resizing: { client: Client, x: number, y: number, geom: Geometry, handle: ResizeHandle } | undefined;
+    public movingKeyboard: Client | undefined;
+    public resizingKeyboard: Client | undefined;
+
+    public static readonly AdjustBy = 5;
+
+    constructor() {
+    }
+
+    get enabled() {
+        return this.moving !== undefined ||
+            this.resizing !== undefined ||
+            this.movingKeyboard !== undefined ||
+            this.resizingKeyboard !== undefined;
+    }
+
+    clear() {
+        this.moving = undefined;
+        this.resizing = undefined;
+        this.movingKeyboard = undefined;
+        this.resizingKeyboard = undefined;
+    }
+}
+
 export class OWMLib {
     private readonly _wm: OWM.WM;
     private readonly _xcb: OWM.XCB;
@@ -75,8 +101,7 @@ export class OWMLib {
     private _options: OWMOptions;
     private _moveModifier: string;
     private _moveModifierMask: number;
-    private _moving: { client: Client, x: number, y: number } | undefined;
-    private _resizing: { client: Client, x: number, y: number, geom: Geometry, handle: ResizeHandle } | undefined;
+    private _moveResize: MoveResize;
     private _moveResizeMode: KeybindingsMode;
 
     public readonly Client = Client;
@@ -116,14 +141,71 @@ export class OWMLib {
         this._moveModifierMask = this._parseMoveModifier("Alt");
         this._moveModifier = "Alt";
 
+        this._moveResize = new MoveResize();
+
         this._moveResizeMode = new KeybindingsMode(this, "Pointer move/resize mode", false);
         this._moveResizeMode.add("Escape", (mode: KeybindingsMode, binding: string) => {
-            if (this._moving || this._resizing) {
+            if (this._moveResize.moving || this._moveResize.resizing) {
                 this._xcb.ungrab_pointer(this._wm, this._currentTime);
-                this._moving = undefined;
-                this._resizing = undefined;
             }
+            this._moveResize.clear();
             mode.exit();
+        });
+        this._moveResizeMode.add("Return", (mode: KeybindingsMode, binding: string) => {
+            if (this._moveResize.moving || this._moveResize.resizing) {
+                this._xcb.ungrab_pointer(this._wm, this._currentTime);
+            }
+            this._moveResize.clear();
+            mode.exit();
+        });
+        this._moveResizeMode.add("Left", (mode: KeybindingsMode, binding: string) => {
+            if (this._moveResize.movingKeyboard) {
+                const client = this._moveResize.movingKeyboard;
+                const geom = client.frameGeometry;
+                client.move(geom.x - MoveResize.AdjustBy, geom.y);
+            } else if (this._moveResize.resizingKeyboard) {
+                const client = this._moveResize.resizingKeyboard;
+                const geom = client.frameGeometry;
+                if (geom.width <= MoveResize.AdjustBy)
+                    return;
+                client.resize(geom.width - MoveResize.AdjustBy, geom.height);
+            }
+        });
+        this._moveResizeMode.add("Right", (mode: KeybindingsMode, binding: string) => {
+            if (this._moveResize.movingKeyboard) {
+                const client = this._moveResize.movingKeyboard;
+                const geom = client.frameGeometry;
+                client.move(geom.x + MoveResize.AdjustBy, geom.y);
+            } else if (this._moveResize.resizingKeyboard) {
+                const client = this._moveResize.resizingKeyboard;
+                const geom = client.frameGeometry;
+                client.resize(geom.width + MoveResize.AdjustBy, geom.height);
+            }
+        });
+        this._moveResizeMode.add("Up", (mode: KeybindingsMode, binding: string) => {
+            if (this._moveResize.movingKeyboard) {
+                const client = this._moveResize.movingKeyboard;
+                const geom = client.frameGeometry;
+                client.move(geom.x, geom.y - MoveResize.AdjustBy);
+            } else if (this._moveResize.resizingKeyboard) {
+                const client = this._moveResize.resizingKeyboard;
+                const geom = client.frameGeometry;
+                // make sure we don't go too too small
+                if (geom.height <= MoveResize.AdjustBy)
+                    return;
+                client.resize(geom.width, geom.height - MoveResize.AdjustBy);
+            }
+        });
+        this._moveResizeMode.add("Down", (mode: KeybindingsMode, binding: string) => {
+            if (this._moveResize.movingKeyboard) {
+                const client = this._moveResize.movingKeyboard;
+                const geom = client.frameGeometry;
+                client.move(geom.x, geom.y + MoveResize.AdjustBy);
+            } else if (this._moveResize.resizingKeyboard) {
+                const client = this._moveResize.resizingKeyboard;
+                const geom = client.frameGeometry;
+                client.resize(geom.width, geom.height + MoveResize.AdjustBy);
+            }
         });
     };
 
@@ -330,6 +412,20 @@ export class OWMLib {
         }
     }
 
+    moveByKeyboard(client: Client) {
+        if (this._moveResize.enabled)
+            return;
+        this._moveResize.movingKeyboard = client;
+        this._bindings.enterMode(this._moveResizeMode);
+    }
+
+    resizeByKeyboard(client: Client) {
+        if (this._moveResize.enabled)
+            return;
+        this._moveResize.resizingKeyboard = client;
+        this._bindings.enterMode(this._moveResizeMode);
+    }
+
     addMatch(match: Match) {
         this._matches.add(match);
         for (let c of this._clients) {
@@ -488,6 +584,49 @@ export class OWMLib {
                 }
             }
             break;
+        case atom._NET_WM_MOVERESIZE:
+            const u32 = new Uint32Array(event.data);
+            if (!this._moveResize.enabled && u32.length >= 5) {
+                const client = this._clientsByWindow.get(event.window);
+                if (client) {
+                    const dir = this._xcb.ewmh.moveResizeDirection;
+                    const direction = u32[2];
+                    const time = this._currentTime;
+                    switch (direction) {
+                    case dir.MOVE_KEYBOARD:
+                        this._moveResize.movingKeyboard = client;
+                        this._bindings.enterMode(this._moveResizeMode);
+                        break;
+                    case dir.SIZE_KEYBOARD:
+                        this._moveResize.resizingKeyboard = client;
+                        this._bindings.enterMode(this._moveResizeMode);
+                        break;
+                    case dir.CANCEL:
+                        if (this._moveResize.enabled) {
+                            this._moveResizeMode.exit();
+                            this._xcb.ungrab_pointer(this._wm, time);
+                            this._moveResize.clear();
+                        }
+                        break;
+                    case dir.MOVE:
+                        this._grabPointer(time);
+                        this._moveClient(client, { root_x: u32[0], root_y: u32[1] });
+                        break;
+                    case dir.SIZE_TOPLEFT:
+                    case dir.SIZE_TOP:
+                    case dir.SIZE_TOPRIGHT:
+                    case dir.SIZE_RIGHT:
+                    case dir.SIZE_BOTTOMRIGHT:
+                    case dir.SIZE_BOTTOM:
+                    case dir.SIZE_BOTTOMLEFT:
+                    case dir.SIZE_LEFT:
+                        this._grabPointer(time);
+                        this._resizeClient(client, { root_x: u32[0], root_y: u32[1], time: time });
+                        break;
+                    }
+                }
+            }
+            break;
         }
     }
 
@@ -522,36 +661,36 @@ export class OWMLib {
     buttonRelease(event: XCB.ButtonPress) {
         this._log.info("release", event);
         this._currentTime = event.time;
-        if (this._moving) {
+        if (this._moveResize.moving) {
             this._moveResizeMode.exit();
 
-            this._moving.client.move(this._moving.x + event.root_x, this._moving.y + event.root_y);
+            this._moveResize.moving.client.move(this._moveResize.moving.x + event.root_x, this._moveResize.moving.y + event.root_y);
             this._xcb.ungrab_pointer(this._wm, event.time);
-            this._moving = undefined;
-        } else if (this._resizing) {
+            this._moveResize.clear();
+        } else if (this._moveResize.resizing) {
             this._moveResizeMode.exit();
 
-            const dx = event.root_x - this._resizing.x;
-            const dy = event.root_y - this._resizing.y;
-            switch (this._resizing.handle) {
+            const dx = event.root_x - this._moveResize.resizing.x;
+            const dy = event.root_y - this._moveResize.resizing.y;
+            switch (this._moveResize.resizing.handle) {
             case ResizeHandle.TopLeft:
-                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y + dy);
-                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height - dy);
+                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y + dy);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height - dy);
                 break;
             case ResizeHandle.TopRight:
-                this._resizing.client.move(this._resizing.geom.x, this._resizing.geom.y + dy);
-                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height - dy);
+                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x, this._moveResize.resizing.geom.y + dy);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height - dy);
                 break;
             case ResizeHandle.BottomLeft:
-                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y);
-                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height + dy);
+                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height + dy);
                 break;
             case ResizeHandle.BottomRight:
-                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height + dy);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height + dy);
                 break;
             }
             this._xcb.ungrab_pointer(this._wm, event.time);
-            this._resizing = undefined;
+            this._moveResize.clear();
         } else {
             this._policy.buttonRelease(event);
         }
@@ -560,27 +699,27 @@ export class OWMLib {
     motionNotify(event: XCB.MotionNotify) {
         this._log.info("motion", event);
         this._currentTime = event.time;
-        if (this._moving) {
+        if (this._moveResize.moving) {
             // move
-            this._moving.client.move(this._moving.x + event.root_x, this._moving.y + event.root_y);
-        } else if (this._resizing) {
-            const dx = event.root_x - this._resizing.x;
-            const dy = event.root_y - this._resizing.y;
-            switch (this._resizing.handle) {
+            this._moveResize.moving.client.move(this._moveResize.moving.x + event.root_x, this._moveResize.moving.y + event.root_y);
+        } else if (this._moveResize.resizing) {
+            const dx = event.root_x - this._moveResize.resizing.x;
+            const dy = event.root_y - this._moveResize.resizing.y;
+            switch (this._moveResize.resizing.handle) {
             case ResizeHandle.TopLeft:
-                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y + dy);
-                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height - dy);
+                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y + dy);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height - dy);
                 break;
             case ResizeHandle.TopRight:
-                this._resizing.client.move(this._resizing.geom.x, this._resizing.geom.y + dy);
-                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height - dy);
+                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x, this._moveResize.resizing.geom.y + dy);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height - dy);
                 break;
             case ResizeHandle.BottomLeft:
-                this._resizing.client.move(this._resizing.geom.x + dx, this._resizing.geom.y);
-                this._resizing.client.resize(this._resizing.geom.width - dx, this._resizing.geom.height + dy);
+                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height + dy);
                 break;
             case ResizeHandle.BottomRight:
-                this._resizing.client.resize(this._resizing.geom.width + dx, this._resizing.geom.height + dy);
+                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height + dy);
                 break;
             }
         }
@@ -675,6 +814,7 @@ export class OWMLib {
 
     recreateKeyBindings() {
         this._bindings.recreate();
+        this._moveResizeMode.recreate();
     }
 
     onsettled(func: () => void) {
@@ -827,13 +967,13 @@ export class OWMLib {
         this._bindings.enterMode(this._moveResizeMode);
     }
 
-    private _moveClient(client: Client, event: XCB.ButtonPress) {
+    private _moveClient(client: Client, event: { root_x: number, root_y: number }) {
         // grab the pointer, asking for move and release events
         const geom = client.frameGeometry;
-        this._moving = { client: client, x: geom.x - event.root_x, y: geom.y - event.root_y };
+        this._moveResize.moving = { client: client, x: geom.x - event.root_x, y: geom.y - event.root_y };
     }
 
-    private _resizeClient(client: Client, event: XCB.ButtonPress) {
+    private _resizeClient(client: Client, event: { root_x: number, root_y: number, time: number }) {
         console.log("resize...", event);
 
         const geom = client.frameGeometry;
@@ -866,7 +1006,7 @@ export class OWMLib {
             }
         }
 
-        this._resizing = {
+        this._moveResize.resizing = {
             client: client,
             x: event.root_x, y: event.root_y,
             geom: new Geometry(geom),

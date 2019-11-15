@@ -24,6 +24,22 @@ function init(owmlib) {
         ws.monitor.workspace = ws;
     });
 
+    owmlib.bindings.add("Ctrl+M", (bindings, binding) => {
+        const client = owmlib.findClientUnderCursor();
+        if (client) {
+            logger.error("moving client by keyboard");
+            client.moveByKeyboard();
+        }
+    });
+
+    owmlib.bindings.add("Ctrl+R", (bindings, binding) => {
+        const client = owmlib.findClientUnderCursor();
+        if (client) {
+            logger.error("resizing client by keyboard");
+            client.resizeByKeyboard();
+        }
+    });
+
     const ctrldmode = new owmlib.KeybindingsMode(owmlib, "Ctrl+D mode");
     ctrldmode.add("Escape", (mode) => {
         logger.info("exit ctrldmode");

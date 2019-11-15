@@ -159,6 +159,12 @@ export class KeybindingsMode
     exit() {
         this._parent.exitMode(this);
     }
+
+    recreate() {
+        for (const [key, keybinding] of this._bindings) {
+            keybinding.recreate();
+        }
+    }
 }
 
 export class Keybindings
@@ -324,9 +330,7 @@ export class Keybindings
 
     private _recreate() {
         for (const mode of this._allModes) {
-            for (const [key, keybinding] of mode.bindings) {
-                keybinding.recreate();
-            }
+            mode.recreate();
         }
         for (const [key, keybinding] of this._bindings) {
             keybinding.recreate();

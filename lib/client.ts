@@ -430,6 +430,10 @@ export class Client implements ContainerItem
         });
     }
 
+    moveByKeyboard() {
+        this._owm.moveByKeyboard(this);
+    }
+
     resize(width: number, height: number) {
         this._frameGeometry.width = width;
         this._frameGeometry.height = height;
@@ -452,6 +456,10 @@ export class Client implements ContainerItem
             width: this._geometry.width,
             height: this._geometry.height
         });
+    }
+
+    resizeByKeyboard() {
+        this._owm.resizeByKeyboard(this);
     }
 
     configure(cfg: ConfigureArgs) {
