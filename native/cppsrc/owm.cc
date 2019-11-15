@@ -1452,6 +1452,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         const char* cname = xcb_get_atom_name_name(reply);
         const int len = xcb_get_atom_name_name_length(reply);
         if (!cname || !len) {
+            free(reply);
             throw Napi::TypeError::New(env, "get_atom_name no name");
         }
 
