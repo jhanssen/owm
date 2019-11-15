@@ -23,6 +23,8 @@ export namespace XCB {
             readonly flags: number;
             readonly x: number;
             readonly y: number;
+            readonly width: number;
+            readonly height: number;
             readonly min_width: number;
             readonly min_height: number;
             readonly max_width: number;
@@ -84,8 +86,8 @@ export namespace XCB {
         readonly pid: number;
         readonly leader: number;
         readonly attributes: WindowTypes.Attributes;
-        readonly normalHints: WindowTypes.SizeHints;
-        readonly wmHints: WindowTypes.WMHints;
+        normalHints: WindowTypes.SizeHints;
+        wmHints: WindowTypes.WMHints;
         readonly wmClass: WindowTypes.WMClass;
         readonly wmName: string;
         readonly wmProtocols: number[];
@@ -561,6 +563,7 @@ export namespace OWM {
         readonly event: {[key: string]: number};
         readonly eventMask: {[key: string]: number};
         readonly propMode: {[key: string]: number};
+        readonly propState: {[key: string]: number};
         readonly inputFocus: {[key: string]: number};
         readonly modMask: {[key: string]: number};
         readonly keyButtonMask: {[key: string]: number};
@@ -604,6 +607,7 @@ export namespace OWM {
         grab_pointer(wm: OWM.WM, args: GrabPointerArgs): number;
         ungrab_pointer(wm: OWM.WM, time?: number): void;
         key_symbols_get_keycode(wm: OWM.WM, sym: number): number[];
+        get_atom_name(wm: OWM.WM, atom: number): string;
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;
         destroy_window(wm: OWM.WM, window: number): void;

@@ -774,6 +774,16 @@ static Napi::Object initPropModes(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
+static Napi::Object initPropStates(napi_env env, const std::shared_ptr<WM>& wm)
+{
+    Napi::Object states = Napi::Object::New(env);
+
+    states.Set("NEW_VALUE", Napi::Number::New(env, XCB_PROPERTY_NEW_VALUE));
+    states.Set("DELETE", Napi::Number::New(env, XCB_PROPERTY_DELETE));
+
+    return states;
+}
+
 static Napi::Object initInputFocus(napi_env env, const std::shared_ptr<WM>& wm)
 {
     Napi::Object focus = Napi::Object::New(env);
@@ -1421,6 +1431,35 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
                        reinterpret_cast<char*>(&event));
 
         return env.Undefined();
+    }));
+
+    xcb.Set("get_atom_name", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "get_atom_name requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        const uint32_t atom = info[1].As<Napi::Number>().Uint32Value();
+
+        auto cookie = xcb_get_atom_name(wm->conn, atom);
+        auto reply = xcb_get_atom_name_reply(wm->conn, cookie, nullptr);
+        if (!reply) {
+            throw Napi::TypeError::New(env, "get_atom_name no reply");
+        }
+
+        const char* cname = xcb_get_atom_name_name(reply);
+        const int len = xcb_get_atom_name_name_length(reply);
+        if (!cname || !len) {
+            throw Napi::TypeError::New(env, "get_atom_name no name");
+        }
+
+        auto name = Napi::String::New(env, cname, len);
+
+        free(reply);
+
+        return name;
     }));
 
     xcb.Set("get_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
@@ -2692,6 +2731,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     xcb.Set("event", initEvents(env, wm));
     xcb.Set("eventMask", initEventMasks(env, wm));
     xcb.Set("propMode", initPropModes(env, wm));
+    xcb.Set("propState", initPropStates(env, wm));
     xcb.Set("inputFocus", initInputFocus(env, wm));
     xcb.Set("modMask", initModMasks(env, wm));
     xcb.Set("keyButtonMask", initKeyButtonMasks(env, wm));

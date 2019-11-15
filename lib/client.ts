@@ -4,6 +4,7 @@ import { ContainerItem } from "./container";
 import { Workspace } from "./workspace";
 import { Container } from "./container";
 import { Geometry, Strut } from "./utils";
+import { endianness } from "os";
 import { XCB } from "native";
 
 interface ConfigureArgs {
@@ -386,6 +387,9 @@ export class Client implements ContainerItem
     }
 
     centerOn(client: Client) {
+        if (!client.floating)
+            return;
+
         const cg = client.geometry;
         const cx = ((cg.width / 2) - (this._geometry.width / 2)) + cg.x;
         const cy = ((cg.height / 2) - (this._geometry.height / 2)) + cg.y;
@@ -531,6 +535,57 @@ export class Client implements ContainerItem
         }
     }
 
+    updateProperty(property: number) {
+        const buffer = this._owm.xcb.get_property(this._owm.wm, { window: this._window.window, property: property });
+        if (!buffer) {
+            const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
+            throw new Error(`couldn't get property for update ${name}`);
+        }
+
+        // this._log.error("prop", this._owm.xcb.get_atom_name(this._owm.wm, property));
+
+        const atom = this._owm.xcb.atom;
+        switch (property) {
+        case atom.WM_HINTS:
+            this._updateWmHints(buffer);
+            break;
+        case atom.WM_NAME:
+            this._updateWmName(buffer);
+            break;
+        case atom.WM_NORMAL_HINTS:
+            this._updateWmNormalHints(buffer);
+            break;
+        case atom.WM_CLIENT_LEADER:
+            this._updateWmClientLeader(buffer);
+            break;
+        case atom.WM_TRANSIENT_FOR:
+            this._updateWmTransientFor(buffer);
+            break;
+        case atom.WM_WINDOW_ROLE:
+            this._updateWmWindowRole(buffer);
+            break;
+        case atom.WM_CLASS:
+            this._updateWmClass(buffer);
+            break;
+        case atom._NET_WM_NAME:
+            this._updateEwmhWmName(buffer);
+            break;
+        case atom._NET_WM_STRUT:
+            this._updateWmStrut(buffer);
+            break;
+        case atom._NET_WM_STRUT_PARTIAL:
+            this._updateWmStrutPartial(buffer);
+            break;
+        case atom._NET_WM_WINDOW_TYPE:
+            this._updateWmWindowType(buffer);
+            break;
+        default:
+            const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
+            this._log.error(`unhandled property notify ${name}`);
+            break;
+        }
+    }
+
     map() {
         this._owm.xcb.map_window(this._owm.wm, this._parent);
     }
@@ -658,6 +713,91 @@ export class Client implements ContainerItem
         } else if (this._pixel !== undefined) {
             this._gc = this._owm.xcb.create_gc(this._owm.wm, { window: this._parent, values: { foreground: this._pixel } })
         }
+    }
+
+    private _updateWmHints(buffer: ArrayBuffer) {
+        const dv = new DataView(buffer);
+        if (dv.byteLength != 9 * 4) {
+            throw new Error(`incorrect number of WM_NORMAL_HINTS arguments ${dv.byteLength / 4} should be 9`);
+        }
+
+        const isLE = endianness() === "LE";
+
+        const wmHints = {
+            flags: dv.getInt32(0, isLE),
+            input: dv.getUint32(4, isLE),
+            initial_state: dv.getInt32(8, isLE),
+            icon_pixmap: dv.getUint32(12, isLE),
+            icon_window: dv.getUint32(16, isLE),
+            icon_x: dv.getInt32(20, isLE),
+            icon_y: dv.getInt32(24, isLE),
+            icon_mask: dv.getUint32(28, isLE),
+            window_group: dv.getUint32(32, isLE),
+        };
+
+        if (wmHints.flags & this._owm.xcb.icccm.hint.INPUT)
+            this._noinput = wmHints.input === 0;
+
+        this._window.wmHints = wmHints;
+    }
+
+    private _updateWmName(buffer: ArrayBuffer) {
+    }
+
+    private _updateWmNormalHints(buffer: ArrayBuffer) {
+        const dv = new DataView(buffer);
+        if (dv.byteLength != 18 * 4) {
+            throw new Error(`incorrect number of WM_NORMAL_HINTS arguments ${dv.byteLength / 4} should be 18`);
+        }
+
+        const isLE = endianness() === "LE";
+
+        const normalHints = {
+            flags: dv.getUint32(0, isLE),
+            x: dv.getInt32(4, isLE),
+            y: dv.getInt32(8, isLE),
+            width: dv.getInt32(12, isLE),
+            height: dv.getInt32(16, isLE),
+            min_width: dv.getInt32(20, isLE),
+            min_height: dv.getInt32(24, isLE),
+            max_width: dv.getInt32(28, isLE),
+            max_height: dv.getInt32(32, isLE),
+            width_inc: dv.getInt32(36, isLE),
+            height_inc: dv.getInt32(40, isLE),
+            min_aspect_num: dv.getInt32(44, isLE),
+            min_aspect_den: dv.getInt32(48, isLE),
+            max_aspect_num: dv.getInt32(52, isLE),
+            max_aspect_den: dv.getInt32(56, isLE),
+            base_width: dv.getInt32(60, isLE),
+            base_height: dv.getInt32(64, isLE),
+            win_gravity: dv.getUint32(68, isLE)
+        };
+
+        this._window.normalHints = normalHints;
+    }
+
+    private _updateWmClientLeader(buffer: ArrayBuffer) {
+    }
+
+    private _updateWmTransientFor(buffer: ArrayBuffer) {
+    }
+
+    private _updateWmWindowRole(buffer: ArrayBuffer) {
+    }
+
+    private _updateWmClass(buffer: ArrayBuffer) {
+    }
+
+    private _updateEwmhWmName(buffer: ArrayBuffer) {
+    }
+
+    private _updateWmStrut(buffer: ArrayBuffer) {
+    }
+
+    private _updateWmStrutPartial(buffer: ArrayBuffer) {
+    }
+
+    private _updateWmWindowType(buffer: ArrayBuffer) {
     }
 }
 

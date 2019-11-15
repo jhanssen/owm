@@ -368,11 +368,13 @@ export class OWMLib {
 
         if (win.transientFor !== 0 && win.transientFor !== win.window) {
             const clientFor = this._clientsByWindow.get(win.transientFor);
+
+            client.floating = true;
+
             if (clientFor) {
                 client.centerOn(clientFor);
             }
 
-            client.floating = true;
             grp.addTransient(win.window, win.transientFor);
         }
 
@@ -628,6 +630,16 @@ export class OWMLib {
             }
             break;
         }
+    }
+
+    propertyNotify(event: XCB.PropertyNotify) {
+        this._log.info("property", event);
+        this._currentTime = event.time;
+        const client = this._clientsByWindow.get(event.window);
+        if (!client)
+            return;
+
+        client.updateProperty(event.atom);
     }
 
     buttonPress(event: XCB.ButtonPress) {
@@ -900,57 +912,61 @@ export class OWMLib {
     handleXCB(e: OWM.Event) {
         if (!e.xcb)
             return;
+        const event = this._xcb.event;
         switch (e.xcb.type) {
-        case this._xcb.event.BUTTON_PRESS:
+        case event.BUTTON_PRESS:
             this.buttonPress(e.xcb as XCB.ButtonPress);
             break;
-        case this._xcb.event.BUTTON_RELEASE:
+        case event.BUTTON_RELEASE:
             this.buttonRelease(e.xcb as XCB.ButtonPress);
             break;
-        case this._xcb.event.MOTION_NOTIFY:
+        case event.MOTION_NOTIFY:
             this.motionNotify(e.xcb as XCB.MotionNotify);
             break;
-        case this._xcb.event.KEY_PRESS:
+        case event.KEY_PRESS:
             this.keyPress(e.xcb as XCB.KeyPress);
             break;
-        case this._xcb.event.KEY_RELEASE:
+        case event.KEY_RELEASE:
             this.keyRelease(e.xcb as XCB.KeyPress);
             break;
-        case this._xcb.event.ENTER_NOTIFY:
+        case event.ENTER_NOTIFY:
             this.enterNotify(e.xcb as XCB.EnterNotify);
             break;
-        case this._xcb.event.LEAVE_NOTIFY:
+        case event.LEAVE_NOTIFY:
             this.leaveNotify(e.xcb as XCB.EnterNotify);
             break;
-        case this._xcb.event.MAP_REQUEST:
+        case event.MAP_REQUEST:
             this.mapRequest(e.xcb as XCB.MapRequest);
             break;
-        case this._xcb.event.CONFIGURE_REQUEST:
+        case event.CONFIGURE_REQUEST:
             this.configureRequest(e.xcb as XCB.ConfigureRequest);
             break;
-        case this._xcb.event.CONFIGURE_NOTIFY:
+        case event.CONFIGURE_NOTIFY:
             this.configureNotify(e.xcb as XCB.ConfigureNotify);
             break;
-        case this._xcb.event.MAP_NOTIFY:
+        case event.MAP_NOTIFY:
             this.mapNotify(e.xcb as XCB.MapNotify);
             break;
-        case this._xcb.event.UNMAP_NOTIFY:
+        case event.UNMAP_NOTIFY:
             this.unmapNotify(e.xcb as XCB.UnmapNotify);
             break;
-        case this._xcb.event.DESTROY_NOTIFY:
+        case event.DESTROY_NOTIFY:
             this.destroyNotify(e.xcb as XCB.DestroyNotify);
             break;
-        case this._xcb.event.FOCUS_IN:
+        case event.FOCUS_IN:
             this.focusIn(e.xcb as XCB.FocusIn);
             break;
-        case this._xcb.event.FOCUS_OUT:
+        case event.FOCUS_OUT:
             this.focusOut(e.xcb as XCB.FocusIn);
             break;
-        case this._xcb.event.EXPOSE:
+        case event.EXPOSE:
             this.expose(e.xcb as XCB.Expose);
             break;
-        case this._xcb.event.CLIENT_MESSAGE:
+        case event.CLIENT_MESSAGE:
             this.clientMessage(e.xcb as XCB.ClientMessage);
+            break;
+        case event.PROPERTY_NOTIFY:
+            this.propertyNotify(e.xcb as XCB.PropertyNotify);
             break;
         }
     }
