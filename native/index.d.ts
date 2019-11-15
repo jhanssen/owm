@@ -89,9 +89,9 @@ export namespace XCB {
         normalHints: WindowTypes.SizeHints;
         wmHints: WindowTypes.WMHints;
         readonly wmClass: WindowTypes.WMClass;
-        readonly wmName: string;
+        wmName: string;
         readonly wmProtocols: number[];
-        readonly ewmhName: string;
+        ewmhName: string;
         readonly ewmhState: number[];
         readonly ewmhWindowType: number[];
         readonly ewmhStrut: WindowTypes.EWMHExtents;
@@ -529,7 +529,7 @@ interface PolyRectangleArgs
     readonly rects: Rectangle | Rectangle[];
 }
 
-interface QueryPointer
+interface QueryPointerReply
 {
     readonly same_screen: number;
     readonly root: number;
@@ -539,6 +539,13 @@ interface QueryPointer
     readonly win_x: number;
     readonly win_y: number;
     readonly mask: number;
+}
+
+interface GetPropertyReply
+{
+    readonly format: number;
+    readonly type: number;
+    readonly buffer: ArrayBuffer;
 }
 
 interface ICCCMEnums {
@@ -586,7 +593,7 @@ export namespace OWM {
         change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
-        get_property(wm: OWM.WM, args: GetPropertyArgs): ArrayBuffer | undefined;
+        get_property(wm: OWM.WM, args: GetPropertyArgs): GetPropertyReply | undefined;
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
@@ -597,7 +604,7 @@ export namespace OWM {
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
         poly_fill_rectangle(wm: OWM.WM, args: PolyRectangleArgs): void;
-        query_pointer(wm: OWM.WM, window?: number): QueryPointer;
+        query_pointer(wm: OWM.WM, window?: number): QueryPointerReply;
         grab_button(wm: OWM.WM, args: GrabButtonArgs): void;
         ungrab_button(wm: OWM.WM, args: UngrabButtonArgs): void;
         grab_key(wm: OWM.WM, args: GrabKeyArgs): void;
@@ -632,6 +639,7 @@ export namespace OWM {
         readonly xcb?: XCB_Type;
         readonly xkb?: string;
     }
+    export interface GetProperty extends GetPropertyReply {}
 }
 
 declare function nativeCallback(data: OWM.Event): void;

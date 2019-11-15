@@ -218,8 +218,9 @@ export class EWMH {
         xcb.grab_server(owm.wm);
 
         try {
-            const buffer = xcb.get_property(owm.wm, { window: window, property: property, type: xcb.atom.ATOM });
-            if (buffer !== undefined) {
+            const propdata = xcb.get_property(owm.wm, { window: window, property: property, type: xcb.atom.ATOM });
+            if (propdata !== undefined) {
+                const buffer = propdata.buffer;
                 if (buffer.byteLength % 4) {
                     // bad
                     throw new Error(`get_property bytelength invalid ${buffer.byteLength}`);

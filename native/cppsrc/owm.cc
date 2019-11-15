@@ -1512,7 +1512,11 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         void* rdata = rlength > 0 ? xcb_get_property_value(reply) : nullptr;
         if (rdata && rlength) {
-            return Napi::ArrayBuffer::New(env, rdata, rlength, [reply](napi_env, void*) { free(reply); });
+            auto ret = Napi::Object::New(env);
+            ret.Set("format", reply->format);
+            ret.Set("type", reply->type);
+            ret.Set("buffer", Napi::ArrayBuffer::New(env, rdata, rlength, [reply](napi_env, void*) { free(reply); }));
+            return ret;
         }
 
         free(reply);

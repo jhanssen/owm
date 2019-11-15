@@ -5,7 +5,7 @@ import { Workspace } from "./workspace";
 import { Container } from "./container";
 import { Geometry, Strut } from "./utils";
 import { endianness } from "os";
-import { XCB } from "native";
+import { XCB, OWM } from "native";
 
 interface ConfigureArgs {
     readonly window: number;
@@ -536,8 +536,8 @@ export class Client implements ContainerItem
     }
 
     updateProperty(property: number) {
-        const buffer = this._owm.xcb.get_property(this._owm.wm, { window: this._window.window, property: property });
-        if (!buffer) {
+        const propdata = this._owm.xcb.get_property(this._owm.wm, { window: this._window.window, property: property });
+        if (!propdata) {
             const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
             throw new Error(`couldn't get property for update ${name}`);
         }
@@ -547,37 +547,37 @@ export class Client implements ContainerItem
         const atom = this._owm.xcb.atom;
         switch (property) {
         case atom.WM_HINTS:
-            this._updateWmHints(buffer);
+            this._updateWmHints(propdata);
             break;
         case atom.WM_NAME:
-            this._updateWmName(buffer);
+            this._updateWmName(propdata);
             break;
         case atom.WM_NORMAL_HINTS:
-            this._updateWmNormalHints(buffer);
+            this._updateWmNormalHints(propdata);
             break;
         case atom.WM_CLIENT_LEADER:
-            this._updateWmClientLeader(buffer);
+            this._updateWmClientLeader(propdata);
             break;
         case atom.WM_TRANSIENT_FOR:
-            this._updateWmTransientFor(buffer);
+            this._updateWmTransientFor(propdata);
             break;
         case atom.WM_WINDOW_ROLE:
-            this._updateWmWindowRole(buffer);
+            this._updateWmWindowRole(propdata);
             break;
         case atom.WM_CLASS:
-            this._updateWmClass(buffer);
+            this._updateWmClass(propdata);
             break;
         case atom._NET_WM_NAME:
-            this._updateEwmhWmName(buffer);
+            this._updateEwmhWmName(propdata);
             break;
         case atom._NET_WM_STRUT:
-            this._updateWmStrut(buffer);
+            this._updateWmStrut(propdata);
             break;
         case atom._NET_WM_STRUT_PARTIAL:
-            this._updateWmStrutPartial(buffer);
+            this._updateWmStrutPartial(propdata);
             break;
         case atom._NET_WM_WINDOW_TYPE:
-            this._updateWmWindowType(buffer);
+            this._updateWmWindowType(propdata);
             break;
         default:
             const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
@@ -715,8 +715,8 @@ export class Client implements ContainerItem
         }
     }
 
-    private _updateWmHints(buffer: ArrayBuffer) {
-        const dv = new DataView(buffer);
+    private _updateWmHints(property: OWM.GetProperty) {
+        const dv = new DataView(property.buffer);
         if (dv.byteLength != 9 * 4) {
             throw new Error(`incorrect number of WM_HINTS arguments ${dv.byteLength / 4} should be 9`);
         }
@@ -741,11 +741,18 @@ export class Client implements ContainerItem
         this._window.wmHints = wmHints;
     }
 
-    private _updateWmName(buffer: ArrayBuffer) {
+    private _updateWmName(property: OWM.GetProperty) {
+        if (property.format !== 8) {
+            return;
+        }
+
+        // assume UTF-8???
+        const nbuf = Buffer.from(property.buffer);
+        this._window.wmName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
-    private _updateWmNormalHints(buffer: ArrayBuffer) {
-        const dv = new DataView(buffer);
+    private _updateWmNormalHints(property: OWM.GetProperty) {
+        const dv = new DataView(property.buffer);
         if (dv.byteLength != 18 * 4) {
             throw new Error(`incorrect number of WM_NORMAL_HINTS arguments ${dv.byteLength / 4} should be 18`);
         }
@@ -776,28 +783,35 @@ export class Client implements ContainerItem
         this._window.normalHints = normalHints;
     }
 
-    private _updateWmClientLeader(buffer: ArrayBuffer) {
+    private _updateWmClientLeader(property: OWM.GetProperty) {
     }
 
-    private _updateWmTransientFor(buffer: ArrayBuffer) {
+    private _updateWmTransientFor(property: OWM.GetProperty) {
     }
 
-    private _updateWmWindowRole(buffer: ArrayBuffer) {
+    private _updateWmWindowRole(property: OWM.GetProperty) {
     }
 
-    private _updateWmClass(buffer: ArrayBuffer) {
+    private _updateWmClass(property: OWM.GetProperty) {
     }
 
-    private _updateEwmhWmName(buffer: ArrayBuffer) {
+    private _updateEwmhWmName(property: OWM.GetProperty) {
+        if (property.format !== 8) {
+            return;
+        }
+
+        // this property is defined to be utf8
+        const nbuf = Buffer.from(property.buffer);
+        this._window.ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
-    private _updateWmStrut(buffer: ArrayBuffer) {
+    private _updateWmStrut(property: OWM.GetProperty) {
     }
 
-    private _updateWmStrutPartial(buffer: ArrayBuffer) {
+    private _updateWmStrutPartial(property: OWM.GetProperty) {
     }
 
-    private _updateWmWindowType(buffer: ArrayBuffer) {
+    private _updateWmWindowType(property: OWM.GetProperty) {
     }
 }
 
