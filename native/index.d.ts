@@ -86,12 +86,12 @@ export namespace XCB {
         readonly pid: number;
         readonly leader: number;
         readonly attributes: WindowTypes.Attributes;
-        normalHints: WindowTypes.SizeHints;
-        wmHints: WindowTypes.WMHints;
+        readonly normalHints: WindowTypes.SizeHints;
+        readonly wmHints: WindowTypes.WMHints;
         readonly wmClass: WindowTypes.WMClass;
-        wmName: string;
+        readonly wmName: string;
         readonly wmProtocols: number[];
-        ewmhName: string;
+        readonly ewmhName: string;
         readonly ewmhState: number[];
         readonly ewmhWindowType: number[];
         readonly ewmhStrut: WindowTypes.EWMHExtents;

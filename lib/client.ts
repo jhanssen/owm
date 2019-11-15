@@ -18,6 +18,10 @@ interface ConfigureArgs {
     readonly stack_mode?: number;
 }
 
+type MutableWindow = {
+    -readonly [K in keyof XCB.Window]: XCB.Window[K];
+}
+
 export class Client implements ContainerItem
 {
     private readonly _parent: number;
@@ -738,7 +742,7 @@ export class Client implements ContainerItem
         if (wmHints.flags & this._owm.xcb.icccm.hint.INPUT)
             this._noinput = wmHints.input === 0;
 
-        this._window.wmHints = wmHints;
+        (this._window as MutableWindow).wmHints = wmHints;
     }
 
     private _updateWmName(property: OWM.GetProperty) {
@@ -748,7 +752,7 @@ export class Client implements ContainerItem
 
         // assume UTF-8???
         const nbuf = Buffer.from(property.buffer);
-        this._window.wmName = nbuf.toString('utf8', 0, property.buffer.byteLength);
+        (this._window as MutableWindow).wmName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
     private _updateWmNormalHints(property: OWM.GetProperty) {
@@ -780,7 +784,7 @@ export class Client implements ContainerItem
             win_gravity: dv.getUint32(68, isLE)
         };
 
-        this._window.normalHints = normalHints;
+        (this._window as MutableWindow).normalHints = normalHints;
     }
 
     private _updateWmClientLeader(property: OWM.GetProperty) {
@@ -802,7 +806,7 @@ export class Client implements ContainerItem
 
         // this property is defined to be utf8
         const nbuf = Buffer.from(property.buffer);
-        this._window.ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
+        (this._window as MutableWindow).ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
     private _updateWmStrut(property: OWM.GetProperty) {
