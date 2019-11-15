@@ -413,14 +413,14 @@ export class OWMLib {
     }
 
     moveByKeyboard(client: Client) {
-        if (this._moveResize.enabled)
+        if (!client.floating || this._moveResize.enabled)
             return;
         this._moveResize.movingKeyboard = client;
         this._bindings.enterMode(this._moveResizeMode);
     }
 
     resizeByKeyboard(client: Client) {
-        if (this._moveResize.enabled)
+        if (!client.floating || this._moveResize.enabled)
             return;
         this._moveResize.resizingKeyboard = client;
         this._bindings.enterMode(this._moveResizeMode);
@@ -588,7 +588,7 @@ export class OWMLib {
             const u32 = new Uint32Array(event.data);
             if (!this._moveResize.enabled && u32.length >= 5) {
                 const client = this._clientsByWindow.get(event.window);
-                if (client) {
+                if (client && client.floating) {
                     const dir = this._xcb.ewmh.moveResizeDirection;
                     const direction = u32[2];
                     const time = this._currentTime;
