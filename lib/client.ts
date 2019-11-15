@@ -8,14 +8,12 @@ import { endianness } from "os";
 import { XCB, OWM } from "native";
 
 interface ConfigureArgs {
-    readonly window: number;
-    readonly x?: number;
-    readonly y?: number;
-    readonly width?: number;
-    readonly height?: number;
-    readonly border_width?: number;
-    readonly sibling?: number;
-    readonly stack_mode?: number;
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    sibling?: number;
+    stack_mode?: number;
 }
 
 type MutableWindow = {
@@ -319,25 +317,7 @@ export class Client implements ContainerItem
             // we didn't skip before, but now we do.
             // let's go back to our original geometry
 
-            const x = this._geometry.x = this._floatingGeometry.x;
-            const y = this._geometry.y = this._floatingGeometry.y;
-            const width = this._geometry.width = this._floatingGeometry.width;
-            const height = this._geometry.height = this._floatingGeometry.height;
-
-            const px = this._frameGeometry.x = x - this._border;
-            const py = this._frameGeometry.y = y - this._border;
-            const pwidth = this._frameGeometry.width = width + (this._border * 2);
-            const pheight = this._frameGeometry.height = height + (this._border * 2);
-
-            this._log.info("configuring2", this._window.window, px, py, pwidth, pheight);
-            this._owm.xcb.configure_window(this._owm.wm, {
-                window: this._parent,
-                x: px, y: py, width: pwidth, height: pheight
-            });
-            this._owm.xcb.configure_window(this._owm.wm, {
-                window: this._window.window,
-                x: this._border, y: this._border, width: width, height: height
-            });
+            this._configure(this._floatingGeometry);
         }
         this._updateAllowed();
     }
@@ -397,73 +377,20 @@ export class Client implements ContainerItem
         const cg = client.geometry;
         const cx = ((cg.width / 2) - (this._geometry.width / 2)) + cg.x;
         const cy = ((cg.height / 2) - (this._geometry.height / 2)) + cg.y;
-        const cwidth = this._geometry.width;
-        const cheight = this._geometry.height;
 
-        this._geometry.x = this._floatingGeometry.x = cx;
-        this._geometry.y = this._floatingGeometry.y = cy;
-
-        const px = cx - this._border;
-        const py = cy - this._border;
-        const pwidth = this._frameGeometry.width;
-        const pheight = this._frameGeometry.height;
-
-        this._frameGeometry.x = px;
-        this._frameGeometry.y = py;
-
-        this._log.info("configuring3", this._window.window, px, py, pwidth, pheight);
-        this._owm.xcb.configure_window(this._owm.wm, {
-            window: this._parent,
-            x: px, y: py, width: pwidth, height: pheight
-        });
-        this._owm.xcb.configure_window(this._owm.wm, {
-            window: this._window.window,
-            x: this._border, y: this._border, width: cwidth, height: cheight
-        });
+        this._configure({ x: cx, y: cy });
     }
 
     move(x: number, y: number) {
-        this._frameGeometry.x = x;
-        this._frameGeometry.y = y;
-        this._geometry.x = x + this._border;
-        this._geometry.y = y + this._border;
-
-        this._log.info("configuring4", this._window.window, this._frameGeometry);
-        this._owm.xcb.configure_window(this._owm.wm, {
-            window: this._parent,
-            x: this._frameGeometry.x,
-            y: this._frameGeometry.y,
-            width: this._frameGeometry.width,
-            height: this._frameGeometry.height
-        });
+        this._configure({ x: x + this._border, y: y + this._border });
     }
 
     moveByKeyboard() {
         this._owm.moveByKeyboard(this);
     }
 
-    resize(width: number, height: number) {
-        this._frameGeometry.width = width;
-        this._frameGeometry.height = height;
-        this._geometry.width = width - (this._border * 2);
-        this._geometry.height = height - (this._border * 2);
-
-        if (this._frameGeometry.width <= (this._border * 2) || this._frameGeometry.height <= (this._border * 2)) {
-            throw new Error("size too small");
-        }
-        this._log.info("configuring5", this._window.window, this._frameGeometry);
-        this._owm.xcb.configure_window(this._owm.wm, {
-            window: this._parent,
-            x: this._frameGeometry.x,
-            y: this._frameGeometry.y,
-            width: this._frameGeometry.width,
-            height: this._frameGeometry.height
-        });
-        this._owm.xcb.configure_window(this._owm.wm, {
-            window: this._window.window,
-            width: this._geometry.width,
-            height: this._geometry.height
-        });
+    resize(width: number, height: number, keepHeight?: boolean) {
+        this._configure({ width: width - (this._border * 2), height: height - (this._border * 2) }, keepHeight);
     }
 
     resizeByKeyboard() {
@@ -471,48 +398,27 @@ export class Client implements ContainerItem
     }
 
     configure(cfg: ConfigureArgs) {
-        if (cfg.window !== this._window.window) {
-            throw new Error("configuring wrong window");
-        }
         if (this._floating || this._ignoreWorkspace) {
             const geom = new Geometry(this._geometry);
             // let's do it
             if (cfg.x !== undefined) {
                 geom.x = cfg.x;
-                this._geometry.x = cfg.x;
                 this._floatingGeometry.x = cfg.x;
             }
             if (cfg.y !== undefined) {
                 geom.y = cfg.y;
-                this._geometry.y = cfg.y;
                 this._floatingGeometry.y = cfg.y;
             }
             if (cfg.width !== undefined) {
                 geom.width = cfg.width;
-                this._geometry.width = cfg.width;
                 this._floatingGeometry.width = cfg.width;
             }
             if (cfg.height !== undefined) {
                 geom.height = cfg.height;
-                this._geometry.height = cfg.height;
                 this._floatingGeometry.height = cfg.height;
             }
 
-            const px = this._frameGeometry.x = geom.x - this._border;
-            const py = this._frameGeometry.y = geom.y - this._border;
-            const pwidth = this._frameGeometry.width = geom.width + (this._border * 2);
-            const pheight = this._frameGeometry.height = geom.height + (this._border * 2);
-
-            this._log.info("configuring1", this._window.window, cfg, px, py, pwidth, pheight);
-
-            this._owm.xcb.configure_window(this._owm.wm, {
-                window: this._parent,
-                x: px, y: py, width: pwidth, height: pheight
-            });
-            this._owm.xcb.configure_window(this._owm.wm, {
-                window: cfg.window,
-                x: this._border, y: this._border, width: geom.width, height: geom.height
-            });
+            this._configure(geom);
         } else {
             this._log.info("trying to configure window in layout, ignoring");
             // keep track of where the client really wants us
@@ -529,7 +435,7 @@ export class Client implements ContainerItem
                 this._floatingGeometry.height = cfg.height;
             }
             this._owm.xcb.send_configure_notify(this._owm.wm, {
-                window: cfg.window,
+                window: this._window.window,
                 x: this._geometry.x,
                 y: this._geometry.y,
                 width: this._geometry.width,
@@ -816,6 +722,131 @@ export class Client implements ContainerItem
     }
 
     private _updateWmWindowType(property: OWM.GetProperty) {
+    }
+
+    private _configure(args: ConfigureArgs, keepHeight?: boolean) {
+        if ((args.x === undefined) != (args.y === undefined)) {
+            throw new Error(`_configure, x must be set if y is`);
+        }
+        if ((args.width === undefined) != (args.height === undefined)) {
+            throw new Error(`_configure, width must be set if height is`);
+        }
+
+        let thisArgs: {
+            window: number,
+            width?: number,
+            height?: number
+        } = { window: this._window.window };
+        let parentArgs = Object.assign({ window: this._parent }, args);
+
+        if (args.x !== undefined && args.y !== undefined) {
+            this._geometry.x = args.x;
+            this._geometry.y = args.y;
+
+            parentArgs.x = this._frameGeometry.x = this._geometry.x - this._border;
+            parentArgs.y = this._frameGeometry.y = this._geometry.y - this._border;
+        }
+        if (args.width !== undefined && args.height !== undefined) {
+            this._enforceSize(args.width, args.height, keepHeight);
+
+            parentArgs.width = this._frameGeometry.width;
+            parentArgs.height = this._frameGeometry.height;
+            thisArgs.width = this._geometry.width;
+            thisArgs.height = this._geometry.height;
+        }
+
+        this._owm.xcb.configure_window(this._owm.wm, thisArgs);
+        this._owm.xcb.configure_window(this._owm.wm, parentArgs);
+    }
+
+    private _enforceSize(width: number, height: number, keepHeight?: boolean) {
+        // respect minimum/maximum size and aspect ratio
+        const normal = this._window.normalHints;
+        const sizeHint = this._owm.xcb.icccm.sizeHint;
+
+        const sizes = {
+            baseWidth: 0, baseHeight: 0,
+            minWidth: 0, minHeight: 0,
+            maxWidth: 0, maxHeight: 0
+        };
+
+        // extract our needed info from normal hints
+        if (normal.flags & sizeHint.BASE_SIZE) {
+            sizes.baseWidth = normal.base_width;
+            sizes.baseHeight = normal.base_height;
+        }
+        if (normal.flags & sizeHint.P_MIN_SIZE) {
+            sizes.minWidth = normal.min_width;
+            sizes.minHeight = normal.min_height;
+        }
+        if (normal.flags & sizeHint.P_MAX_SIZE) {
+            sizes.maxWidth = normal.max_width;
+            sizes.maxHeight = normal.max_height;
+        }
+
+        // keep base size for aspect ratio calculation further down
+        const baseWidth = sizes.baseWidth, baseHeight = sizes.baseHeight;
+
+        // use base size for min size if we don't have one
+        if (!(normal.flags & sizeHint.P_MIN_SIZE)) {
+            sizes.minWidth = sizes.baseWidth;
+            sizes.minHeight = sizes.baseHeight;
+        }
+
+        // use min size for base size if we don't have one
+        if (!(normal.flags & sizeHint.BASE_SIZE)) {
+            sizes.baseWidth = sizes.minWidth;
+            sizes.baseHeight = sizes.minHeight;
+        }
+
+        // enforce minimum and maximum size
+        if (width < sizes.minWidth)
+            width = sizes.minWidth;
+        if (sizes.maxWidth > 0 && width > sizes.maxWidth)
+            width = sizes.maxWidth;
+        if (height < sizes.minHeight)
+            height = sizes.minHeight;
+        if (sizes.maxHeight > 0 && height > sizes.maxHeight)
+            height = sizes.maxHeight;
+
+        if (normal.flags & sizeHint.P_ASPECT) {
+            let ar = (width - baseWidth) / (height - baseHeight);
+            if (normal.min_aspect_num > 0 && normal.min_aspect_den > 0 && ar < (normal.min_aspect_num / normal.min_aspect_den)) {
+                ar = normal.min_aspect_num / normal.min_aspect_den;
+            } else if (normal.max_aspect_num > 0 && normal.max_aspect_den > 0 && ar > (normal.max_aspect_num / normal.max_aspect_den)) {
+                ar = normal.max_aspect_num / normal.max_aspect_den;
+            }
+
+            let nw = 0, nh = 0;
+            if (keepHeight === true) {
+                nw = Math.round((height - baseHeight) * ar);
+                nh = Math.round(nw / ar);
+            } else {
+                nh = Math.round((width - baseWidth) / ar);
+                nw = Math.round(nh * ar);
+            }
+
+            width = nw + baseWidth;
+            height = nh + baseHeight;
+        }
+
+        if (normal.flags & sizeHint.P_RESIZE_INC) {
+            if (normal.width_inc > 0 && width >= sizes.baseWidth) {
+                width -= sizes.baseWidth;
+                width -= width % normal.width_inc;
+                width += sizes.baseWidth;
+            }
+            if (normal.height_inc > 0 && height >= sizes.baseHeight) {
+                height -= sizes.baseHeight;
+                height -= height % normal.height_inc;
+                height += sizes.baseHeight;
+            }
+        }
+
+        this._geometry.width = width;
+        this._geometry.height = height;
+        this._frameGeometry.width = this._geometry.width + (this._border * 2);
+        this._frameGeometry.height = this._geometry.height + (this._border * 2);
     }
 }
 

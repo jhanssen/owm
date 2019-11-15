@@ -56,7 +56,7 @@ class MoveResize {
     public movingKeyboard: Client | undefined;
     public resizingKeyboard: Client | undefined;
 
-    public static readonly AdjustBy = 5;
+    public static readonly AdjustBy = 20;
 
     constructor() {
     }
@@ -193,7 +193,7 @@ export class OWMLib {
                 // make sure we don't go too too small
                 if (geom.height <= MoveResize.AdjustBy)
                     return;
-                client.resize(geom.width, geom.height - MoveResize.AdjustBy);
+                client.resize(geom.width, geom.height - MoveResize.AdjustBy, true);
             }
         });
         this._moveResizeMode.add("Down", (mode: KeybindingsMode, binding: string) => {
@@ -204,7 +204,7 @@ export class OWMLib {
             } else if (this._moveResize.resizingKeyboard) {
                 const client = this._moveResize.resizingKeyboard;
                 const geom = client.frameGeometry;
-                client.resize(geom.width, geom.height + MoveResize.AdjustBy);
+                client.resize(geom.width, geom.height + MoveResize.AdjustBy, true);
             }
         });
     };
