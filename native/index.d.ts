@@ -89,6 +89,7 @@ export namespace XCB {
         readonly normalHints: WindowTypes.SizeHints;
         readonly wmHints: WindowTypes.WMHints;
         readonly wmClass: WindowTypes.WMClass;
+        readonly wmRole: string;
         readonly wmName: string;
         readonly wmProtocols: number[];
         readonly ewmhName: string;

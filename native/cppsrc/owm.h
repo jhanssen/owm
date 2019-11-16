@@ -35,6 +35,7 @@ typedef std::variant<double, std::string, const char*, bool, UndefinedType> Vari
 
 Variant toVariant(Napi::Value value);
 Napi::Value fromVariant(napi_env env, const Variant& variant);
+std::string latin1toutf8(const std::string& input);
 
 struct Screen
 {
@@ -108,6 +109,7 @@ struct Window
         std::string class_name;
     } wmClass;
 
+    std::string wmRole;
     std::string wmName;
     std::string ewmhName;
 
@@ -567,18 +569,26 @@ inline Window::WMClass makeWMClass(const xcb_icccm_get_wm_class_reply_t& in)
     return out;
 }
 
-inline std::string makeString(const xcb_icccm_get_text_property_reply_t& in)
+inline std::string makeString(const xcb_icccm_get_text_property_reply_t& in, bool isUtf8)
 {
     if (in.format == 8 && in.name && in.name_len > 0) {
-        return std::string(in.name, in.name_len);
+        if (isUtf8) {
+            return std::string(in.name, in.name_len);
+        } else {
+            return latin1toutf8(std::string(in.name, in.name_len));
+        }
     }
     return std::string();
 }
 
-inline std::string makeString(const xcb_ewmh_get_utf8_strings_reply_t& in)
+inline std::string makeString(const xcb_ewmh_get_utf8_strings_reply_t& in, bool isUtf8)
 {
     if (in.strings && in.strings_len > 0) {
-        return std::string(in.strings, in.strings_len);
+        if (isUtf8) {
+            return std::string(in.strings, in.strings_len);
+        } else {
+            return latin1toutf8(std::string(in.strings, in.strings_len));
+        }
     }
     return std::string();
 }

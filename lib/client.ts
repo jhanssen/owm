@@ -35,7 +35,7 @@ export class Client implements ContainerItem
     private _border: number;
     private _geometry: Geometry;
     private _frameGeometry: Geometry;
-    private _floatingGeometry: Geometry;
+    private _requestedGeometry: Geometry;
     private _strut: Strut;
     private _noinput: boolean;
     private _staysOnTop: boolean;
@@ -57,7 +57,7 @@ export class Client implements ContainerItem
         this._window = window;
         this._border = border;
         this._geometry = new Geometry(window.geometry);
-        this._floatingGeometry = new Geometry(window.geometry);
+        this._requestedGeometry = new Geometry(window.geometry);
         this._frameGeometry = new Geometry({
             x: window.geometry.x - border,
             y: window.geometry.y - border,
@@ -328,7 +328,7 @@ export class Client implements ContainerItem
             // we didn't skip before, but now we do.
             // let's go back to our original geometry
 
-            this._configure(this._floatingGeometry);
+            this._configure(this._requestedGeometry);
         }
         this._updateAllowed();
     }
@@ -414,19 +414,19 @@ export class Client implements ContainerItem
             // let's do it
             if (cfg.x !== undefined) {
                 geom.x = cfg.x;
-                this._floatingGeometry.x = cfg.x;
+                this._requestedGeometry.x = cfg.x;
             }
             if (cfg.y !== undefined) {
                 geom.y = cfg.y;
-                this._floatingGeometry.y = cfg.y;
+                this._requestedGeometry.y = cfg.y;
             }
             if (cfg.width !== undefined) {
                 geom.width = cfg.width;
-                this._floatingGeometry.width = cfg.width;
+                this._requestedGeometry.width = cfg.width;
             }
             if (cfg.height !== undefined) {
                 geom.height = cfg.height;
-                this._floatingGeometry.height = cfg.height;
+                this._requestedGeometry.height = cfg.height;
             }
 
             this._configure(geom);
@@ -434,16 +434,16 @@ export class Client implements ContainerItem
             this._log.info("trying to configure window in layout, ignoring");
             // keep track of where the client really wants us
             if (cfg.x !== undefined) {
-                this._floatingGeometry.x = cfg.x;
+                this._requestedGeometry.x = cfg.x;
             }
             if (cfg.y !== undefined) {
-                this._floatingGeometry.y = cfg.y;
+                this._requestedGeometry.y = cfg.y;
             }
             if (cfg.width !== undefined) {
-                this._floatingGeometry.width = cfg.width;
+                this._requestedGeometry.width = cfg.width;
             }
             if (cfg.height !== undefined) {
-                this._floatingGeometry.height = cfg.height;
+                this._requestedGeometry.height = cfg.height;
             }
             this._owm.xcb.send_configure_notify(this._owm.wm, {
                 window: this._window.window,
@@ -495,13 +495,13 @@ export class Client implements ContainerItem
             this._updateEwmhWmName(propdata);
             break;
         case atom._NET_WM_STRUT:
-            this._updateWmStrut(propdata);
+            this._updateEwmhStrut(propdata);
             break;
         case atom._NET_WM_STRUT_PARTIAL:
-            this._updateWmStrutPartial(propdata);
+            this._updateEwmhStrutPartial(propdata);
             break;
         case atom._NET_WM_WINDOW_TYPE:
-            this._updateWmWindowType(propdata);
+            this._updateEwmhWindowType(propdata);
             break;
         default:
             const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
@@ -677,9 +677,13 @@ export class Client implements ContainerItem
             return;
         }
 
-        // assume UTF-8???
+        let encoding = "utf8";
+        if (property.type === this._owm.xcb.atom.STRING) {
+            encoding = "latin1";
+        }
+
         const nbuf = Buffer.from(property.buffer);
-        (this._window as MutableWindow).wmName = nbuf.toString('utf8', 0, property.buffer.byteLength);
+        (this._window as MutableWindow).wmName = nbuf.toString(encoding, 0, property.buffer.byteLength);
     }
 
     private _updateWmNormalHints(property?: OWM.GetProperty) {
@@ -765,6 +769,14 @@ export class Client implements ContainerItem
     }
 
     private _updateWmWindowRole(property?: OWM.GetProperty) {
+        if (!property || property.format !== 8) {
+            (this._window as MutableWindow).wmRole = "";
+            return;
+        }
+
+        // ICCCM says that this property is encoded as ISO 8859-1
+        const nbuf = Buffer.from(property.buffer);
+        (this._window as MutableWindow).wmRole = nbuf.toString('latin1', 0, property.buffer.byteLength);
     }
 
     private _updateWmClass(property?: OWM.GetProperty) {
@@ -781,13 +793,13 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
-    private _updateWmStrut(property?: OWM.GetProperty) {
+    private _updateEwmhStrut(property?: OWM.GetProperty) {
     }
 
-    private _updateWmStrutPartial(property?: OWM.GetProperty) {
+    private _updateEwmhStrutPartial(property?: OWM.GetProperty) {
     }
 
-    private _updateWmWindowType(property?: OWM.GetProperty) {
+    private _updateEwmhWindowType(property?: OWM.GetProperty) {
     }
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
@@ -813,7 +825,7 @@ export class Client implements ContainerItem
             parentArgs.y = this._frameGeometry.y = this._geometry.y - this._border;
         }
         if (args.width !== undefined && args.height !== undefined) {
-            if (this._floating) {
+            if (this._floating && !this.dock) {
                 this._enforceSize(args.width, args.height, keepHeight);
             } else {
                 this._geometry.width = args.width;

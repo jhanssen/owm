@@ -3,6 +3,23 @@
 
 namespace owm {
 
+// inner loop lifted from https://stackoverflow.com/questions/4059775/convert-iso-8859-1-strings-to-utf-8-in-c-c
+std::string latin1toutf8(const std::string& input)
+{
+    std::string output;
+    output.resize(input.size() * 2);
+
+    const unsigned char *in = reinterpret_cast<const unsigned char*>(&input[0]);
+    unsigned char *out = reinterpret_cast<unsigned char*>(&output[0]);
+    while (*in) {
+        if (*in<128) *out++=*in++;
+        else *out++=0xc2+(*in>0xbf), *out++=(*in++&0x3f)+0x80;
+    }
+
+    output.resize(out - reinterpret_cast<unsigned char*>(&output[0]));
+    return output;
+}
+
 static Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
@@ -599,6 +616,7 @@ Napi::Value makeWindow(napi_env env, const Window& win)
     nwin.Set("pid", Napi::Number::New(env, win.pid));
     nwin.Set("transientFor", Napi::Number::New(env, win.transientFor));
     nwin.Set("leader", Napi::Number::New(env, win.leader));
+    nwin.Set("wmRole", Napi::String::New(env, win.wmRole));
     nwin.Set("wmName", Napi::String::New(env, win.wmName));
     nwin.Set("wmProtocols", makeAtomArray(win.wmProtocols));
     nwin.Set("ewmhName", Napi::String::New(env, win.ewmhName));
@@ -2581,9 +2599,12 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         const uint32_t window = info[1].As<Napi::Number>().Uint32Value();
 
+        const auto utf8_string = wm->atoms.at("UTF8_STRING");
+
         auto attribCookie = xcb_get_window_attributes_unchecked(wm->conn, window);
         auto geomCookie = xcb_get_geometry_unchecked(wm->conn, window);
         auto leaderCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("WM_CLIENT_LEADER"), XCB_ATOM_WINDOW, 0, 1);
+        auto roleCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("WM_WINDOW_ROLE"), XCB_GET_PROPERTY_TYPE_ANY, 0, 128);
         auto normalHintsCookie = xcb_icccm_get_wm_normal_hints(wm->conn, window);
         auto transientCookie = xcb_icccm_get_wm_transient_for(wm->conn, window);
         auto hintsCookie = xcb_icccm_get_wm_hints(wm->conn, window);
@@ -2608,6 +2629,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         xcb_ewmh_get_extents_reply_t ewmhStrut;
         xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
         xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
+        std::string wmRole;
         uint32_t pid, desktop;
 
         xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(wm->conn, attribCookie, nullptr);
@@ -2627,6 +2649,20 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
                 leaderWin = *static_cast<xcb_window_t*>(xcb_get_property_value(leaderReply));
             }
             free(leaderReply);
+        }
+        xcb_get_property_reply_t* roleReply = xcb_get_property_reply(wm->conn, roleCookie, nullptr);
+        if (!roleReply) {
+            wmRole.clear();
+        } else {
+            const auto len = xcb_get_property_value_length(roleReply);
+            if (roleReply->format != 8 || !len) {
+                wmRole.clear();
+            } else if (roleReply->type == utf8_string) {
+                wmRole = std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len);
+            } else {
+                wmRole = latin1toutf8(std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len));
+            }
+            free(roleReply);
         }
         if (!xcb_icccm_get_wm_normal_hints_reply(wm->conn, normalHintsCookie, &normalHints, nullptr)) {
             memset(&normalHints, 0, sizeof(normalHints));
@@ -2697,8 +2733,9 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             owm::makeSizeHint(normalHints),
             owm::makeWMHints(wmHints),
             owm::makeWMClass(wmClass),
-            owm::makeString(wmName),
-            owm::makeString(ewmhName),
+            std::move(wmRole),
+            owm::makeString(wmName, wmName.encoding == utf8_string),
+            owm::makeString(ewmhName, true), // always UTF8
             owm::makeAtoms(wmProtocols),
             owm::makeAtoms(ewmhState),
             owm::makeAtoms(ewmhWindowType),

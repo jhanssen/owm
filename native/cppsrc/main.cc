@@ -349,6 +349,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             std::vector<xcb_get_window_attributes_cookie_t> attribCookies;
             std::vector<xcb_get_geometry_cookie_t> geomCookies;
             std::vector<xcb_get_property_cookie_t> leaderCookies;
+            std::vector<xcb_get_property_cookie_t> roleCookies;
             std::vector<xcb_get_property_cookie_t> normalHintsCookies;
             std::vector<xcb_get_property_cookie_t> transientCookies;
             std::vector<xcb_get_property_cookie_t> hintsCookies;
@@ -370,6 +371,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             attribCookies.reserve(tree->children_len);
             geomCookies.reserve(tree->children_len);
             leaderCookies.reserve(tree->children_len);
+            roleCookies.reserve(tree->children_len);
             normalHintsCookies.reserve(tree->children_len);
             transientCookies.reserve(tree->children_len);
             hintsCookies.reserve(tree->children_len);
@@ -387,11 +389,14 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             const auto wm_client_leader = atoms.at("WM_CLIENT_LEADER");
             const auto wm_protocols = atoms.at("WM_PROTOCOLS");
             const auto net_wm_desktop = atoms.at("_NET_WM_DESKTOP");
+            const auto wm_window_role = atoms.at("WM_WINDOW_ROLE");
+            const auto utf8_string = atoms.at("UTF8_STRING");
 
             for (unsigned int i = 0; i < tree->children_len; ++i) {
                 attribCookies.push_back(xcb_get_window_attributes_unchecked(conn, wins[i]));
                 geomCookies.push_back(xcb_get_geometry_unchecked(conn, wins[i]));
                 leaderCookies.push_back(xcb_get_property(conn, 0, wins[i], wm_client_leader, XCB_ATOM_WINDOW, 0, 1));
+                roleCookies.push_back(xcb_get_property(conn, 0, wins[i], wm_window_role, XCB_GET_PROPERTY_TYPE_ANY, 0, 128));
                 normalHintsCookies.push_back(xcb_icccm_get_wm_normal_hints(conn, wins[i]));
                 transientCookies.push_back(xcb_icccm_get_wm_transient_for(conn, wins[i]));
                 hintsCookies.push_back(xcb_icccm_get_wm_hints(conn, wins[i]));
@@ -417,6 +422,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
             xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
             xcb_ewmh_get_utf8_strings_reply_t ewmhName;
+            std::string wmRole;
             uint32_t pid, desktop;
 
             for (unsigned int i = 0; i < tree->children_len; ++i) {
@@ -442,6 +448,20 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                         leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leaderReply));
                     }
                     free(leaderReply);
+                }
+                xcb_get_property_reply_t* roleReply = xcb_get_property_reply(conn, roleCookies[i], nullptr);
+                if (!roleReply) {
+                    wmRole.clear();
+                } else {
+                    const auto len = xcb_get_property_value_length(roleReply);
+                    if (roleReply->format != 8 || !len) {
+                        wmRole.clear();
+                    } else if (roleReply->type == utf8_string) {
+                        wmRole = std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len);
+                    } else {
+                        wmRole = owm::latin1toutf8(std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len));
+                    }
+                    free(roleReply);
                 }
                 if (!xcb_icccm_get_wm_normal_hints_reply(conn, normalHintsCookies[i], &normalHints, nullptr)) {
                     memset(&normalHints, 0, sizeof(normalHints));
@@ -512,8 +532,9 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                         owm::makeSizeHint(normalHints),
                         owm::makeWMHints(wmHints),
                         owm::makeWMClass(wmClass),
-                        owm::makeString(wmName),
-                        owm::makeString(ewmhName),
+                        std::move(wmRole),
+                        owm::makeString(wmName, wmName.encoding == utf8_string),
+                        owm::makeString(ewmhName, true), // always UTF8
                         owm::makeAtoms(wmProtocols),
                         owm::makeAtoms(ewmhState),
                         owm::makeAtoms(ewmhWindowType),
