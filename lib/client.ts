@@ -353,7 +353,7 @@ export class Client implements ContainerItem
         return this._group;
     }
 
-    raise(sibling: Client | undefined) {
+    raise(sibling?: Client) {
         if (!sibling) {
             if (this._container) {
                 this._container.circulateToTop(this);
@@ -367,7 +367,7 @@ export class Client implements ContainerItem
         }
     }
 
-    lower(sibling: Client | undefined) {
+    lower(sibling?: Client) {
         if (!sibling) {
             if (this._container) {
                 this._container.circulateToBottom(this);

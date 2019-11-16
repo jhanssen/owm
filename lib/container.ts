@@ -9,8 +9,8 @@ export interface ContainerItem
 {
     move(x: number, y: number): void;
     resize(width: number, height: number): void;
-    raise(sibling: ContainerItem | undefined): void;
-    lower(sibling: ContainerItem | undefined): void;
+    raise(sibling?: ContainerItem): void;
+    lower(sibling?: ContainerItem): void;
     readonly geometry: Geometry;
     readonly strut: Strut;
     workspace: Workspace | undefined;
@@ -171,13 +171,13 @@ export class Container implements ContainerItem
         }
     }
 
-    raise(sibling: ContainerItem | undefined) {
+    raise(sibling?: ContainerItem) {
         for (const item of this._items) {
             item.raise(sibling);
         }
     }
 
-    lower(sibling: ContainerItem | undefined) {
+    lower(sibling?: ContainerItem) {
         for (const item of this._items) {
             item.lower(sibling);
         }
