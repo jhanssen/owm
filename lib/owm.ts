@@ -372,6 +372,10 @@ export class OWMLib {
             client.group.addTransient(win.window, win.transientFor);
         }
 
+        for (const transient of client.group.transientsForClient(client)) {
+            transient.centerOn(client);
+        }
+
         this._clientsByWindow.set(win.window, client);
         this._clientsByFrame.set(parent, client);
         this._log.info("client", win.window, win.wmClass, parent);

@@ -132,6 +132,10 @@ export class Client implements ContainerItem
         return this._window.transientFor !== 0 && this._window.ewmhState.includes(this._owm.xcb.atom._NET_WM_STATE_MODAL);
     }
 
+    get dialog() {
+        return this._window.transientFor !== 0 && this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DIALOG);
+    }
+
     get dock() {
         return this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
     }
@@ -378,7 +382,7 @@ export class Client implements ContainerItem
     }
 
     centerOn(client: Client) {
-        if (!client.floating)
+        if (!this._floating)
             return;
 
         const cg = client.geometry;
@@ -405,7 +409,7 @@ export class Client implements ContainerItem
     }
 
     configure(cfg: ConfigureArgs) {
-        if (this._floating || this._ignoreWorkspace) {
+        if ((this._floating || this._ignoreWorkspace) && !this.dialog) {
             const geom = new Geometry(this._geometry);
             // let's do it
             if (cfg.x !== undefined) {
@@ -733,6 +737,31 @@ export class Client implements ContainerItem
     }
 
     private _updateWmTransientFor(property: OWM.GetProperty | undefined) {
+        const win = this._window;
+
+        if (!property) {
+            (win as MutableWindow).transientFor = 0;
+            this._group = this._makeGroup(this._group);
+            return;
+        }
+
+        if (property.type !== this._owm.xcb.atom.WINDOW) {
+            const name = this._owm.xcb.get_atom_name(this._owm.wm, property.type);
+            throw new Error(`transient_for not a window? ${name}`);
+        }
+
+        const dv = new DataView(property.buffer);
+        const isLE = endianness() === "LE";
+
+        (win as MutableWindow).transientFor = dv.getUint32(0, isLE);
+        this._group = this._makeGroup(this._group);
+        this._group.addTransient(win.window, win.transientFor)
+
+        // try to center me
+        const tfor = this._owm.findClientByWindow(win.transientFor);
+        if (tfor) {
+            this.centerOn(tfor);
+        }
     }
 
     private _updateWmWindowRole(property: OWM.GetProperty | undefined) {
