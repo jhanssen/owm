@@ -639,7 +639,7 @@ export class Client implements ContainerItem
         }
     }
 
-    private _updateWmHints(property: OWM.GetProperty | undefined) {
+    private _updateWmHints(property?: OWM.GetProperty) {
         if (property === undefined) {
             // delete
             zero((this._window as MutableWindow).wmHints);
@@ -671,7 +671,7 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).wmHints = wmHints;
     }
 
-    private _updateWmName(property: OWM.GetProperty | undefined) {
+    private _updateWmName(property?: OWM.GetProperty) {
         if (!property || property.format !== 8) {
             (this._window as MutableWindow).wmName = "";
             return;
@@ -682,7 +682,7 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).wmName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
-    private _updateWmNormalHints(property: OWM.GetProperty | undefined) {
+    private _updateWmNormalHints(property?: OWM.GetProperty) {
         if (!property) {
             zero((this._window as MutableWindow).normalHints);
             return;
@@ -718,7 +718,7 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).normalHints = normalHints;
     }
 
-    private _updateWmClientLeader(property: OWM.GetProperty | undefined) {
+    private _updateWmClientLeader(property?: OWM.GetProperty) {
         if (!property) {
             (this._window as MutableWindow).leader = 0;
             this._group = this._makeGroup(this._group);
@@ -736,7 +736,7 @@ export class Client implements ContainerItem
         this._group = this._makeGroup(this._group);
     }
 
-    private _updateWmTransientFor(property: OWM.GetProperty | undefined) {
+    private _updateWmTransientFor(property?: OWM.GetProperty) {
         const win = this._window;
 
         if (!property) {
@@ -764,13 +764,13 @@ export class Client implements ContainerItem
         }
     }
 
-    private _updateWmWindowRole(property: OWM.GetProperty | undefined) {
+    private _updateWmWindowRole(property?: OWM.GetProperty) {
     }
 
-    private _updateWmClass(property: OWM.GetProperty | undefined) {
+    private _updateWmClass(property?: OWM.GetProperty) {
     }
 
-    private _updateEwmhWmName(property: OWM.GetProperty | undefined) {
+    private _updateEwmhWmName(property?: OWM.GetProperty) {
         if (!property || property.format !== 8) {
             (this._window as MutableWindow).ewmhName = "";
             return;
@@ -781,13 +781,13 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
-    private _updateWmStrut(property: OWM.GetProperty | undefined) {
+    private _updateWmStrut(property?: OWM.GetProperty) {
     }
 
-    private _updateWmStrutPartial(property: OWM.GetProperty | undefined) {
+    private _updateWmStrutPartial(property?: OWM.GetProperty) {
     }
 
-    private _updateWmWindowType(property: OWM.GetProperty | undefined) {
+    private _updateWmWindowType(property?: OWM.GetProperty) {
     }
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
