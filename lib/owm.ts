@@ -257,6 +257,10 @@ export class OWMLib {
         return this._events;
     }
 
+    get groups() {
+        return this._groups;
+    }
+
     get activeColor(): number | string {
         return this._activeColor;
     }
@@ -354,17 +358,7 @@ export class OWMLib {
         this._xcb.reparent_window(this._wm, { window: win.window, parent: parent, x: border, y: border });
         this._xcb.change_save_set(this._wm, { window: win.window, mode: this._xcb.setMode.INSERT });
 
-        const leader = win.leader || win.transientFor || win.window;
-        let grp = this._groups.get(leader);
-        if (!grp) {
-            grp = new ClientGroup(this, leader);
-            this._groups.set(leader, grp);
-        } else {
-            grp.ref();
-        }
-        grp.addFollower(win.window);
-
-        const client = new Client(this, parent, win, border, grp);
+        const client = new Client(this, parent, win, border);
 
         if (win.transientFor !== 0 && win.transientFor !== win.window) {
             const clientFor = this._clientsByWindow.get(win.transientFor);
@@ -375,7 +369,7 @@ export class OWMLib {
                 client.centerOn(clientFor);
             }
 
-            grp.addTransient(win.window, win.transientFor);
+            client.group.addTransient(win.window, win.transientFor);
         }
 
         this._clientsByWindow.set(win.window, client);
@@ -639,7 +633,7 @@ export class OWMLib {
         if (!client)
             return;
 
-        client.updateProperty(event.atom);
+        client.updateProperty(event.atom, event.state === this._xcb.propState.NEW_VALUE);
     }
 
     buttonPress(event: XCB.ButtonPress) {

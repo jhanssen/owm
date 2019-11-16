@@ -20,6 +20,13 @@ type MutableWindow = {
     -readonly [K in keyof XCB.Window]: XCB.Window[K];
 }
 
+
+function zero(data: any) {
+    for (const k in data) {
+        data[k] = 0;
+    }
+}
+
 export class Client implements ContainerItem
 {
     private readonly _parent: number;
@@ -44,7 +51,7 @@ export class Client implements ContainerItem
     private _ignoreWorkspace: boolean;
     private _group: ClientGroup;
 
-    constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number, group: ClientGroup) {
+    constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
         this._owm = owm;
         this._parent = parent;
         this._window = window;
@@ -60,7 +67,7 @@ export class Client implements ContainerItem
         this._staysOnTop = false;
         this._ignoreWorkspace = false;
         this._type = "Client";
-        this._group = group;
+        this._group = this._makeGroup();
 
         const monitors = owm.monitors;
         const monitor = monitors.monitorByPosition(window.geometry.x, window.geometry.y);
@@ -445,11 +452,14 @@ export class Client implements ContainerItem
         }
     }
 
-    updateProperty(property: number) {
-        const propdata = this._owm.xcb.get_property(this._owm.wm, { window: this._window.window, property: property });
-        if (!propdata) {
-            const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
-            throw new Error(`couldn't get property for update ${name}`);
+    updateProperty(property: number, isDelete: boolean) {
+        let propdata: OWM.GetProperty | undefined;
+        if (!isDelete) {
+            propdata = this._owm.xcb.get_property(this._owm.wm, { window: this._window.window, property: property });
+            if (!propdata) {
+                const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
+                throw new Error(`couldn't get property for update ${name}`);
+            }
         }
 
         // this._log.error("prop", this._owm.xcb.get_atom_name(this._owm.wm, property));
@@ -625,7 +635,13 @@ export class Client implements ContainerItem
         }
     }
 
-    private _updateWmHints(property: OWM.GetProperty) {
+    private _updateWmHints(property: OWM.GetProperty | undefined) {
+        if (property === undefined) {
+            // delete
+            zero((this._window as MutableWindow).wmHints);
+            return;
+        }
+
         const dv = new DataView(property.buffer);
         if (dv.byteLength != 9 * 4) {
             throw new Error(`incorrect number of WM_HINTS arguments ${dv.byteLength / 4} should be 9`);
@@ -651,8 +667,9 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).wmHints = wmHints;
     }
 
-    private _updateWmName(property: OWM.GetProperty) {
-        if (property.format !== 8) {
+    private _updateWmName(property: OWM.GetProperty | undefined) {
+        if (!property || property.format !== 8) {
+            (this._window as MutableWindow).wmName = "";
             return;
         }
 
@@ -661,7 +678,11 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).wmName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
-    private _updateWmNormalHints(property: OWM.GetProperty) {
+    private _updateWmNormalHints(property: OWM.GetProperty | undefined) {
+        if (!property) {
+            zero((this._window as MutableWindow).normalHints);
+            return;
+        }
         const dv = new DataView(property.buffer);
         if (dv.byteLength != 18 * 4) {
             throw new Error(`incorrect number of WM_NORMAL_HINTS arguments ${dv.byteLength / 4} should be 18`);
@@ -693,20 +714,36 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).normalHints = normalHints;
     }
 
-    private _updateWmClientLeader(property: OWM.GetProperty) {
+    private _updateWmClientLeader(property: OWM.GetProperty | undefined) {
+        if (!property) {
+            (this._window as MutableWindow).leader = 0;
+            this._group = this._makeGroup(this._group);
+            return;
+        }
+        if (property.type !== this._owm.xcb.atom.WINDOW) {
+            const name = this._owm.xcb.get_atom_name(this._owm.wm, property.type);
+            throw new Error(`client leader not a window? ${name}`);
+        }
+
+        const dv = new DataView(property.buffer);
+        const isLE = endianness() === "LE";
+
+        (this._window as MutableWindow).leader = dv.getUint32(0, isLE);
+        this._group = this._makeGroup(this._group);
     }
 
-    private _updateWmTransientFor(property: OWM.GetProperty) {
+    private _updateWmTransientFor(property: OWM.GetProperty | undefined) {
     }
 
-    private _updateWmWindowRole(property: OWM.GetProperty) {
+    private _updateWmWindowRole(property: OWM.GetProperty | undefined) {
     }
 
-    private _updateWmClass(property: OWM.GetProperty) {
+    private _updateWmClass(property: OWM.GetProperty | undefined) {
     }
 
-    private _updateEwmhWmName(property: OWM.GetProperty) {
-        if (property.format !== 8) {
+    private _updateEwmhWmName(property: OWM.GetProperty | undefined) {
+        if (!property || property.format !== 8) {
+            (this._window as MutableWindow).ewmhName = "";
             return;
         }
 
@@ -715,13 +752,13 @@ export class Client implements ContainerItem
         (this._window as MutableWindow).ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
     }
 
-    private _updateWmStrut(property: OWM.GetProperty) {
+    private _updateWmStrut(property: OWM.GetProperty | undefined) {
     }
 
-    private _updateWmStrutPartial(property: OWM.GetProperty) {
+    private _updateWmStrutPartial(property: OWM.GetProperty | undefined) {
     }
 
-    private _updateWmWindowType(property: OWM.GetProperty) {
+    private _updateWmWindowType(property: OWM.GetProperty | undefined) {
     }
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
@@ -847,6 +884,29 @@ export class Client implements ContainerItem
         this._geometry.height = height;
         this._frameGeometry.width = this._geometry.width + (this._border * 2);
         this._frameGeometry.height = this._geometry.height + (this._border * 2);
+    }
+
+    private _makeGroup(prevGroup?: ClientGroup) {
+        const win = this._window;
+
+        if (prevGroup) {
+            prevGroup.remove(win.window);
+            if (prevGroup.deref()) {
+                this._owm.groups.delete(prevGroup.leaderWindow);
+            }
+        }
+
+        const leader = win.leader || win.transientFor || win.window;
+        let grp = this._owm.groups.get(leader);
+        if (!grp) {
+            grp = new ClientGroup(this._owm, leader);
+            this._owm.groups.set(leader, grp);
+        } else {
+            grp.ref();
+        }
+        grp.addFollower(win.window);
+
+        return grp;
     }
 }
 
