@@ -890,8 +890,7 @@ export class Client implements ContainerItem
         const win = this._window;
 
         if (prevGroup) {
-            prevGroup.remove(win.window);
-            if (prevGroup.deref()) {
+            if (!prevGroup.remove(win.window)) {
                 this._owm.groups.delete(prevGroup.leaderWindow);
             }
         }
@@ -901,8 +900,6 @@ export class Client implements ContainerItem
         if (!grp) {
             grp = new ClientGroup(this._owm, leader);
             this._owm.groups.set(leader, grp);
-        } else {
-            grp.ref();
         }
         grp.addFollower(win.window);
 
@@ -926,13 +923,11 @@ export class ClientGroup {
     private _transients: Map<number, number>;
     private _followers: Set<number>;
     private _leader: number;
-    private _ref: number;
     private _owm: OWMLib;
 
     constructor(owm: OWMLib, leader: number) {
         this._transients = new Map<number, number>();
         this._followers = new Set<number>();
-        this._ref = 1;
         this._owm = owm;
         this._leader = leader;
     }
@@ -977,33 +972,13 @@ export class ClientGroup {
         this._transients.set(from, to);
     }
 
-    removeTransient(from: number) {
-        this._transients.delete(from);
-    }
-
     addFollower(follower: number) {
         this._followers.add(follower);
-    }
-
-    removeFollower(follower: number) {
-        this._followers.delete(follower);
     }
 
     remove(window: number) {
         this._followers.delete(window);
         this._transients.delete(window);
-        for (const [f, t] of this._transients) {
-            if (t === window) {
-                this._transients.delete(f);
-            }
-        }
-    }
-
-    ref() {
-        ++this._ref;
-    }
-
-    deref() {
-        return !--this._ref;
+        return this._followers.size > 0 || this._transients.size > 0;
     }
 }

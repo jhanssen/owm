@@ -1034,8 +1034,7 @@ export class OWMLib {
             const monitor = this._monitors.monitorByPosition(client.geometry.x, client.geometry.y);
             monitor.removeItem(client);
         }
-        client.group.remove(window);
-        if (client.group.deref()) {
+        if (!client.group.remove(window)) {
             this._groups.delete(client.group.leaderWindow);
         }
 
