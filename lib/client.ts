@@ -813,7 +813,14 @@ export class Client implements ContainerItem
             parentArgs.y = this._frameGeometry.y = this._geometry.y - this._border;
         }
         if (args.width !== undefined && args.height !== undefined) {
-            this._enforceSize(args.width, args.height, keepHeight);
+            if (this._floating) {
+                this._enforceSize(args.width, args.height, keepHeight);
+            } else {
+                this._geometry.width = args.width;
+                this._geometry.height = args.height;
+                this._frameGeometry.width = args.width * (this._border * 2);
+                this._frameGeometry.height = args.height * (this._border * 2);
+            }
 
             parentArgs.width = this._frameGeometry.width;
             parentArgs.height = this._frameGeometry.height;
