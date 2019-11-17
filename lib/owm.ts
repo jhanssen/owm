@@ -360,18 +360,6 @@ export class OWMLib {
 
         const client = new Client(this, parent, win, border);
 
-        if (win.transientFor !== 0 && win.transientFor !== win.window) {
-            const clientFor = this._clientsByWindow.get(win.transientFor);
-
-            client.floating = true;
-
-            if (clientFor) {
-                client.centerOn(clientFor);
-            }
-
-            client.group.addTransient(win.window, win.transientFor);
-        }
-
         for (const transient of client.group.transientsForClient(client)) {
             transient.centerOn(client);
         }

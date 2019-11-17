@@ -51,6 +51,7 @@ export class Client implements ContainerItem
     private _workspace: Workspace | undefined;
     private _container: Container | undefined;
     private _floating: boolean;
+    private _explicitFloating: boolean | undefined;
     private _ignoreWorkspace: boolean;
     private _group: ClientGroup;
 
@@ -93,19 +94,16 @@ export class Client implements ContainerItem
             this._staysOnTop = true;
         }
 
-        const dock = window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
+        const transientFor = window.transientFor !== 0 && window.transientFor !== window.window;
+        if (transientFor) {
+            this._group.addTransient(window.window, window.transientFor)
+        }
 
-        this._floating = dock;
-        this._noinput = dock;
-        if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
-            this._noinput = window.wmHints.input === 0;
+        this._noinput = this._floating = false;
+        this._updateFloatingInput();
 
         this._log = owm.logger.prefixed("Client");
         this._state = Client.State.Withdrawn;
-
-        if (dock) {
-            this.configure(Object.assign({ window: window.window }, this._geometry));
-        }
 
         const borderData = new Uint32Array(4);
         borderData[0] = border;
@@ -319,16 +317,17 @@ export class Client implements ContainerItem
         return this._floating;
     }
 
-    set floating(s: boolean) {
-        if (this._floating === s)
+    set floating(f: boolean) {
+        this._explicitFloating = f;
+        if (this._floating === f)
             return;
-        this._floating = s;
+        this._floating = f;
         this._owm.relayout();
         if (this._workspace) {
             this._workspace.relayout();
         }
-        if (s) {
-            // we didn't skip before, but now we do.
+        if (f) {
+            // we didn't float before, but now we do.
             // let's go back to our original geometry
 
             this._configure(this._requestedGeometry);
@@ -668,10 +667,8 @@ export class Client implements ContainerItem
             window_group: dv.getUint32(32, isLE),
         };
 
-        if (wmHints.flags & this._owm.xcb.icccm.hint.INPUT)
-            this._noinput = wmHints.input === 0;
-
         (this._window as MutableWindow).wmHints = wmHints;
+        this._updateFloatingInput();
     }
 
     private _updateWmName(property?: OWM.GetProperty) {
@@ -749,6 +746,7 @@ export class Client implements ContainerItem
         if (!property) {
             (win as MutableWindow).transientFor = 0;
             this._group = this._makeGroup(this._group);
+            this._updateFloatingInput();
             return;
         }
 
@@ -764,11 +762,7 @@ export class Client implements ContainerItem
         this._group = this._makeGroup(this._group);
         this._group.addTransient(win.window, win.transientFor)
 
-        // try to center me
-        const tfor = this._owm.findClientByWindow(win.transientFor);
-        if (tfor) {
-            this.centerOn(tfor);
-        }
+        this._updateFloatingInput();
     }
 
     private _updateWmWindowRole(property?: OWM.GetProperty) {
@@ -909,6 +903,7 @@ export class Client implements ContainerItem
     private _updateEwmhWindowType(property?: OWM.GetProperty) {
         if (!property || property.format !== 32 || property.type !== this._owm.xcb.atom.ATOM) {
             (this._window as MutableWindow).ewmhWindowType = [];
+            this._updateFloatingInput();
             return;
         }
 
@@ -927,6 +922,7 @@ export class Client implements ContainerItem
         }
 
         (this._window as MutableWindow).ewmhWindowType = types;
+        this._updateFloatingInput();
     }
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
@@ -1062,13 +1058,52 @@ export class Client implements ContainerItem
     }
 
     private _relayoutWorkspace() {
-        const monitor = this._owm.monitors.monitorByPosition(this._geometry.x, this._geometry.y);
-        if (!monitor)
+        const ws = this._workspace;
+        if (ws) {
+            ws.relayout();
+        }
+    }
+
+    private _updateFloatingInput() {
+        const owm = this._owm;
+        const window = this._window;
+        const dock = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
+        const dialog = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_DIALOG);
+        const transientFor = window.transientFor !== 0 && window.transientFor !== window.window;
+
+        this._noinput = dock;
+        if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
+            this._noinput = window.wmHints.input === 0;
+
+        // if we were explicitly set to floating by the
+        // configuration system then we need to respect that
+        if (this._explicitFloating !== undefined)
             return;
-        const ws = monitor.workspace;
-        if (!ws)
+
+        const wasFloating = this._floating;
+        this._floating = dock || dialog || transientFor;
+
+        // if our floating status didn't change, bail out
+        if (wasFloating === this._floating)
             return;
-        ws.relayout();
+
+        if (!wasFloating && this._floating) {
+            if (!transientFor) {
+                // we're now floating, update our geometry to what the client really wants
+                this._configure(this._requestedGeometry);
+            } else {
+                // center on our transientFor
+                const tfor = owm.findClientByWindow(window.transientFor);
+                if (tfor) {
+                    this.centerOn(tfor);
+                } else {
+                    // no transient for, configure to our requested geometry
+                    this._configure(this._requestedGeometry);
+                }
+            }
+        }
+        this._relayoutWorkspace();
+        this._updateAllowed();
     }
 
     private _makeGroup(prevGroup?: ClientGroup) {
