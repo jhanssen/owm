@@ -845,12 +845,88 @@ export class Client implements ContainerItem
     }
 
     private _updateEwmhStrut(property?: OWM.GetProperty) {
+        if (!property) {
+            zero((this._window as MutableWindow).ewmhStrut);
+            if (!Strut.hasStrut(this._window.ewmhStrutPartial)) {
+                this._relayoutWorkspace();
+            }
+            return;
+        }
+        const dv = new DataView(property.buffer);
+        if (dv.byteLength != 4 * 4) {
+            throw new Error(`incorrect number of _NET_WM_STRUT arguments ${dv.byteLength / 4} should be 4`);
+        }
+
+        const isLE = endianness() === "LE";
+
+        const strut = {
+            left: dv.getUint32(0, isLE),
+            right: dv.getUint32(4, isLE),
+            top: dv.getUint32(8, isLE),
+            bottom: dv.getUint32(12, isLE)
+        };
+
+        (this._window as MutableWindow).ewmhStrut = strut;
+
+        // partial strut is preferred over strut
+        if (!Strut.hasStrut(this._window.ewmhStrutPartial)) {
+            this._relayoutWorkspace();
+        }
     }
 
     private _updateEwmhStrutPartial(property?: OWM.GetProperty) {
+        if (!property) {
+            zero((this._window as MutableWindow).ewmhStrutPartial);
+            this._relayoutWorkspace();
+            return;
+        }
+        const dv = new DataView(property.buffer);
+        if (dv.byteLength != 12 * 4) {
+            throw new Error(`incorrect number of _NET_WM_STRUT_PARTIAL arguments ${dv.byteLength / 4} should be 12`);
+        }
+
+        const isLE = endianness() === "LE";
+
+        const strut = {
+            left: dv.getUint32(0, isLE),
+            right: dv.getUint32(4, isLE),
+            top: dv.getUint32(8, isLE),
+            bottom: dv.getUint32(12, isLE),
+            left_start_y: dv.getUint32(16, isLE),
+            left_end_y: dv.getUint32(20, isLE),
+            right_start_y: dv.getUint32(24, isLE),
+            right_end_y: dv.getUint32(28, isLE),
+            top_start_x: dv.getUint32(32, isLE),
+            top_end_x: dv.getUint32(36, isLE),
+            bottom_start_x: dv.getUint32(40, isLE),
+            bottom_end_x: dv.getUint32(44, isLE)
+        };
+
+        (this._window as MutableWindow).ewmhStrutPartial = strut;
+        this._relayoutWorkspace();
     }
 
     private _updateEwmhWindowType(property?: OWM.GetProperty) {
+        if (!property || property.format !== 32 || property.type !== this._owm.xcb.atom.ATOM) {
+            (this._window as MutableWindow).ewmhWindowType = [];
+            return;
+        }
+
+        const dv = new DataView(property.buffer);
+        if (dv.byteLength % 4 !== 0) {
+            throw new Error(`number of _NET_WM_WINDOW_TYPE arguments needs to be divisible by 4 ${dv.byteLength}`);
+        }
+
+        const isLE = endianness() === "LE";
+
+        const types: number[] = [];
+        let off = 0;
+        while (off < dv.byteLength) {
+            types.push(dv.getUint32(off, isLE));
+            off += 4;
+        }
+
+        (this._window as MutableWindow).ewmhWindowType = types;
     }
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
@@ -983,6 +1059,16 @@ export class Client implements ContainerItem
         this._geometry.height = height;
         this._frameGeometry.width = this._geometry.width + (this._border * 2);
         this._frameGeometry.height = this._geometry.height + (this._border * 2);
+    }
+
+    private _relayoutWorkspace() {
+        const monitor = this._owm.monitors.monitorByPosition(this._geometry.x, this._geometry.y);
+        if (!monitor)
+            return;
+        const ws = monitor.workspace;
+        if (!ws)
+            return;
+        ws.relayout();
     }
 
     private _makeGroup(prevGroup?: ClientGroup) {
