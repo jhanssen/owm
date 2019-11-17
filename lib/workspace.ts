@@ -83,6 +83,14 @@ export class Workspace
         this._container.visible = v;
     }
 
+    get fullscreen() {
+        return this._container.fullscreenItem;
+    }
+
+    set fullscreen(item: ContainerItem | undefined) {
+        this._container.fullscreenItem = item;
+    }
+
     addItem(item: ContainerItem) {
         if (item.ignoreWorkspace) {
             return;

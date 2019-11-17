@@ -1024,11 +1024,11 @@ static Napi::Object initEwmh(napi_env env, const std::shared_ptr<WM>& wm)
     moveResizeDirection.Set("CANCEL", Napi::Number::New(env, XCB_EWMH_WM_MOVERESIZE_CANCEL));
     ewmh.Set("moveResizeDirection", moveResizeDirection);
 
-    Napi::Object wmState = Napi::Object::New(env);
-    wmState.Set("REMOVE", Napi::Number::New(env, XCB_EWMH_WM_STATE_REMOVE));
-    wmState.Set("ADD", Napi::Number::New(env, XCB_EWMH_WM_STATE_ADD));
-    wmState.Set("TOGGLE", Napi::Number::New(env, XCB_EWMH_WM_STATE_TOGGLE));
-    ewmh.Set("state", wmState);
+    Napi::Object wmStateAction = Napi::Object::New(env);
+    wmStateAction.Set("REMOVE", Napi::Number::New(env, XCB_EWMH_WM_STATE_REMOVE));
+    wmStateAction.Set("ADD", Napi::Number::New(env, XCB_EWMH_WM_STATE_ADD));
+    wmStateAction.Set("TOGGLE", Napi::Number::New(env, XCB_EWMH_WM_STATE_TOGGLE));
+    ewmh.Set("stateAction", wmStateAction);
 
     return ewmh;
 }

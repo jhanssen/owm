@@ -538,13 +538,39 @@ export class OWMLib {
         const atom = this._xcb.atom;
         const ewmh = this._xcb.ewmh;
         switch (event.message_type) {
-        case atom._NET_CLOSE_WINDOW:
+        case atom._NET_CLOSE_WINDOW: {
             const client = this._clientsByWindow.get(event.window);
             if (client) {
                 client.kill();
             }
-            break;
-        case atom._NET_MOVERESIZE_WINDOW:
+            break; }
+        case atom._NET_WM_STATE: {
+            const action = this._xcb.ewmh.stateAction;
+            const u32 = new Uint32Array(event.data);
+            this._log.error("update _net_wm_state", u32);
+            if (u32.length >= 3) {
+                // 0: action, 1: first change, 2: second change
+                const client = this._clientsByWindow.get(event.window);
+                if (client) {
+                    if (u32[1] === atom._NET_WM_STATE_FULLSCREEN) {
+                        if (u32[0] === action.REMOVE)
+                            client.fullscreen = false;
+                        else if (u32[0] === action.ADD)
+                            client.fullscreen = true;
+                        else if (u32[0] === action.TOGGLE)
+                            client.fullscreen = !client.fullscreen;
+                    } else if (u32[1] === atom._NET_WM_STATE_ABOVE) {
+                        if (u32[0] === action.REMOVE)
+                            client.staysOnTop = false;
+                        else if (u32[0] === action.ADD)
+                            client.staysOnTop = true;
+                        else if (u32[0] === action.TOGGLE)
+                            client.staysOnTop = !client.staysOnTop;
+                    }
+                }
+            }
+            break; }
+        case atom._NET_MOVERESIZE_WINDOW: {
             // use Int32Array here, x and y can be negative
             const i32 = new Int32Array(event.data);
             if (i32.length >= 5) {
@@ -571,8 +597,8 @@ export class OWMLib {
                     client.configure(cfg);
                 }
             }
-            break;
-        case atom._NET_WM_MOVERESIZE:
+            break; }
+        case atom._NET_WM_MOVERESIZE: {
             const u32 = new Uint32Array(event.data);
             if (!this._moveResize.enabled && u32.length >= 5) {
                 const client = this._clientsByWindow.get(event.window);
@@ -614,7 +640,7 @@ export class OWMLib {
                     }
                 }
             }
-            break;
+            break; }
         }
     }
 
@@ -976,8 +1002,6 @@ export class OWMLib {
     }
 
     private _resizeClient(client: Client, event: { root_x: number, root_y: number, time: number }) {
-        console.log("resize...", event);
-
         const geom = client.frameGeometry;
         const win_x = event.root_x - geom.x;
         const win_y = event.root_y - geom.y;

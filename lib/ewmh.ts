@@ -41,13 +41,11 @@ export class EWMH {
                 throw new Error(`geom already has workspace ${ws.id}`);
             }
             geoms.set(ws.id, ws.geometry);
-            console.log("pre work area", ws.id, ws.geometry, ws.monitor !== undefined, ws.container !== undefined);
             return true;
         });
 
         const waData = new Uint32Array(geoms.size * 4);
         for (const [num, geom] of geoms) {
-            console.log("work area", num, geom);
             waData[((num - 1) * 4)] = geom.x;
             waData[((num - 1) * 4) + 1] = geom.y;
             waData[((num - 1) * 4) + 2] = geom.width;
@@ -194,6 +192,14 @@ export class EWMH {
 
     removeStateFocused(client: Client) {
         this._remove_property_atom(client.window.window, this._owm.xcb.atom._NET_WM_STATE, this._owm.xcb.atom._NET_WM_STATE_FOCUSED);
+    }
+
+    addStateHidden(client: Client) {
+        this._add_property_atom(client.window.window, this._owm.xcb.atom._NET_WM_STATE, this._owm.xcb.atom._NET_WM_STATE_HIDDEN);
+    }
+
+    removeStateHidden(client: Client) {
+        this._remove_property_atom(client.window.window, this._owm.xcb.atom._NET_WM_STATE, this._owm.xcb.atom._NET_WM_STATE_HIDDEN);
     }
 
     private _add_property_atom(window: number, property: number, atom: number) {

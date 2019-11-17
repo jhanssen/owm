@@ -561,7 +561,7 @@ interface EWMHEnums {
     readonly desktopLayoutStartingCorner: {[key: string]: number};
     readonly moveResizeWindow: {[key: string]: number};
     readonly moveResizeDirection: {[key: string]: number};
-    readonly state: {[key: string]: number};
+    readonly stateAction: {[key: string]: number};
 }
 
 export namespace OWM {

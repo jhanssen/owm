@@ -10,13 +10,13 @@ export class Monitor
     private _workspaces: Workspaces;
     private _workspace: Workspace | undefined;
     private _monitors: Monitors;
-    private _items: Set<ContainerItem>;
+    private _items: ContainerItem[];
 
     constructor(monitors: Monitors, screen: XCB.Screen) {
         this._screen = screen;
         this._monitors = monitors;
         this._workspaces = new Workspaces(monitors.owm, this);
-        this._items = new Set<ContainerItem>()
+        this._items = [];
     }
 
     get monitors() {
@@ -72,7 +72,16 @@ export class Monitor
 
     // for items that skip workspaces
     addItem(item: ContainerItem) {
-        this._items.add(item);
+        if (this._items.includes(item)) {
+            throw new Error("item already in the monitors set of global items");
+        }
+
+        // raise this item on top of any previos item
+        if (this._items.length > 0) {
+            item.raise(this._items[this._items.length - 1]);
+        }
+
+        this._items.push(item);
 
         if (Strut.hasStrut(item.strut)) {
             this._monitors.owm.ewmh.updateWorkarea();
@@ -80,7 +89,11 @@ export class Monitor
     }
 
     removeItem(item: ContainerItem) {
-        this._items.delete(item);
+        const idx = this._items.indexOf(item);
+        if (idx === -1) {
+            throw new Error("item not in the monitors set of global item");
+        }
+        this._items.splice(idx, 1);
 
         if (Strut.hasStrut(item.strut)) {
             this._monitors.owm.ewmh.updateWorkarea();

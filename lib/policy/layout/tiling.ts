@@ -40,8 +40,15 @@ export class TilingLayoutPolicy implements LayoutPolicy
 
     layout(items: ContainerItem[], geometry: Geometry) {
         const filtered = items.filter((item: ContainerItem) => {
-            return !item.floating && !item.ignoreWorkspace;
+            return item.fullscreen || (!item.floating && !item.ignoreWorkspace);
         });
+
+        if (filtered.length === 1 && filtered[0].fullscreen) {
+            const item = filtered[0];
+            item.move(geometry.x, geometry.y);
+            item.resize(geometry.width, geometry.height);
+            return;
+        }
 
         let rows = 0, columns = 0;
         if (this._cfg.rows) {

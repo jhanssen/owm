@@ -42,12 +42,15 @@ export class Client implements ContainerItem
     private _strut: Strut;
     private _noinput: boolean;
     private _staysOnTop: boolean;
+    private _fullscreen: boolean;
     private _log: Logger;
     private _type: string;
     private _gc: number | undefined;
     private _pixel: number | undefined;
     private _prevPixel: number | undefined;
     private _state: Client.State;
+    private _explicitState: Client.State;
+    private _hidden: boolean;
     private _workspace: Workspace | undefined;
     private _container: Container | undefined;
     private _floating: boolean;
@@ -69,7 +72,9 @@ export class Client implements ContainerItem
             height: window.geometry.height + (border * 2)
         });
         this._staysOnTop = false;
+        this._fullscreen = false;
         this._ignoreWorkspace = false;
+        this._hidden = false;
         this._type = "Client";
         this._group = this._makeGroup();
 
@@ -103,7 +108,7 @@ export class Client implements ContainerItem
         this._updateFloatingInput();
 
         this._log = owm.logger.prefixed("Client");
-        this._state = Client.State.Withdrawn;
+        this._state = this._explicitState = Client.State.Withdrawn;
 
         const borderData = new Uint32Array(4);
         borderData[0] = border;
@@ -219,65 +224,13 @@ export class Client implements ContainerItem
     }
 
     set state(state: Client.State) {
-        const xcb = this._owm.xcb;
-
-        // we'll change the WM_STATE property regardless of the current state
-        const buf = new Uint32Array(2);
-        switch (state) {
-        case Client.State.Normal:
-            buf[0] = xcb.icccm.state.NORMAL;
-            break;
-        case Client.State.Iconic:
-            buf[0] = xcb.icccm.state.ICONIC;
-            break;
-        case Client.State.Withdrawn:
-            buf[0] = xcb.icccm.state.WITHDRAWN;
-            break;
-        }
-
-        buf[1] = xcb.none;
-        xcb.change_property(this._owm.wm,
-                            { window: this._window.window, mode: xcb.propMode.REPLACE,
-                              property: xcb.atom.WM_STATE, type: xcb.atom.WM_STATE,
-                              format: 32, data: buf });
+        this._explicitState = state;
 
         if (this._state === state) {
             return;
         }
 
-        this._state = state;
-
-        let winMask = xcb.eventMask.STRUCTURE_NOTIFY;
-        let frameMask = 0;
-
-        if (state === Client.State.Normal) {
-            frameMask = xcb.eventMask.STRUCTURE_NOTIFY |
-                xcb.eventMask.ENTER_WINDOW |
-                xcb.eventMask.LEAVE_WINDOW |
-                xcb.eventMask.EXPOSURE |
-                xcb.eventMask.SUBSTRUCTURE_REDIRECT |
-                xcb.eventMask.POINTER_MOTION |
-                xcb.eventMask.BUTTON_PRESS |
-                xcb.eventMask.BUTTON_RELEASE;
-            winMask = xcb.eventMask.PROPERTY_CHANGE |
-                xcb.eventMask.STRUCTURE_NOTIFY |
-                xcb.eventMask.FOCUS_CHANGE;
-
-            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
-            xcb.change_window_attributes(this._owm.wm, { window: this._parent, event_mask: frameMask });
-
-            xcb.map_window(this._owm.wm, this._window.window);
-            xcb.map_window(this._owm.wm, this._parent);
-        } else {
-            // make sure we don't get an unmap notify
-            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: 0 });
-            xcb.change_window_attributes(this._owm.wm, { window: this._parent, event_mask: frameMask });
-
-            xcb.unmap_window(this._owm.wm, this._parent);
-            xcb.unmap_window(this._owm.wm, this._window.window);
-
-            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
-        }
+        this._setState(state);
     }
 
     get visible() {
@@ -310,6 +263,26 @@ export class Client implements ContainerItem
         this._staysOnTop = s;
         if (this._container) {
             this._container.circulateToTop(this);
+        }
+    }
+
+    get fullscreen() {
+        return this._fullscreen;
+    }
+
+    set fullscreen(f: boolean) {
+        if (this._fullscreen === f)
+            return;
+        const ws = this._workspace;
+        if (ws) {
+            if (f && ws.fullscreen !== undefined) {
+                // workspace already fullscreen
+                return;
+            }
+            this._fullscreen = f;
+            ws.fullscreen = f ? this : undefined;
+        } else {
+            this._fullscreen = f;
         }
     }
 
@@ -353,6 +326,27 @@ export class Client implements ContainerItem
 
     get group() {
         return this._group;
+    }
+
+    hide() {
+        if (this._hidden)
+            return;
+        this._hidden = true;
+
+        this._owm.ewmh.addStateHidden(this);
+        this._setState(Client.State.Iconic);
+    }
+
+    show() {
+        if (!this._hidden)
+            return;
+        this._hidden = false;
+
+        this._owm.ewmh.removeStateHidden(this);
+        // don't map our client if our explicit state is iconic or withdrawn
+        if (this._explicitState === Client.State.Normal) {
+            this._setState(this._explicitState);
+        }
     }
 
     raise(sibling?: Client) {
@@ -589,6 +583,68 @@ export class Client implements ContainerItem
         } else {
             this._log.info("killing client");
             this._owm.xcb.kill_client(this._owm.wm, this._window.window);
+        }
+    }
+
+    private _setState(state: Client.State) {
+        this._state = state;
+
+        const xcb = this._owm.xcb;
+
+        // we'll change the WM_STATE property regardless of the current state
+        const buf = new Uint32Array(2);
+        switch (state) {
+            case Client.State.Normal:
+                buf[0] = xcb.icccm.state.NORMAL;
+                break;
+            case Client.State.Iconic:
+                buf[0] = xcb.icccm.state.ICONIC;
+                break;
+            case Client.State.Withdrawn:
+                buf[0] = xcb.icccm.state.WITHDRAWN;
+                break;
+        }
+
+        buf[1] = xcb.none;
+        xcb.change_property(this._owm.wm,
+                            { window: this._window.window, mode: xcb.propMode.REPLACE,
+                              property: xcb.atom.WM_STATE, type: xcb.atom.WM_STATE,
+                              format: 32, data: buf });
+
+        if (this._state === Client.State.Normal && this._hidden) {
+            return;
+        }
+
+        let winMask = xcb.eventMask.STRUCTURE_NOTIFY;
+        let frameMask = 0;
+
+        if (state === Client.State.Normal) {
+            frameMask = xcb.eventMask.STRUCTURE_NOTIFY |
+                xcb.eventMask.ENTER_WINDOW |
+                xcb.eventMask.LEAVE_WINDOW |
+                xcb.eventMask.EXPOSURE |
+                xcb.eventMask.SUBSTRUCTURE_REDIRECT |
+                xcb.eventMask.POINTER_MOTION |
+                xcb.eventMask.BUTTON_PRESS |
+                xcb.eventMask.BUTTON_RELEASE;
+            winMask = xcb.eventMask.PROPERTY_CHANGE |
+                xcb.eventMask.STRUCTURE_NOTIFY |
+                xcb.eventMask.FOCUS_CHANGE;
+
+            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
+            xcb.change_window_attributes(this._owm.wm, { window: this._parent, event_mask: frameMask });
+
+            xcb.map_window(this._owm.wm, this._window.window);
+            xcb.map_window(this._owm.wm, this._parent);
+        } else {
+            // make sure we don't get an unmap notify
+            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: 0 });
+            xcb.change_window_attributes(this._owm.wm, { window: this._parent, event_mask: frameMask });
+
+            xcb.unmap_window(this._owm.wm, this._parent);
+            xcb.unmap_window(this._owm.wm, this._window.window);
+
+            xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
         }
     }
 

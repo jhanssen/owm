@@ -19,6 +19,7 @@ export interface ContainerItem
     floating: boolean;
     ignoreWorkspace: boolean;
     staysOnTop: boolean;
+    readonly fullscreen: boolean;
 }
 
 export class Container implements ContainerItem
@@ -32,6 +33,7 @@ export class Container implements ContainerItem
     private _type: string;
     private _workspace: Workspace | undefined;
     private _container: Container | undefined;
+    private _fullscreenItem: ContainerItem | undefined;
     private _visible: boolean;
     private _floating: boolean;
     private _staysOnTop: boolean;
@@ -171,6 +173,34 @@ export class Container implements ContainerItem
         }
     }
 
+    // a container may never be fullscreen on its own
+    get fullscreen() {
+        return false;
+    }
+
+    get fullscreenItem() {
+        return this._fullscreenItem;
+    }
+
+    set fullscreenItem(item: ContainerItem | undefined) {
+        if (this._containerType !== Container.Type.TopLevel) {
+            throw new Error("only top-level containers may have a fullscreen item");
+        }
+        if (this._fullscreenItem === item)
+            return;
+
+        const old = this._fullscreenItem;
+        this._fullscreenItem = item;
+
+        if (old !== undefined) {
+            this.circulateToTop(old);
+        } else if (item !== undefined) {
+            this.circulateToTop(item);
+        }
+
+        this.relayout();
+    }
+
     raise(sibling?: ContainerItem) {
         for (const item of this._items) {
             item.raise(sibling);
@@ -244,12 +274,27 @@ export class Container implements ContainerItem
             throw new Error("container doesn't contain this item");
         }
         if (this._items.length === 1) {
-            // nothing to do
+            // make sure we respect our global items
+            const item = this._items[0];
+            if (this._monitor) {
+                const globalItems = this._monitor.items;
+                if (globalItems.length > 0) {
+                    if (this._fullscreenItem === item) {
+                        item.raise(globalItems[globalItems.length - 1]);
+                    } else {
+                        item.lower(globalItems[0]);
+                    }
+                }
+            }
             return;
         }
 
         // take the item out
         this._items.splice(idx, 1);
+
+        // ### there's a bug here, this code won't work if we find a container as the item
+        // we're supposed to be above or below. The reason for this is that client.lower / client.raise()
+        // expects that the sibling is a client, but in this case it would be a container.
 
         if (item.staysOnTop) {
             // move to top of list
@@ -276,6 +321,33 @@ export class Container implements ContainerItem
                     item.lower(this._items[found + 1]);
                 }
             }
+        }
+
+        // if we have a fullscreen item, make sure it stays on top
+        if (this._fullscreenItem) {
+            const full = this._fullscreenItem;
+
+            if (this._monitor) {
+                const globalItems = this._monitor.items;
+                if (globalItems.length > 0) {
+                    const sibling = globalItems[globalItems.length - 1];
+                    if (full === sibling) {
+                        throw new Error("full screen item is a global item?");
+                    }
+                    full.raise(sibling);
+                    return;
+                }
+            }
+
+            let idx = this._items.length;
+            while (idx > 0 && this._items[idx - 1] === full)
+                --idx;
+
+            if (this._items[idx - 1] === full) {
+                throw new Error("couldn't raise fullscreen item");
+            }
+
+            full.raise(this._items[idx - 1]);
         }
     }
 
@@ -322,7 +394,12 @@ export class Container implements ContainerItem
     relayout() {
         if (!this._layout)
             return;
-        this._layout.layout(this._items, this.geometry);
+        if (this._fullscreenItem) {
+            // _geometry is the non-strutted geometry
+            this._layout.layout([this._fullscreenItem], this._geometry);
+        } else {
+            this._layout.layout(this._items, this.geometry);
+        }
     }
 }
 
