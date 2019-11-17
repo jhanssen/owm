@@ -106,13 +106,9 @@ export class EWMH {
         }
 
         const nameBuffer = Buffer.concat(nameArray);
-        console.log("whoa", nameBuffer, nameBuffer instanceof Buffer);
-
         xcb.change_property(owm.wm, { window: owm.root, mode: xcb.propMode.REPLACE,
                                       property: xcb.atom._NET_DESKTOP_NAMES, type: xcb.atom.UTF8_STRING,
                                       format: 8, data: nameBuffer });
-        console.log("done whoa");
-
     }
 
     updateCurrentWorkspace(ws: number) {

@@ -1069,6 +1069,8 @@ export class OWMLib {
         }
         this._xcb.destroy_window(this._wm, client.frame);
 
+        this._xcb.change_save_set(this._wm, { window: window, mode: this._xcb.setMode.DELETE });
+
         if (client.ignoreWorkspace) {
             this.relayout();
         }

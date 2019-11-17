@@ -20,6 +20,9 @@ type MutableWindow = {
     -readonly [K in keyof XCB.Window]: XCB.Window[K];
 }
 
+type MutableWMClass = {
+    -readonly [K in keyof XCB.WindowTypes.WMClass]: XCB.WindowTypes.WMClass[K];
+}
 
 function zero(data: any) {
     for (const k in data) {
@@ -677,9 +680,9 @@ export class Client implements ContainerItem
             return;
         }
 
-        let encoding = "utf8";
-        if (property.type === this._owm.xcb.atom.STRING) {
-            encoding = "latin1";
+        let encoding = "latin1";
+        if (property.type === this._owm.xcb.atom.UTF8_STRING) {
+            encoding = "utf8";
         }
 
         const nbuf = Buffer.from(property.buffer);
@@ -780,6 +783,54 @@ export class Client implements ContainerItem
     }
 
     private _updateWmClass(property?: OWM.GetProperty) {
+        if (!property || property.format !== 8) {
+            (this._window.wmClass as MutableWMClass).instance_name = "";
+            (this._window.wmClass as MutableWMClass).class_name = "";
+            return;
+        }
+
+        const len = property.buffer.byteLength;
+        if (len === 0) {
+            (this._window.wmClass as MutableWMClass).instance_name = "";
+            (this._window.wmClass as MutableWMClass).class_name = "";
+            return;
+        }
+
+        let encoding = "latin1";
+        if (property.type === this._owm.xcb.atom.UTF8_STRING) {
+            encoding = "utf8";
+        }
+
+        const nbuf = Buffer.from(property.buffer);
+
+        let mid = 0;
+        // find the first 0 byte
+        for (let idx = 0; idx < len; ++idx) {
+            if (nbuf.readUInt8(idx) === 0) {
+                mid = idx;
+                break;
+            }
+        }
+
+        // find the first final 0 byte
+        let last = len;
+        while (nbuf.readUInt8(last - 1) === 0) {
+            --last;
+        }
+
+        let wmClass = (this._window.wmClass as MutableWMClass);
+        if (mid !== 0) {
+            // we have an instance_name
+            wmClass.instance_name = nbuf.toString(encoding, 0, mid);
+        } else {
+            wmClass.instance_name = "";
+        }
+        if (mid < last) {
+            // we have a class_name
+            wmClass.class_name = nbuf.toString(encoding, mid + 1, last);
+        } else {
+            wmClass.class_name = "";
+        }
     }
 
     private _updateEwmhWmName(property?: OWM.GetProperty) {
