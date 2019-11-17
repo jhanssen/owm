@@ -1542,7 +1542,6 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return env.Undefined();
     }));
 
-
     xcb.Set("change_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -1623,6 +1622,31 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         xcb_change_property(wm->conn, mode, window, property, type, format, elems, reinterpret_cast<uint8_t*>(data.Data()) + offset);
 
         return env.Undefined();
+    }));
+
+    xcb.Set("delete_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "delete_property requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
+
+        if (!arg.Has("window")) {
+            throw Napi::TypeError::New(env, "delete_property requires a window");
+        }
+        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("property")) {
+            throw Napi::TypeError::New(env, "delete_property requires a property");
+        }
+        const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
+
+        xcb_delete_property(wm->conn, window, property);
     }));
 
     xcb.Set("reparent_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {

@@ -86,6 +86,11 @@ export class Monitor
         if (Strut.hasStrut(item.strut)) {
             this._monitors.owm.ewmh.updateWorkarea();
         }
+
+        // relayout workspace
+        if (this._workspace) {
+            this._workspace.relayout();
+        }
     }
 
     removeItem(item: ContainerItem) {
@@ -97,6 +102,11 @@ export class Monitor
 
         if (Strut.hasStrut(item.strut)) {
             this._monitors.owm.ewmh.updateWorkarea();
+        }
+
+        // relayout workspace
+        if (this._workspace) {
+            this._workspace.relayout();
         }
     }
 }

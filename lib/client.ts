@@ -314,6 +314,9 @@ export class Client implements ContainerItem
 
     set workspace(ws: Workspace | undefined) {
         this._workspace = ws;
+        if (!this._ignoreWorkspace) {
+            this._owm.ewmh.updateDesktop(this);
+        }
     }
 
     get container() {
@@ -997,11 +1000,35 @@ export class Client implements ContainerItem
         let parentArgs = Object.assign({ window: this._parent }, args);
 
         if (args.x !== undefined && args.y !== undefined) {
+            const oldmonitor = this._owm.monitors.monitorByPosition(this._frameGeometry.x, this._frameGeometry.y);
+
             this._geometry.x = args.x;
             this._geometry.y = args.y;
 
             parentArgs.x = this._frameGeometry.x = this._geometry.x - this._border;
             parentArgs.y = this._frameGeometry.y = this._geometry.y - this._border;
+
+            // change workspace/monitor if needed
+            const monitor = this._owm.monitors.monitorByPosition(parentArgs.x, parentArgs.y);
+            if (this._ignoreWorkspace) {
+                oldmonitor.removeItem(this);
+                monitor.addItem(this);
+            } else if (this._workspace && this._workspace.monitor && this._workspace.monitor !== monitor) {
+                const oldws = this._workspace;
+                const newws = monitor.workspace;
+                if (!newws) {
+                    throw new Error("client moved to new monitor but monitor didn't have an active workspace");
+                }
+
+                // this will also update our container
+                oldws.removeItem(this);
+                newws.addItem(this);
+
+                // if the old workspace was inactive, normalize this client
+                if (oldws.monitor && oldws.monitor.workspace !== oldws) {
+                    this.state = Client.State.Normal;
+                }
+            }
         }
         if (args.width !== undefined && args.height !== undefined) {
             if (this._floating && !this.dock) {

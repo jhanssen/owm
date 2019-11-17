@@ -457,6 +457,11 @@ interface ChangePropertyArgs {
     readonly data_len?: number; // number of elements, not bytes
 }
 
+interface DeletePropertyArgs {
+    readonly window: number;
+    readonly property: number;
+}
+
 interface SetInputFocusArgs {
     readonly window: number;
     readonly revert_to: number;
@@ -596,6 +601,7 @@ export namespace OWM {
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
         get_property(wm: OWM.WM, args: GetPropertyArgs): GetPropertyReply | undefined;
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
+        delete_property(wm: OWM.WM, args: DeletePropertyArgs): void;
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
         send_expose(wm: OWM.WM, args: SendExposeArgs): void;

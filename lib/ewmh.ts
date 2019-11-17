@@ -186,6 +186,27 @@ export class EWMH {
                                       format: 32, data: viewportData });
     }
 
+    updateDesktop(client: Client) {
+        const ws = client.workspace;
+        if (ws) {
+            const owm = this._owm;
+            const xcb = owm.xcb;
+
+            const desktopData = new Uint32Array(1);
+            desktopData[0] = ws.id - 1;
+            xcb.change_property(owm.wm, { window: client.window.window, mode: xcb.propMode.REPLACE,
+                                          property: xcb.atom._NET_WM_DESKTOP, type: xcb.atom.CARDINAL,
+                                          format: 32, data: desktopData });
+        }
+    }
+
+    clearDesktop(client: Client) {
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        xcb.delete_property(owm.wm, { window: client.window.window, property: xcb.atom._NET_WM_DESKTOP });
+    }
+
     addStateFocused(client: Client) {
         this._add_property_atom(client.window.window, this._owm.xcb.atom._NET_WM_STATE, this._owm.xcb.atom._NET_WM_STATE_FOCUSED);
     }

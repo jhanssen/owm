@@ -504,7 +504,7 @@ export class OWMLib {
         const client = this.findClient(event.window);
         if (!client)
             return;
-        this._destroyClient(client);
+        this._destroyClient(client, true);
     }
 
     destroyNotify(event: XCB.DestroyNotify) {
@@ -512,7 +512,7 @@ export class OWMLib {
         const client = this.findClient(event.window);
         if (!client)
             return;
-        this._destroyClient(client);
+        this._destroyClient(client, false);
     }
 
     focusIn(event: XCB.FocusIn) {
@@ -1040,7 +1040,7 @@ export class OWMLib {
         };
     }
 
-    private _destroyClient(client: Client) {
+    private _destroyClient(client: Client, unmap: boolean) {
         // if this is our focused client, revert focus somewhere else
         const window = client.window.window;
         if (client === this._focused) {
@@ -1052,6 +1052,10 @@ export class OWMLib {
         }
         if (!client.group.remove(window)) {
             this._groups.delete(client.group.leaderWindow);
+        }
+
+        if (unmap) {
+            this._ewmh.clearDesktop(client);
         }
 
         const idx = this._clients.indexOf(client);
