@@ -251,6 +251,13 @@ export class Container implements ContainerItem
         if (item.container) {
             throw new Error("item is already in a different container");
         }
+
+        if (item.fullscreen &&
+            this._containerType === Container.Type.TopLevel &&
+            this._fullscreenItem === undefined) {
+            this._fullscreenItem = item;
+        }
+
         this._log.info("got new item");
         this._items.push(item);
         this.circulateToTop(item);
@@ -272,7 +279,14 @@ export class Container implements ContainerItem
             throw new Error("container doesn't contain this item");
         }
 
+        if (item === this._fullscreenItem) {
+            this._fullscreenItem = undefined;
+        }
+
         this._items.splice(idx, 1);
+        if (this._items.length > 0) {
+            this.circulateToTop(this._items[this._items.length - 1]);
+        }
         this.relayout();
 
         if (Strut.hasStrut(item.strut)) {

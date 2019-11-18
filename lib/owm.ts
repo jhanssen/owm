@@ -544,10 +544,21 @@ export class OWMLib {
                 client.kill();
             }
             break; }
+        case atom._NET_WM_DESKTOP: {
+            const u32 = new Uint32Array(event.data);
+            if (u32.length >= 1) {
+                const client = this._clientsByWindow.get(event.window);
+                if (client) {
+                    const newws = this._monitors.workspaceById(u32[0] + 1);
+                    if (newws) {
+                        client.workspace = newws;
+                    }
+                }
+            }
+            break; }
         case atom._NET_WM_STATE: {
             const action = this._xcb.ewmh.stateAction;
             const u32 = new Uint32Array(event.data);
-            this._log.error("update _net_wm_state", u32);
             if (u32.length >= 3) {
                 // 0: action, 1: first change, 2: second change
                 const client = this._clientsByWindow.get(event.window);
