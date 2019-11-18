@@ -315,6 +315,16 @@ export class Client implements ContainerItem
         return undefined;
     }
 
+    set workspace(ws: Workspace | undefined) {
+        // remove the client from the current container
+        this.container = undefined;
+
+        if (ws) {
+            // add the client to the top-most container of the workspace
+            ws.addItem(this);
+        }
+    }
+
     get container() {
         return this._container;
     }
@@ -323,9 +333,17 @@ export class Client implements ContainerItem
         if (this._ignoreWorkspace) {
             throw new Error("Can't set container on client that ignores workspaces");
         }
-        this._container = c;
+        if (this._container === c) {
+            return;
+        }
+        if (this._container) {
+            this._container.remove(this);
+            this._container = undefined;
+        }
         if (c) {
+            c.add(this);
             this._owm.ewmh.updateDesktop(this);
+            this._container = c;
         }
     }
 
@@ -925,6 +943,7 @@ export class Client implements ContainerItem
 
         // partial strut is preferred over strut
         if (!Strut.hasStrut(this._window.ewmhStrutPartial)) {
+            this._strut = new Strut(strut);
             this._relayoutWorkspace();
         }
     }
@@ -958,6 +977,7 @@ export class Client implements ContainerItem
         };
 
         (this._window as MutableWindow).ewmhStrutPartial = strut;
+        this._strut = new Strut(strut);
         this._relayoutWorkspace();
     }
 

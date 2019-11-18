@@ -75,7 +75,7 @@ function init(owmlib) {
         if (!ws) {
             throw new Error("no workspace 2");
         }
-        ws.addItem(client);
+        client.workspace = ws;
     });
     xtermMatch.addCondition(xtermMatchCondition);
     owmlib.addMatch(xtermMatch);
@@ -95,13 +95,13 @@ function init(owmlib) {
     });
     owmlib.events.on("client", client => {
         logger.info("got client");
-        if (client.workspace)
+        if (client.workspace || client.ignoreWorkspace)
             return;
         const m = owmlib.monitors.monitorByOutput("default");
         if (!m) {
             throw new Error("no default workspace");
         }
-        m.workspace.addItem(client);
+        client.workspace = m.workspace;
     });
 }
 

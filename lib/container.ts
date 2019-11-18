@@ -253,11 +253,14 @@ export class Container implements ContainerItem
         }
         this._log.info("got new item");
         this._items.push(item);
-        item.container = this;
         this.circulateToTop(item);
         this.relayout();
 
         item.visible = this._visible;
+
+        if (Strut.hasStrut(item.strut)) {
+            this._owm.ewmh.updateWorkarea();
+        }
     }
 
     remove(item: ContainerItem) {
@@ -269,15 +272,15 @@ export class Container implements ContainerItem
             throw new Error("container doesn't contain this item");
         }
 
-        item.container = undefined;
         this._items.splice(idx, 1);
         this.relayout();
+
+        if (Strut.hasStrut(item.strut)) {
+            this._owm.ewmh.updateWorkarea();
+        }
     }
 
     circulateToTop(item: ContainerItem) {
-        if (item.container !== this) {
-            throw new Error("item not in this container");
-        }
         const idx = this._items.indexOf(item);
         if (idx === -1) {
             throw new Error("container doesn't contain this item");
@@ -361,9 +364,6 @@ export class Container implements ContainerItem
     }
 
     circulateToBottom(item: ContainerItem) {
-        if (item.container !== this) {
-            throw new Error("item not in this container");
-        }
         const idx = this._items.indexOf(item);
         if (idx === -1) {
             throw new Error("container doesn't contain this item");

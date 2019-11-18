@@ -99,22 +99,14 @@ export class Workspace
         if (item.workspace !== undefined) {
             throw new Error("Item is already on a workspace!");
         }
-        this._container.add(item);
-
-        if (Strut.hasStrut(item.strut)) {
-            this._owm.ewmh.updateWorkarea();
-        }
+        item.container = this._container;
     }
 
     removeItem(item: ContainerItem) {
         if (item.workspace !== this) {
             throw new Error("Item is on wrong workspace!");
         }
-        this._container.remove(item);
-
-        if (Strut.hasStrut(item.strut)) {
-            this._owm.ewmh.updateWorkarea();
-        }
+        item.container = undefined;
     }
 
     relayout() {
