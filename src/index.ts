@@ -70,6 +70,7 @@ function event(e: OWM.Event) {
                 lib.settled();
                 lib.createMoveGrab();
                 lib.bindings.enable();
+                lib.inited();
             });
         }).catch(err => {
             console.error("error loading module");

@@ -887,6 +887,10 @@ export class OWMLib {
         this._onsettled = [];
     }
 
+    inited() {
+        this._events.emit("inited");
+    }
+
     launch(opts: string | LaunchOptions, ...args: string[]) {
         if (typeof opts === "string")
             opts = { command: opts };
