@@ -391,6 +391,17 @@ export class Client implements ContainerItem
                 sibling: sibling._parent,
                 stack_mode: this._owm.xcb.stackMode.ABOVE
             });
+            // and all of its group members
+            const followers = this.group.followerClients();
+            for (const follower of followers) {
+                if (follower !== this) {
+                    this._owm.xcb.configure_window(this._owm.wm, {
+                        window: follower._parent,
+                        sibling: this._parent,
+                        stack_mode: this._owm.xcb.stackMode.ABOVE
+                    });
+                }
+            }
         }
     }
 
@@ -405,6 +416,17 @@ export class Client implements ContainerItem
                 sibling: sibling._parent,
                 stack_mode: this._owm.xcb.stackMode.BELOW
             });
+            // and all of its group members
+            const followers = this.group.followerClients();
+            for (const follower of followers) {
+                if (follower !== this) {
+                    this._owm.xcb.configure_window(this._owm.wm, {
+                        window: follower._parent,
+                        sibling: this._parent,
+                        stack_mode: this._owm.xcb.stackMode.ABOVE
+                    });
+                }
+            }
         }
     }
 
