@@ -103,7 +103,7 @@ class Keybinding
         const key = keys[keys.length - 1];
         const sym = this._owm.xkb.keysym_from_name(key);
         if (sym === undefined) {
-            throw new Error("Couldn't get keybinding from name");
+            throw new Error(`Couldn't get keybinding from name (${this._binding})`);
         }
 
         this._sym = sym;

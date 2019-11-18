@@ -39,6 +39,7 @@ export class Container implements ContainerItem
     private _staysOnTop: boolean;
     private _ignoreWorkspace: boolean;
     private _containerType: Container.Type;
+    private _layoutCallback: () => void;
 
     constructor(owm: OWMLib, containerType: Container.Type, monitor?: Monitor) {
         this._owm = owm;
@@ -57,6 +58,9 @@ export class Container implements ContainerItem
         this._staysOnTop = false;
         this._ignoreWorkspace = false;
         this._containerType = containerType;
+
+        this._layoutCallback = this._policyNeedsLayout.bind(this);
+        this._layout.events.on("needsLayout", this._layoutCallback);
     }
 
     get layout() {
@@ -64,7 +68,9 @@ export class Container implements ContainerItem
     }
 
     set layout(policy: LayoutPolicy) {
+        this._layout.events.removeListener("needsLayout", this._layoutCallback);
         this._layout = policy;
+        this._layout.events.on("needsLayout", this._layoutCallback);
     }
 
     get monitor() {
@@ -423,6 +429,10 @@ export class Container implements ContainerItem
         } else {
             this._layout.layout(this._items, this.geometry);
         }
+    }
+
+    private _policyNeedsLayout() {
+        this.relayout();
     }
 }
 
