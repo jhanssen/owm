@@ -316,6 +316,10 @@ export class Client implements ContainerItem
     }
 
     set workspace(ws: Workspace | undefined) {
+        if (this._ignoreWorkspace) {
+            return;
+        }
+
         // remove the client from the current container
         this.container = undefined;
 
