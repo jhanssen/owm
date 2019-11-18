@@ -407,7 +407,7 @@ export class Client implements ContainerItem
                 stack_mode: this._owm.xcb.stackMode.ABOVE
             });
             // and all of its group members
-            const followers = this.group.followerClients();
+            const followers = this.group.followerClients;
             for (const follower of followers) {
                 if (follower !== this && follower.floating) {
                     this._owm.xcb.configure_window(this._owm.wm, {
@@ -432,7 +432,7 @@ export class Client implements ContainerItem
                 stack_mode: this._owm.xcb.stackMode.BELOW
             });
             // and all of its group members
-            const followers = this.group.followerClients();
+            const followers = this.group.followerClients;
             for (const follower of followers) {
                 if (follower !== this && follower.floating) {
                     this._owm.xcb.configure_window(this._owm.wm, {
@@ -1278,6 +1278,17 @@ export class ClientGroup {
         return this._leader;
     }
 
+    get followerClients(): Client[] {
+        const ret: Client[] = [];
+        for (const f of this._followers) {
+            const c = this._owm.findClientByWindow(f);
+            if (c) {
+                ret.push(c);
+            }
+        }
+        return ret;
+    }
+
     transientsForClient(client: Client): Client[] {
         const ret: Client[] = [];
         const cid = client.window.window;
@@ -1287,17 +1298,6 @@ export class ClientGroup {
                 if (c) {
                     ret.push(c);
                 }
-            }
-        }
-        return ret;
-    }
-
-    followerClients(): Client[] {
-        const ret: Client[] = [];
-        for (const f of this._followers) {
-            const c = this._owm.findClientByWindow(f);
-            if (c) {
-                ret.push(c);
             }
         }
         return ret;
