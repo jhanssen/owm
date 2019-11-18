@@ -1647,6 +1647,8 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
 
         xcb_delete_property(wm->conn, window, property);
+
+        return env.Undefined();
     }));
 
     xcb.Set("reparent_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {

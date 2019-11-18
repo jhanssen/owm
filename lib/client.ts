@@ -151,6 +151,10 @@ export class Client implements ContainerItem
         return this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
     }
 
+    get transient() {
+        return this._window.transientFor > 0 && this._window.transientFor !== this._window.window;
+    }
+
     get strut() {
         return this._strut;
     }
@@ -425,21 +429,52 @@ export class Client implements ContainerItem
                 this._container.circulateToTop(this);
             }
         } else {
-            this._owm.xcb.configure_window(this._owm.wm, {
-                window: this._parent,
-                sibling: sibling._parent,
-                stack_mode: this._owm.xcb.stackMode.ABOVE
-            });
-            // and all of its group members
-            const followers = this.group.followerClients;
-            for (const follower of followers) {
-                if (follower !== this && follower.floating) {
-                    this._owm.xcb.configure_window(this._owm.wm, {
-                        window: follower._parent,
-                        sibling: this._parent,
-                        stack_mode: this._owm.xcb.stackMode.ABOVE
-                    });
+            if (this === sibling) {
+                return;
+            }
+
+            // stacking order after this should be
+
+            // if self is floating, transients for self
+            // if self is floatng, self
+            // transients for floating group member 1
+            // floating group member 1
+            // transients for floating group member 2
+            // floating group member 2
+            // (etc...)
+            // if self is not floating, transients for self
+            // if self is not floating, self
+            // transients for non-floating group member 1
+            // non-floating group member 1
+            // transients for non-floating group member 2
+            // non-floating group member 2
+            // (etc...)
+            // sibling (if not a group member)
+
+            const owm = this._owm;
+            const xcb = owm.xcb;
+            // first raise all group non-floating non-transients that
+            // are not this and not sibling
+            const nt = this.group.nonTransients;
+            for (const c of nt) {
+                if (c !== this && c !== sibling && !c.floating) {
+                    this._raiseClientAndTransients(c, sibling);
                 }
+            }
+            // raise this if not floating and not transient
+            if (!this.floating && !this.transient) {
+                this._raiseClientAndTransients(this, sibling);
+            }
+            // raise all group floating non-transients that are not this
+            // and not sibling
+            for (const c of nt) {
+                if (c !== this && c !== sibling && c.floating) {
+                    this._raiseClientAndTransients(c, sibling);
+                }
+            }
+            // raise this if floating and not transient
+            if (this.floating && !this.transient) {
+                this._raiseClientAndTransients(this, sibling);
             }
         }
     }
@@ -450,21 +485,52 @@ export class Client implements ContainerItem
                 this._container.circulateToBottom(this);
             }
         } else {
-            this._owm.xcb.configure_window(this._owm.wm, {
-                window: this._parent,
-                sibling: sibling._parent,
-                stack_mode: this._owm.xcb.stackMode.BELOW
-            });
-            // and all of its group members
-            const followers = this.group.followerClients;
-            for (const follower of followers) {
-                if (follower !== this && follower.floating) {
-                    this._owm.xcb.configure_window(this._owm.wm, {
-                        window: follower._parent,
-                        sibling: this._parent,
-                        stack_mode: this._owm.xcb.stackMode.ABOVE
-                    });
+            if (this === sibling) {
+                return;
+            }
+
+            // stacking order after this should be
+
+            // sibling (if not a group member)
+            // if self is floating, transients for self
+            // if self is floatng, self
+            // transients for floating group member 1
+            // floating group member 1
+            // transients for floating group member 2
+            // floating group member 2
+            // (etc...)
+            // if self is not floating, transients for self
+            // if self is not floating, self
+            // transients for non-floating group member 1
+            // non-floating group member 1
+            // transients for non-floating group member 2
+            // non-floating group member 2
+            // (etc...)
+
+            const owm = this._owm;
+            const xcb = owm.xcb;
+            // first lower all group non-floating non-transients that
+            // are not this and not sibling
+            const nt = this.group.nonTransients;
+            for (const c of nt) {
+                if (c !== this && c !== sibling && !c.floating) {
+                    this._lowerClientAndTransients(c, sibling);
                 }
+            }
+            // lower this if not floating and not transient
+            if (!this.floating && !this.transient) {
+                this._lowerClientAndTransients(this, sibling);
+            }
+            // lower all group floating non-transients that are not this
+            // and not sibling
+            for (const c of nt) {
+                if (c !== this && c !== sibling && c.floating) {
+                    this._lowerClientAndTransients(c, sibling);
+                }
+            }
+            // lower this if floating and not transient
+            if (this.floating && !this.transient) {
+                this._lowerClientAndTransients(this, sibling);
             }
         }
     }
@@ -1267,6 +1333,52 @@ export class Client implements ContainerItem
 
         return grp;
     }
+
+    private _raiseClientAndTransients(client: Client, sibling: Client) {
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        // raise self
+        xcb.configure_window(owm.wm, {
+            window: client._parent,
+            sibling: sibling._parent,
+            stack_mode: xcb.stackMode.ABOVE
+        });
+        // raise the clients transients
+        const tr = this.group.transientsForClient(client);
+        for (const t of tr) {
+            if (t !== sibling) {
+                xcb.configure_window(owm.wm, {
+                    window: t._parent,
+                    sibling: client._parent,
+                    stack_mode: xcb.stackMode.ABOVE
+                });
+            }
+        }
+    }
+
+    private _lowerClientAndTransients(client: Client, sibling: Client) {
+        const owm = this._owm;
+        const xcb = owm.xcb;
+
+        // lower self
+        xcb.configure_window(owm.wm, {
+            window: client._parent,
+            sibling: sibling._parent,
+            stack_mode: xcb.stackMode.BELOW
+        });
+        // raise the clients transients just above self
+        const tr = this.group.transientsForClient(client);
+        for (const t of tr) {
+            if (t !== sibling) {
+                xcb.configure_window(owm.wm, {
+                    window: t._parent,
+                    sibling: client._parent,
+                    stack_mode: xcb.stackMode.ABOVE
+                });
+            }
+        }
+    }
 }
 
 export namespace Client {
@@ -1308,6 +1420,31 @@ export class ClientGroup {
             const c = this._owm.findClientByWindow(f);
             if (c) {
                 ret.push(c);
+            }
+        }
+        return ret;
+    }
+
+    get transients(): Client[] {
+        const ret: Client[] = [];
+        for (const [f, t] of this._transients) {
+            const c = this._owm.findClientByWindow(f);
+            if (c && !ret.includes(c)) {
+                ret.push(c);
+            }
+        }
+        return ret;
+    }
+
+    get nonTransients(): Client[] {
+        // all _followers not in _transients
+        const ret: Client[] = [];
+        for (let k of this._followers) {
+            if (!this._transients.has(k)) {
+                const c = this._owm.findClientByWindow(k);
+                if (c) {
+                    ret.push(c);
+                }
             }
         }
         return ret;
