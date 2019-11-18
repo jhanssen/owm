@@ -379,23 +379,7 @@ export class OWMLib {
 
         this._events.emit("client", client);
 
-        // is this client in a visible workspace?
-        const ws = client.workspace;
-        if (client.ignoreWorkspace || (ws && ws.visible)) {
-            client.state = Client.State.Normal;
-            let focused = false;
-            if (focus === true || focus === undefined) {
-                if (client.focus())
-                    focused = true;
-            }
-            if (!focused) {
-                client.framePixel = this._inactiveColor;
-            }
-            this._xcb.send_expose(this._wm, { window: client.frame, width: client.frameWidth, height: client.frameHeight });
-        } else {
-            // no, this window is iconic
-            client.state = Client.State.Iconic;
-        }
+        client.finalizeCreation(focus);
 
         if (client.ignoreWorkspace) {
             this.relayout();

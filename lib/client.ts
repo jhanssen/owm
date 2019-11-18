@@ -46,7 +46,7 @@ export class Client implements ContainerItem
     private _log: Logger;
     private _type: string;
     private _gc: number | undefined;
-    private _pixel: number | undefined;
+    private _pixel: number;
     private _prevPixel: number | undefined;
     private _state: Client.State;
     private _explicitState: Client.State;
@@ -119,6 +119,12 @@ export class Client implements ContainerItem
                                           format: 32, data: borderData });
 
         owm.ewmh.updateAllowed(this);
+
+        const inactive = owm.inactiveColor;
+        if (typeof inactive === "string") {
+            throw new Error("inactive is string, can't happen");
+        }
+        this._pixel = inactive;
     }
 
     get root() {
@@ -198,7 +204,7 @@ export class Client implements ContainerItem
         return this._pixel;
     }
 
-    set framePixel(p: number | undefined) {
+    set framePixel(p: number) {
         this._pixel = p;
     }
 
@@ -372,6 +378,24 @@ export class Client implements ContainerItem
 
     get group() {
         return this._group;
+    }
+
+    finalizeCreation(focus?: boolean) {
+        // is this client in a visible workspace?
+        const owm = this._owm;
+        const ws = this.workspace;
+        if (this._ignoreWorkspace || (ws && ws.visible)) {
+            this._setState(Client.State.Normal);
+            if (focus === true || focus === undefined) {
+                process.nextTick(() => {
+                    this.focus();
+                });
+            }
+            owm.xcb.send_expose(owm.wm, { window: this._parent, width: this.frameWidth, height: this.frameHeight });
+        } else {
+            // no, this window is iconic
+            this._setState(Client.State.Iconic);
+        }
     }
 
     hide() {
@@ -593,16 +617,13 @@ export class Client implements ContainerItem
             }
         }
 
-        if (client.noinput) {
-            return false;
-        }
-
         const owm = this._owm;
 
         if (owm.focused === client) {
             return true;
         }
 
+        let taken = false;
         const takeFocus = owm.xcb.atom.WM_TAKE_FOCUS;
         if (client.window.wmProtocols.includes(takeFocus)) {
             this._log.info("sending client message");
@@ -610,18 +631,22 @@ export class Client implements ContainerItem
             data[0] = takeFocus;
             data[1] = owm.currentTime;
             owm.xcb.send_client_message(owm.wm, { window: client.window.window, type: owm.xcb.atom.WM_PROTOCOLS, data: data });
+            taken = true;
+        } else if (!client.noinput) {
+            owm.xcb.set_input_focus(owm.wm, { window: client.window.window, revert_to: owm.xcb.inputFocus.FOCUS_PARENT,
+                                              time: owm.currentTime });
+            taken = true;
         }
 
-        owm.xcb.set_input_focus(owm.wm, { window: client.window.window, revert_to: owm.xcb.inputFocus.FOCUS_PARENT,
-                                          time: owm.currentTime });
+        if (taken) {
+            const activeData = new Uint32Array(1);
+            activeData[0] = client.window.window;
+            owm.xcb.change_property(owm.wm, { window: client.window.geometry.root, mode: owm.xcb.propMode.REPLACE,
+                                              property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
+                                              format: 32, data: activeData });
 
-        const activeData = new Uint32Array(1);
-        activeData[0] = client.window.window;
-        owm.xcb.change_property(owm.wm, { window: client.window.geometry.root, mode: owm.xcb.propMode.REPLACE,
-                                          property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
-                                          format: 32, data: activeData });
-
-        owm.focused = client;
+            owm.focused = client;
+        }
 
         return true;
     }
@@ -718,13 +743,8 @@ export class Client implements ContainerItem
 
     private _createGC() {
         if (this._gc) {
-            if (this._pixel) {
-                this._owm.xcb.change_gc(this._owm.wm, { gc: this._gc, values: { foreground: this._pixel } });
-            } else {
-                this._owm.xcb.free_gc(this._owm.wm, this._gc);
-                this._gc = undefined;
-            }
-        } else if (this._pixel !== undefined) {
+            this._owm.xcb.change_gc(this._owm.wm, { gc: this._gc, values: { foreground: this._pixel } });
+        } else {
             this._gc = this._owm.xcb.create_gc(this._owm.wm, { window: this._parent, values: { foreground: this._pixel } })
         }
     }
@@ -1061,7 +1081,10 @@ export class Client implements ContainerItem
 
                 // if the old workspace was inactive, normalize this client
                 if (oldws.monitor && oldws.monitor.workspace !== oldws) {
-                    this.state = Client.State.Normal;
+                    // but not if we've been explicitly unmapped
+                    if (this._explicitState === Client.State.Normal) {
+                        this._setState(Client.State.Normal);
+                    }
                 }
             }
         }
