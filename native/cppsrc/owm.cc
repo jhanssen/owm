@@ -1346,7 +1346,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
         memcpy(&event.data.data8, reinterpret_cast<uint8_t*>(data.Data()) + offset, size);
 
-        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
+        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
                        reinterpret_cast<char*>(&event));
 
         return env.Undefined();
@@ -1391,7 +1391,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
         event.height = arg.Get("height").As<Napi::Number>().Uint32Value();
 
-        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_NO_EVENT,
+        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
                        reinterpret_cast<char*>(&event));
 
         return env.Undefined();
