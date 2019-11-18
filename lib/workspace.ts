@@ -23,6 +23,7 @@ export class Workspace
         this._name = name;
         this._owm = owm;
         this._container = new Container(owm, Container.Type.TopLevel);
+        this._container.workspace = this;
     }
 
     get id() {
@@ -98,7 +99,6 @@ export class Workspace
         if (item.workspace !== undefined) {
             throw new Error("Item is already on a workspace!");
         }
-        item.workspace = this;
         this._container.add(item);
 
         if (Strut.hasStrut(item.strut)) {
@@ -110,7 +110,6 @@ export class Workspace
         if (item.workspace !== this) {
             throw new Error("Item is on wrong workspace!");
         }
-        item.workspace = undefined;
         this._container.remove(item);
 
         if (Strut.hasStrut(item.strut)) {

@@ -13,7 +13,7 @@ export interface ContainerItem
     lower(sibling?: ContainerItem): void;
     readonly geometry: Geometry;
     readonly strut: Strut;
-    workspace: Workspace | undefined;
+    readonly workspace: Workspace | undefined;
     container: Container | undefined;
     visible: boolean;
     floating: boolean;
@@ -115,10 +115,16 @@ export class Container implements ContainerItem
     }
 
     get workspace() {
+        if (this._container) {
+            return this._container.workspace;
+        }
         return this._workspace;
     }
 
     set workspace(ws: Workspace | undefined) {
+        if (this._containerType !== Container.Type.TopLevel) {
+            throw new Error("Can only set workspace on top-level containers");
+        }
         this._workspace = ws;
     }
 
@@ -127,6 +133,9 @@ export class Container implements ContainerItem
     }
 
     set container(ws: Container | undefined) {
+        if (this._containerType === Container.Type.TopLevel) {
+            throw new Error("Can't set parent container on top-level containers");
+        }
         this._container = ws;
     }
 
@@ -243,7 +252,7 @@ export class Container implements ContainerItem
             throw new Error("item is already in a different container");
         }
         this._log.info("got new item");
-        this._items.push(item)
+        this._items.push(item);
         item.container = this;
         this.circulateToTop(item);
         this.relayout();

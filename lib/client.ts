@@ -309,22 +309,24 @@ export class Client implements ContainerItem
     }
 
     get workspace() {
-        return this._workspace;
-    }
-
-    set workspace(ws: Workspace | undefined) {
-        this._workspace = ws;
-        if (!this._ignoreWorkspace) {
-            this._owm.ewmh.updateDesktop(this);
+        if (this._container) {
+            return this._container.workspace;
         }
+        return undefined;
     }
 
     get container() {
         return this._container;
     }
 
-    set container(ws: Container | undefined) {
-        this._container = ws;
+    set container(c: Container | undefined) {
+        if (this._ignoreWorkspace) {
+            throw new Error("Can't set container on client that ignores workspaces");
+        }
+        this._container = c;
+        if (c) {
+            this._owm.ewmh.updateDesktop(this);
+        }
     }
 
     get group() {
