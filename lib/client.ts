@@ -51,7 +51,6 @@ export class Client implements ContainerItem
     private _state: Client.State;
     private _explicitState: Client.State;
     private _hidden: boolean;
-    private _workspace: Workspace | undefined;
     private _container: Container | undefined;
     private _floating: boolean;
     private _explicitFloating: boolean | undefined;
@@ -247,8 +246,9 @@ export class Client implements ContainerItem
 
     set ignoreWorkspace(ignore: boolean) {
         this._ignoreWorkspace = ignore;
-        if (this._workspace) {
-            this._workspace.relayout();
+        const ws = this.workspace;
+        if (ws) {
+            ws.relayout();
         }
         this._updateAllowed();
     }
@@ -273,7 +273,7 @@ export class Client implements ContainerItem
     set fullscreen(f: boolean) {
         if (this._fullscreen === f)
             return;
-        const ws = this._workspace;
+        const ws = this.workspace;
         if (ws) {
             if (f && ws.fullscreen !== undefined) {
                 // workspace already fullscreen
@@ -296,8 +296,9 @@ export class Client implements ContainerItem
             return;
         this._floating = f;
         this._owm.relayout();
-        if (this._workspace) {
-            this._workspace.relayout();
+        const ws = this.workspace;
+        if (ws) {
+            ws.relayout();
         }
         if (f) {
             // we didn't float before, but now we do.
@@ -1030,6 +1031,7 @@ export class Client implements ContainerItem
 
         if (args.x !== undefined && args.y !== undefined) {
             const oldmonitor = this._owm.monitors.monitorByPosition(this._frameGeometry.x, this._frameGeometry.y);
+            const oldws = this.workspace;
 
             this._geometry.x = args.x;
             this._geometry.y = args.y;
@@ -1039,14 +1041,14 @@ export class Client implements ContainerItem
 
             // change workspace/monitor if needed
             const monitor = this._owm.monitors.monitorByPosition(parentArgs.x, parentArgs.y);
+
             if (this._ignoreWorkspace && oldmonitor !== monitor) {
                 oldmonitor.removeItem(this);
                 monitor.addItem(this);
-            } else if (this._workspace && this._workspace.monitor && this._workspace.monitor !== monitor) {
-                if (this._workspace.monitor !== oldmonitor) {
+            } else if (oldws && oldws.monitor && oldws.monitor !== monitor) {
+                if (oldws.monitor !== oldmonitor) {
                     throw new Error("monitor by geometry and old workspace monitor mismatch");
                 }
-                const oldws = this._workspace;
                 const newws = monitor.workspace;
                 if (!newws) {
                     throw new Error("client moved to new monitor but monitor didn't have an active workspace");
@@ -1173,7 +1175,7 @@ export class Client implements ContainerItem
     }
 
     private _relayoutWorkspace() {
-        const ws = this._workspace;
+        const ws = this.workspace;
         if (ws) {
             ws.relayout();
         }
