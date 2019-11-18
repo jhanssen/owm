@@ -134,8 +134,10 @@ export class Monitors
         for (const [key, monitor] of this._monitors) {
             if (!first)
                 first = monitor;
-            if (x >= monitor.screen.x && x <= monitor.screen.x + monitor.screen.width &&
-                y >= monitor.screen.y && y <= monitor.screen.y + monitor.screen.height) {
+            if (x >= monitor.screen.x
+                && x <= monitor.screen.x + monitor.screen.width
+                && y >= monitor.screen.y
+                && y <= monitor.screen.y + monitor.screen.height) {
                 return monitor;
             }
         }

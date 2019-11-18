@@ -62,10 +62,10 @@ class MoveResize {
     }
 
     get enabled() {
-        return this.moving !== undefined ||
-            this.resizing !== undefined ||
-            this.movingKeyboard !== undefined ||
-            this.resizingKeyboard !== undefined;
+        return this.moving !== undefined
+            || this.resizing !== undefined
+            || this.movingKeyboard !== undefined
+            || this.resizingKeyboard !== undefined;
     }
 
     clear() {
@@ -326,8 +326,10 @@ export class OWMLib {
         let candidate: Client | undefined;
         for (const [window, client] of this._clientsByFrame) {
             const geom = client.frameGeometry;
-            if (x >= geom.x && x <= geom.x + geom.width &&
-                y >= geom.y && y <= geom.y + geom.height) {
+            if (x >= geom.x
+                && x <= geom.x + geom.width
+                && y >= geom.y
+                && y <= geom.y + geom.height) {
                 if (candidate === undefined || !candidate.floating)
                     candidate = client;
             }

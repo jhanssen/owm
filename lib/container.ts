@@ -252,9 +252,9 @@ export class Container implements ContainerItem
             throw new Error("item is already in a different container");
         }
 
-        if (item.fullscreen &&
-            this._containerType === Container.Type.TopLevel &&
-            this._fullscreenItem === undefined) {
+        if (item.fullscreen
+            && this._containerType === Container.Type.TopLevel
+            && this._fullscreenItem === undefined) {
             this._fullscreenItem = item;
         }
 
