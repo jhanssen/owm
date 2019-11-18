@@ -340,14 +340,17 @@ export class Client implements ContainerItem
         if (this._container === c) {
             return;
         }
+
+        // the order of all the following statements is important
+        // don't change unless you know what you're doing
         if (this._container) {
             this._container.remove(this);
             this._container = undefined;
         }
         if (c) {
             c.add(this);
-            this._owm.ewmh.updateDesktop(this);
             this._container = c;
+            this._owm.ewmh.updateDesktop(this);
         }
     }
 
