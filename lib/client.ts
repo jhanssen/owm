@@ -409,7 +409,7 @@ export class Client implements ContainerItem
             // and all of its group members
             const followers = this.group.followerClients();
             for (const follower of followers) {
-                if (follower !== this) {
+                if (follower !== this && follower.floating) {
                     this._owm.xcb.configure_window(this._owm.wm, {
                         window: follower._parent,
                         sibling: this._parent,
@@ -434,7 +434,7 @@ export class Client implements ContainerItem
             // and all of its group members
             const followers = this.group.followerClients();
             for (const follower of followers) {
-                if (follower !== this) {
+                if (follower !== this && follower.floating) {
                     this._owm.xcb.configure_window(this._owm.wm, {
                         window: follower._parent,
                         sibling: this._parent,
