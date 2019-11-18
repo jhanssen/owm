@@ -1210,6 +1210,7 @@ export class Client implements ContainerItem
         const window = this._window;
         const dock = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
         const dialog = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_DIALOG);
+        const util = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_UTILITY);
         const transientFor = window.transientFor !== 0 && window.transientFor !== window.window;
 
         this._noinput = dock;
@@ -1222,7 +1223,7 @@ export class Client implements ContainerItem
             return;
 
         const wasFloating = this._floating;
-        this._floating = dock || dialog || transientFor;
+        this._floating = dock || dialog || util || transientFor;
 
         // if our floating status didn't change, bail out
         if (wasFloating === this._floating)
