@@ -321,7 +321,7 @@ export class OWMLib {
         return this._clientsByFrame.get(window);
     }
 
-    findClientByPosition(x: number, y: number) {
+    findClientByPosition(x: number, y: number): Client | undefined {
         // we'll eventually have to do some stacking checking here
         let candidate: Client | undefined;
         for (const [window, client] of this._clientsByFrame) {
@@ -335,6 +335,39 @@ export class OWMLib {
             }
         }
         return candidate;
+    }
+
+    findClientsByClass(cls: string | XCB.WindowTypes.WMClass): Client[] {
+        if (typeof cls === "string") {
+            cls = { instance_name: "", class_name: cls };
+        }
+        const ret: Client[] = [];
+        const compareInstance = cls.instance_name.length > 0;
+        const compareClass = cls.class_name.length > 0;
+        for (const client of this._clients) {
+            if (compareInstance && client.window.wmClass.instance_name === cls.instance_name) {
+                ret.push(client);
+            } else if (compareClass && client.window.wmClass.class_name === cls.class_name) {
+                ret.push(client);
+            }
+        }
+        return ret;
+    }
+
+    findClientByClass(cls: string | XCB.WindowTypes.WMClass): Client | undefined {
+        if (typeof cls === "string") {
+            cls = { instance_name: "", class_name: cls };
+        }
+        const compareInstance = cls.instance_name.length > 0;
+        const compareClass = cls.class_name.length > 0;
+        for (const client of this._clients) {
+            if (compareInstance && client.window.wmClass.instance_name === cls.instance_name) {
+                return client;
+            } else if (compareClass && client.window.wmClass.class_name === cls.class_name) {
+                return client;
+            }
+        }
+        return undefined;
     }
 
     findClientUnderCursor() : Client | undefined {
