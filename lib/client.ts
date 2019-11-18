@@ -1010,10 +1010,13 @@ export class Client implements ContainerItem
 
             // change workspace/monitor if needed
             const monitor = this._owm.monitors.monitorByPosition(parentArgs.x, parentArgs.y);
-            if (this._ignoreWorkspace) {
+            if (this._ignoreWorkspace && oldmonitor !== monitor) {
                 oldmonitor.removeItem(this);
                 monitor.addItem(this);
             } else if (this._workspace && this._workspace.monitor && this._workspace.monitor !== monitor) {
+                if (this._workspace.monitor !== oldmonitor) {
+                    throw new Error("monitor by geometry and old workspace monitor mismatch");
+                }
                 const oldws = this._workspace;
                 const newws = monitor.workspace;
                 if (!newws) {
