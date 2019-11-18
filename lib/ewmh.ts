@@ -207,6 +207,42 @@ export class EWMH {
         xcb.delete_property(owm.wm, { window: client.window.window, property: xcb.atom._NET_WM_DESKTOP });
     }
 
+    updateAllowed(client: Client) {
+        const owm = this._owm;
+        const atom = owm.xcb.atom;
+
+        let allowed = [ atom._NET_WM_ACTION_CLOSE ]
+
+        if (!client.ignoreWorkspace) {
+            allowed.push(atom._NET_WM_ACTION_CHANGE_DESKTOP);
+        }
+
+        if (!client.dock) {
+            allowed = allowed.concat([
+                atom._NET_WM_ACTION_MINIMIZE,
+                atom._NET_WM_ACTION_FULLSCREEN,
+                atom._NET_WM_ACTION_ABOVE,
+                atom._NET_WM_ACTION_BELOW
+            ]);
+        }
+
+        if (client.floating) {
+            allowed = allowed.concat([
+                atom._NET_WM_ACTION_MOVE,
+                atom._NET_WM_ACTION_RESIZE
+            ]);
+        }
+
+        const allowedData = new Uint32Array(allowed.length);
+        for (let i = 0; i < allowed.length; ++i) {
+            allowedData[i] = allowed[i];
+        }
+
+        owm.xcb.change_property(owm.wm, { window: client.window.window, mode: owm.xcb.propMode.REPLACE,
+                                          property: atom._NET_WM_ALLOWED_ACTIONS, type: owm.xcb.atom.ATOM,
+                                          format: 32, data: allowedData });
+    }
+
     addStateFocused(client: Client) {
         this._add_property_atom(client.window.window, this._owm.xcb.atom._NET_WM_STATE, this._owm.xcb.atom._NET_WM_STATE_FOCUSED);
     }

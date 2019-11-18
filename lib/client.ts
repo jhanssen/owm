@@ -118,7 +118,7 @@ export class Client implements ContainerItem
                                           property: owm.xcb.atom._NET_FRAME_EXTENTS, type: owm.xcb.atom.CARDINAL,
                                           format: 32, data: borderData });
 
-        this._updateAllowed();
+        owm.ewmh.updateAllowed(this);
     }
 
     get root() {
@@ -245,12 +245,26 @@ export class Client implements ContainerItem
     }
 
     set ignoreWorkspace(ignore: boolean) {
+        if (ignore === this._ignoreWorkspace)
+            return;
+
         this._ignoreWorkspace = ignore;
-        const ws = this.workspace;
-        if (ws) {
-            ws.relayout();
+
+        const monitor = this._owm.monitors.monitorByPosition(this._geometry.x, this._geometry.y);
+        if (monitor.workspace === undefined) {
+            throw new Error("monitor workspace is not defined");
         }
-        this._updateAllowed();
+        if (ignore) {
+            // remove from existing workspace, add to monitor global items
+            this.workspace = undefined;
+            monitor.addItem(this);
+        } else {
+            // remove from monitor global items, add to current monitor workspace
+            monitor.removeItem(this);
+            this.workspace = monitor.workspace;
+        }
+
+        this._owm.ewmh.updateAllowed(this);
     }
 
     get staysOnTop() {
@@ -306,7 +320,8 @@ export class Client implements ContainerItem
 
             this._configure(this._requestedGeometry);
         }
-        this._updateAllowed();
+
+        this._owm.ewmh.updateAllowed(this);
     }
 
     get workspace() {
@@ -699,42 +714,6 @@ export class Client implements ContainerItem
 
             xcb.change_window_attributes(this._owm.wm, { window: this._window.window, event_mask: winMask });
         }
-    }
-
-    private _updateAllowed() {
-        const owm = this._owm;
-        const atom = owm.xcb.atom;
-
-        let allowed = [ atom._NET_WM_ACTION_CLOSE ]
-
-        if (!this._ignoreWorkspace) {
-            allowed.push(atom._NET_WM_ACTION_CHANGE_DESKTOP);
-        }
-
-        if (!this.dock) {
-            allowed = allowed.concat([
-                atom._NET_WM_ACTION_MINIMIZE,
-                atom._NET_WM_ACTION_FULLSCREEN,
-                atom._NET_WM_ACTION_ABOVE,
-                atom._NET_WM_ACTION_BELOW
-            ]);
-        }
-
-        if (this._floating) {
-            allowed = allowed.concat([
-                atom._NET_WM_ACTION_MOVE,
-                atom._NET_WM_ACTION_RESIZE
-            ]);
-        }
-
-        const allowedData = new Uint32Array(allowed.length);
-        for (let i = 0; i < allowed.length; ++i) {
-            allowedData[i] = allowed[i];
-        }
-
-        owm.xcb.change_property(owm.wm, { window: this._window.window, mode: owm.xcb.propMode.REPLACE,
-                                          property: atom._NET_WM_ALLOWED_ACTIONS, type: owm.xcb.atom.ATOM,
-                                          format: 32, data: allowedData });
     }
 
     private _createGC() {
@@ -1242,7 +1221,7 @@ export class Client implements ContainerItem
             }
         }
         this._relayoutWorkspace();
-        this._updateAllowed();
+        owm.ewmh.updateAllowed(this);
     }
 
     private _makeGroup(prevGroup?: ClientGroup) {
