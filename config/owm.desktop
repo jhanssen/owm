@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=owm
+Comment=improved dynamic tiling window manager
+Exec=owm
+TryExec=owm
+Type=Application
+X-LightDM-DesktopName=owm
+DesktopNames=owm
+Keywords=tiling;wm;windowmanager;window;manager;
