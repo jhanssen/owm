@@ -109,6 +109,12 @@ export class Monitor
             this._workspace.relayout();
         }
     }
+
+    findItemByPosition(x: number, y: number): ContainerItem | undefined {
+        if (this._workspace)
+            return this._workspace.findItemByPosition(x, y);
+        return undefined;
+    }
 }
 
 export class Monitors

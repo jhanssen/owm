@@ -128,6 +128,10 @@ export class Workspace
         if (this._monitor)
             this._monitor.workspace = this;
     }
+
+    findItemByPosition(x: number, y: number): ContainerItem | undefined {
+        return this._container.findItemByPosition(x, y);
+    }
 }
 
 export class Workspaces

@@ -431,6 +431,27 @@ export class Container implements ContainerItem
         }
     }
 
+    findItemByPosition(x: number, y: number): ContainerItem | undefined {
+        // walk items from the top-most item to the bottom-most one
+        const len = this._items.length;
+        if (len === 0)
+            return undefined;
+        for (let i = len - 1; i >= 0; --i) {
+            const item = this._items[i];
+            const geom = item.geometry;
+            if (x >= geom.x
+                && x <= geom.x + geom.width
+                && y >= geom.y
+                && y <= geom.y + geom.height) {
+                if (isContainer(item)) {
+                    return (item as Container).findItemByPosition(x, y);
+                } else {
+                    return item;
+                }
+            }
+        }
+    }
+
     private _policyNeedsLayout() {
         this.relayout();
     }
@@ -444,5 +465,5 @@ export namespace Container {
 }
 
 export function isContainer(o: any): o is Container {
-    return o._type === "Container";
+    return o._type && o._type === "Container";
 }

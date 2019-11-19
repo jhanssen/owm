@@ -5,7 +5,7 @@ import { Keybindings, KeybindingsMode } from "./keybindings";
 import { Logger, ConsoleLogger } from "./logger";
 import { Workspace } from "./workspace";
 import { Monitors } from "./monitor";
-import { Client, ClientGroup } from "./client";
+import { Client, ClientGroup, isClient } from "./client";
 import { Match } from "./match";
 import { Geometry } from "./utils";
 import { EventEmitter } from "events";
@@ -321,22 +321,6 @@ export class OWMLib {
         return this._clientsByFrame.get(window);
     }
 
-    findClientByPosition(x: number, y: number): Client | undefined {
-        // we'll eventually have to do some stacking checking here
-        let candidate: Client | undefined;
-        for (const [window, client] of this._clientsByFrame) {
-            const geom = client.frameGeometry;
-            if (x >= geom.x
-                && x <= geom.x + geom.width
-                && y >= geom.y
-                && y <= geom.y + geom.height) {
-                if (candidate === undefined || !candidate.floating)
-                    candidate = client;
-            }
-        }
-        return candidate;
-    }
-
     findClientsByClass(cls: string | XCB.WindowTypes.WMClass): Client[] {
         if (typeof cls === "string") {
             cls = { instance_name: "", class_name: cls };
@@ -366,6 +350,15 @@ export class OWMLib {
             } else if (compareClass && client.window.wmClass.class_name === cls.class_name) {
                 return client;
             }
+        }
+        return undefined;
+    }
+
+    findClientByPosition(x: number, y: number): Client | undefined {
+        const monitor = this._monitors.monitorByPosition(x, y);
+        const item = monitor.findItemByPosition(x, y);
+        if (item && isClient(item)) {
+            return item as Client;
         }
         return undefined;
     }
