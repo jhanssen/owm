@@ -213,7 +213,10 @@ export class OWMLib {
 
         this._ipc.events.on("message", (msg: IPCMessage) => {
             if (msg.message === "exit") {
+                msg.close();
                 this._events.emit("exit");
+            } else {
+                msg.reply("unknown message");
             }
         });
     };

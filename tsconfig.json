@@ -9,7 +9,8 @@
     "baseUrl": ".",
     "rootDirs": [ 
         "src",
-        "lib"
+        "lib",
+        "cli"
     ],
 
     /* Strict Type-Checking Options */

@@ -7,6 +7,7 @@ export interface IPCMessage
 {
     message: string;
     reply: (message: string) => void;
+    close: () => void;
 }
 
 export class IPC
@@ -28,13 +29,21 @@ export class IPC
             this._clients.add(ws);
 
             ws.on("message", (msg: string) => {
-                this._events.emit("message", { message: msg, reply: (r: string) => {
-                    if (this._clients.has(ws)) {
-                        ws.send(r);
-                    } else {
-                        throw new Error("socket closed");
+                this._events.emit("message", {
+                    message: msg,
+                    reply: (r: string) => {
+                        if (this._clients.has(ws)) {
+                            ws.send(r);
+                        } else {
+                            throw new Error("socket closed");
+                        }
+                    },
+                    close: () => {
+                        ws.removeAllListeners();
+                        ws.close();
+                        this._clients.delete(ws);
                     }
-                }});
+                });
             });
 
             ws.on("error", () => {
