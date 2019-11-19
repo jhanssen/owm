@@ -366,6 +366,29 @@ export class OWMLib {
         return undefined;
     }
 
+    findClientsByName(name: string): Client[] {
+        const ret: Client[] = [];
+        for (const client of this._clients) {
+            if (client.window.ewmhName === name) {
+                ret.push(client);
+            } else if (client.window.wmName === name) {
+                ret.push(client);
+            }
+        }
+        return ret;
+    }
+
+    findClientByName(name: string): Client | undefined {
+        for (const client of this._clients) {
+            if (client.window.ewmhName === name) {
+                return client;
+            } else if (client.window.wmName === name) {
+                return client;
+            }
+        }
+        return undefined;
+    }
+
     findClientByPosition(x: number, y: number): Client | undefined {
         const monitor = this._monitors.monitorByPosition(x, y);
         const item = monitor.findItemByPosition(x, y);
