@@ -122,7 +122,7 @@ export class OWMLib {
         this._log = new ConsoleLogger(options.level);
         this._root = 0;
         this._events = new EventEmitter();
-        this._ipc = new IPC();
+        this._ipc = new IPC("owm", options.display);
 
         this._policy = new Policy(this);
 

@@ -15,21 +15,37 @@ function stringOption(key: string): string | undefined
     return undefined;
 }
 
-const knownOptions = [
+const knownCommands = [
     "exit"
 ];
 
 const cmd = stringOption("cmd");
 const sock = stringOption("sock");
 
-const path = join("/tmp", (sock || "owm") + ".sock");
+let display = stringOption("display");
+if (display === undefined) {
+    // read from env
+    if ("DISPLAY" in process.env) {
+        display = process.env.DISPLAY;
+    }
+}
+if (display === undefined) {
+    display = ":0";
+}
+const eq = display.lastIndexOf(":");
+if (eq !== 0) {
+    console.error("invalid display", display);
+    process.exit();
+}
+
+const path = join("/tmp", (sock || "owm") + "." + display.substr(eq + 1) + ".sock");
 
 if (cmd === undefined) {
     console.error("needs a cmd");
     process.exit();
 }
 
-if (cmd !== undefined && knownOptions.includes(cmd)) {
+if (cmd !== undefined && knownCommands.includes(cmd)) {
     const ws = new WebSocket("ws+unix://" + path);
     ws.on("message", (msg: string) => {
         console.log(msg);
@@ -47,4 +63,5 @@ if (cmd !== undefined && knownOptions.includes(cmd)) {
     });
 } else {
     console.log("unknown command", cmd);
+    console.log("  available commands", knownCommands);
 }

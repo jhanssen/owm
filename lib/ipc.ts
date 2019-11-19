@@ -2,6 +2,7 @@ import * as WebSocket from "ws";
 import { EventEmitter } from "events";
 import { createServer } from "http";
 import { join } from "path";
+import { unlinkSync } from "fs";
 
 export interface IPCMessage
 {
@@ -16,13 +17,32 @@ export class IPC
     private _ws: WebSocket.Server;
     private _clients: Set<WebSocket>;
 
-    constructor(name?: string) {
+    constructor(name: string | undefined, display: string | undefined) {
         this._clients = new Set<WebSocket>();
         this._events = new EventEmitter();
 
+        let rdisplay = display;
+        if (rdisplay === undefined) {
+            rdisplay = ":0";
+        }
+        const eq = rdisplay.lastIndexOf(":");
+        if (eq !== 0) {
+            // yeah yeah, we don't support remote displays around these parts
+            throw new Error(`invalid ipc display ${rdisplay}`);
+        }
+
         const httpServer = createServer();
         this._ws = new WebSocket.Server({ server: httpServer });
-        const path = join("/tmp", (name || "owm") + ".sock");
+        const fn = (name || "owm") + "." + rdisplay.substr(eq + 1) + ".sock";
+        const path = join("/tmp", fn);
+
+        // we'd never have gotten this far without any old owm instances
+        // so just go ahead and unlink the socket file if it exists
+        try {
+            unlinkSync(path);
+        } catch (err) {
+        }
+
         httpServer.listen(path);
 
         this._ws.on("connection", (ws: WebSocket) => {

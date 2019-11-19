@@ -35,8 +35,15 @@ function loadConfig(dir: string, lib: OWMLib)
 let owm: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB };
 let lib: OWMLib;
 
-const display = stringOption("display");
 const extraConfig = stringOption("config");
+
+let display = stringOption("display");
+if (display === undefined) {
+    // read from env
+    if ("DISPLAY" in process.env) {
+        display = process.env.DISPLAY;
+    }
+}
 
 function event(e: OWM.Event) {
     //console.log("got event2", e);
