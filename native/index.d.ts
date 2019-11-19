@@ -516,27 +516,34 @@ interface GrabPointerArgs {
     readonly time?: number;
 }
 
-interface AllowEventsArgs
-{
+interface WarpPointerArgs {
+    readonly src_window?: number;
+    readonly dst_window?: number;
+    readonly src_x?: number;
+    readonly src_y?: number;
+    readonly src_width?: number;
+    readonly src_height?: number;
+    readonly dst_x: number;
+    readonly dst_y: number;
+}
+
+interface AllowEventsArgs {
     readonly mode: number;
     readonly time?: number;
 }
 
-interface ChangeSaveSetArgs
-{
+interface ChangeSaveSetArgs {
     readonly window: number;
     readonly mode: number;
 }
 
-interface PolyRectangleArgs
-{
+interface PolyRectangleArgs {
     readonly window: number;
     readonly gc: number;
     readonly rects: Rectangle | Rectangle[];
 }
 
-interface QueryPointerReply
-{
+interface QueryPointerReply {
     readonly same_screen: number;
     readonly root: number;
     readonly child: number;
@@ -547,8 +554,7 @@ interface QueryPointerReply
     readonly mask: number;
 }
 
-interface GetPropertyReply
-{
+interface GetPropertyReply {
     readonly format: number;
     readonly type: number;
     readonly buffer: ArrayBuffer;
@@ -620,6 +626,7 @@ export namespace OWM {
         ungrab_keyboard(wm: OWM.WM, time?: number): void;
         grab_pointer(wm: OWM.WM, args: GrabPointerArgs): number;
         ungrab_pointer(wm: OWM.WM, time?: number): void;
+        warp_pointer(wm: OWM.WM, args: WarpPointerArgs): void;
         key_symbols_get_keycode(wm: OWM.WM, sym: number): number[];
         get_atom_name(wm: OWM.WM, atom: number): string;
         map_window(wm: OWM.WM, window: number): void;

@@ -143,8 +143,16 @@ export class Client implements ContainerItem
         return this._window.transientFor !== 0 && this._window.ewmhState.includes(this._owm.xcb.atom._NET_WM_STATE_MODAL);
     }
 
+    get notification() {
+        return this._window.transientFor !== 0 && this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_NOTIFICATION);
+    }
+
     get dialog() {
         return this._window.transientFor !== 0 && this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DIALOG);
+    }
+
+    get dnd() {
+        return this._window.transientFor !== 0 && this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DND);
     }
 
     get dock() {
@@ -153,6 +161,20 @@ export class Client implements ContainerItem
 
     get transient() {
         return this._window.transientFor > 0 && this._window.transientFor !== this._window.window;
+    }
+
+    get normal() {
+        if (!this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_NORMAL))
+            return false;
+        if (this.transient)
+            return false;
+        if (this._window.ewmhWindowType.length === 2 && this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DND))
+            return true;
+        if (this._window.ewmhWindowType.length > 1)
+            return false;
+        if (this._noinput)
+            return false;
+        return true;
     }
 
     get strut() {
@@ -400,6 +422,11 @@ export class Client implements ContainerItem
             // no, this window is iconic
             this._setState(Client.State.Iconic);
         }
+    }
+
+    expose() {
+        const owm = this._owm;
+        owm.xcb.send_expose(owm.wm, { window: this._parent, width: this.frameWidth, height: this.frameHeight });
     }
 
     hide() {
@@ -689,30 +716,27 @@ export class Client implements ContainerItem
             return true;
         }
 
-        let taken = false;
         const takeFocus = owm.xcb.atom.WM_TAKE_FOCUS;
-        if (client.window.wmProtocols.includes(takeFocus)) {
+        if (client.noinput && client.window.wmProtocols.includes(takeFocus)) {
             this._log.info("sending client message");
             const data = new Uint32Array(2);
             data[0] = takeFocus;
             data[1] = owm.currentTime;
             owm.xcb.send_client_message(owm.wm, { window: client.window.window, type: owm.xcb.atom.WM_PROTOCOLS, data: data });
-            taken = true;
         } else if (!client.noinput) {
             owm.xcb.set_input_focus(owm.wm, { window: client.window.window, revert_to: owm.xcb.inputFocus.FOCUS_PARENT,
                                               time: owm.currentTime });
-            taken = true;
+        } else {
+            return false;
         }
 
-        if (taken) {
-            const activeData = new Uint32Array(1);
-            activeData[0] = client.window.window;
-            owm.xcb.change_property(owm.wm, { window: client.window.geometry.root, mode: owm.xcb.propMode.REPLACE,
-                                              property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
-                                              format: 32, data: activeData });
+        const activeData = new Uint32Array(1);
+        activeData[0] = client.window.window;
+        owm.xcb.change_property(owm.wm, { window: client.window.geometry.root, mode: owm.xcb.propMode.REPLACE,
+                                          property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
+                                          format: 32, data: activeData });
 
-            owm.focused = client;
-        }
+        owm.focused = client;
 
         return true;
     }
@@ -1102,6 +1126,7 @@ export class Client implements ContainerItem
     }
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
+        // this._log.info("_configure", args, keepHeight);
         if ((args.x === undefined) != (args.y === undefined)) {
             throw new Error(`_configure, x must be set if y is`);
         }
@@ -1169,6 +1194,8 @@ export class Client implements ContainerItem
             thisArgs.width = this._geometry.width;
             thisArgs.height = this._geometry.height;
         }
+
+        // this._log.info("configure_window thisArgs", thisArgs, "parentArgs", parentArgs);
 
         this._owm.xcb.configure_window(this._owm.wm, thisArgs);
         this._owm.xcb.configure_window(this._owm.wm, parentArgs);
@@ -1277,9 +1304,10 @@ export class Client implements ContainerItem
         const dock = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
         const dialog = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_DIALOG);
         const util = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_UTILITY);
+        const notification = window.ewmhWindowType.includes(owm.xcb.atom._NET_WM_WINDOW_TYPE_NOTIFICATION);
         const transientFor = window.transientFor !== 0 && window.transientFor !== window.window;
 
-        this._noinput = dock;
+        this._noinput = dock || notification;
         if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
             this._noinput = window.wmHints.input === 0;
 
@@ -1289,7 +1317,7 @@ export class Client implements ContainerItem
             return;
 
         const wasFloating = this._floating;
-        this._floating = dock || dialog || util || transientFor;
+        this._floating = dock || notification || dialog || util || transientFor;
 
         // if our floating status didn't change, bail out
         if (wasFloating === this._floating)

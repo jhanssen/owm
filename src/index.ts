@@ -32,6 +32,19 @@ function loadConfig(dir: string, lib: OWMLib)
     });
 }
 
+process.on('uncaughtException', (err: any) => {
+    if (typeof err === 'object' && err && err.stack) {
+        console.error("Uncaught exception", err.message, err.stack);
+    } else {
+        console.error("Uncaught exception", err.message);
+    }
+    let val = options("exit-on-uncaught-exception") || false
+    if (typeof val !== 'boolean')
+        val = true;
+    if (val)
+        process.exit();
+});
+
 let owm: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB };
 let lib: OWMLib;
 
@@ -131,11 +144,18 @@ native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XK
         killTimeout: options.int("kill-timeout", 1000)
     });
 
-    lib.events.on("exit", () => {
+    lib.events.on("exit", (exitCode?: number) => {
         process.nextTick(() => {
             lib.cleanup();
             native.stop();
-            process.exit();
+            process.exit(exitCode || 0);
+        });
+    });
+    lib.events.on("restart", () => {
+        process.nextTick(() => {
+            lib.cleanup();
+            native.stop();
+            process.exit(1);
         });
     });
 }).catch((err: Error) => {

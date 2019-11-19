@@ -16,7 +16,8 @@ function stringOption(key: string): string | undefined
 }
 
 const knownCommands = [
-    "exit"
+    "exit",
+    "restart"
 ];
 
 const cmd = stringOption("cmd");

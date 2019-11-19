@@ -732,7 +732,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 napi_value nvalue = obj;
                 js.Call(1, &nvalue);
             } catch (const Napi::Error& e) {
-                printf("exception from js: %s\n", e.what());
+                printf("windowsCallback: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
             }
 
             windows.reset();
@@ -748,7 +748,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                 napi_value nvalue = obj;
                 js.Call(1, &nvalue);
             } catch (const Napi::Error& e) {
-                printf("exception from js: %s\n", e.what());
+                printf("settledCallback: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
             }
         };
 

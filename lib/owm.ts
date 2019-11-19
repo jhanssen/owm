@@ -111,6 +111,7 @@ export class OWMLib {
     public readonly Workspace = Workspace;
     public readonly Match = Match;
     public readonly KeybindingsMode = KeybindingsMode;
+    public readonly makePixel = makePixel;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, options: OWMOptions) {
         this._wm = wm;
@@ -213,11 +214,18 @@ export class OWMLib {
         });
 
         this._ipc.events.on("message", (msg: IPCMessage) => {
-            if (msg.message === "exit") {
+            switch (msg.message) {
+            case "exit":
                 msg.close();
                 this._events.emit("exit");
-            } else {
+                break;
+            case "restart":
+                msg.close();
+                this._events.emit("restart");
+                break;
+            default:
                 msg.reply("unknown message");
+                break;
             }
         });
     };
@@ -316,6 +324,14 @@ export class OWMLib {
 
     get options() {
         return this._options;
+    }
+
+    exit(exitCode?: number) {
+        this._events.emit("exit", exitCode);
+    }
+
+    restart() {
+        this._events.emit("restart");
     }
 
     findClient(window: number): Client | undefined {
@@ -474,6 +490,17 @@ export class OWMLib {
             return;
         this._moveResize.resizingKeyboard = client;
         this._bindings.enterMode(this._moveResizeMode);
+    }
+
+    warpPointerToClient(client: Client, x?: number, y?: number) {
+        this._xcb.warp_pointer(this._wm, { dst_window: client.window.window,
+                                           dst_x: x || client.geometry.width / 2,
+                                           dst_y: y || client.geometry.height / 2 });
+
+    }
+
+    warpPointerToPosition(x: number, y: number) {
+        this._xcb.warp_pointer(this._wm, { dst_x: x, dst_y: y });
     }
 
     addMatch(match: Match) {

@@ -46,6 +46,10 @@ class Keybinding
         return this._sym;
     }
 
+    get sync() {
+        return this._mode === this._owm.xcb.grabMode.SYNC;
+    }
+
     call(bindings: Keybindings) {
         this._callback(bindings, this._binding);
     }
@@ -303,13 +307,32 @@ export class Keybindings
             return;
 
         const mode: KeybindingsMode | undefined = this._enteredModes.length > 0 ? this._enteredModes[this._enteredModes.length - 1] : undefined;
-        const bindings = mode ? mode.bindings : this._bindings;
+        let bindings = mode ? mode.bindings : this._bindings;
         const match = mode ? mode.matchModifiers : true;
 
         for (const [key, keybinding] of bindings) {
             //console.log("cand. binding", keybinding);
             if (press.sym === keybinding.sym && (!match || press.state === keybinding.mods)) {
                 keybinding.call(this);
+            }
+        }
+        if (bindings !== this._bindings) {
+            const allowEvents = (bindings: Map<string, Keybinding>) => {
+                for (const [key, keybinding] of bindings) {
+                    //console.log("cand. binding", keybinding);
+                    if (press.sym === keybinding.sym && (!match || press.state === keybinding.mods) && keybinding.sync) {
+                        this._owm.xcb.allow_events(this._owm.wm, { mode: this._owm.xcb.allow.ASYNC_KEYBOARD, time: this._owm.currentTime });
+                        return true;
+                    }
+                }
+                return false;
+            };
+            if (!allowEvents(this._bindings)) {
+                for (let i=0; i<this._enteredModes.length - 2; ++i) {
+                    if (allowEvents(this._enteredModes[i].bindings)) {
+                        break;
+                    }
+                }
             }
         }
     }

@@ -426,7 +426,7 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
             napi_value nvalue = obj;
             js.Call(1, &nvalue);
         } catch (const Napi::Error& e) {
-            printf("exception from js: %s\n", e.what());
+            printf("handleXcb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
         }
     };
 
@@ -468,7 +468,7 @@ void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsf
                     napi_value nvalue = obj;
                     js.Call(1, &nvalue);
                 } catch (const Napi::Error& e) {
-                    printf("exception from js: %s\n", e.what());
+                    printf("handleXkb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
                 }
             };
 
@@ -581,7 +581,7 @@ void sendScreens(const std::shared_ptr<WM>&wm, const Napi::ThreadSafeFunction& t
             napi_value nvalue = obj;
             js.Call(1, &nvalue);
         } catch (const Napi::Error& e) {
-            printf("exception from js: %s\n", e.what());
+            printf("sendScreens: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
         }
     };
 
@@ -2169,6 +2169,42 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         }
 
         xcb_ungrab_pointer(wm->conn, time);
+
+        return env.Undefined();
+    }));
+
+    xcb.Set("warp_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "warp_pointer requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
+
+        if (!arg.Has("dst_x")) {
+            throw Napi::TypeError::New(env, "warp_pointer requires dst_x");
+        }
+        if (!arg.Has("dst_y")) {
+            throw Napi::TypeError::New(env, "warp_pointer requires dst_y");
+        }
+        const int32_t dst_x = arg.Get("dst_x").As<Napi::Number>().Int32Value();
+        const int32_t dst_y = arg.Get("dst_y").As<Napi::Number>().Int32Value();
+
+
+        const uint32_t src_window = arg.Has("src_window") ? arg.Get("src_window").As<Napi::Number>().Uint32Value() : XCB_NONE;
+        const uint32_t dst_window = arg.Has("dst_window") ? arg.Get("dst_window").As<Napi::Number>().Uint32Value() : XCB_NONE;
+
+        const int32_t src_x = arg.Has("src_x") ? arg.Get("src_x").As<Napi::Number>().Int32Value() : 0;
+        const int32_t src_y = arg.Has("src_y") ? arg.Get("src_y").As<Napi::Number>().Int32Value() : 0;
+
+        const uint32_t src_width = arg.Has("src_width") ? arg.Get("src_width").As<Napi::Number>().Uint32Value() : 0;
+        const uint32_t src_height = arg.Has("src_height") ? arg.Get("src_height").As<Napi::Number>().Uint32Value() : 0;
+
+        xcb_warp_pointer(wm->conn, src_window, dst_window, src_x, src_y, src_width, src_height, dst_x, dst_y);
 
         return env.Undefined();
     }));
