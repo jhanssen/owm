@@ -72,6 +72,15 @@ export class TilingLayoutConfig implements LayoutConfig
             return 1;
         return r;
     }
+
+    clone() {
+        const c = new TilingLayoutConfig();
+        c._rows = this._rows;
+        c._columns = this._columns;
+        c._rowRatios = new Map<number, number>(this._rowRatios);
+        c._columnRatios = new Map<number, number>(this._columnRatios);
+        return c;
+    }
 }
 
 function isTilingLayoutConfig(o: any): o is TilingLayoutConfig {
@@ -96,6 +105,20 @@ export class TilingLayoutPolicy implements LayoutPolicy
         this._cfg = new TilingLayoutConfig();
         this._events = new EventEmitter();
         this._changedCallback = this._configChanged.bind(this);
+        this._cfg.events.on("changed", this._changedCallback);
+    }
+
+    get config() {
+        return this._cfg as LayoutConfig;
+    }
+
+    set config(cfg: LayoutConfig) {
+        if (!isTilingLayoutConfig(cfg)) {
+            throw new Error("Config needs to be a TilingLayoutConfig");
+        }
+        // not sure about this
+        this._cfg.events.removeListener("changed", this._changedCallback);
+        this._cfg = cfg as TilingLayoutConfig;
         this._cfg.events.on("changed", this._changedCallback);
     }
 
@@ -163,17 +186,13 @@ export class TilingLayoutPolicy implements LayoutPolicy
         }
     }
 
-    setConfig(config: LayoutConfig) {
-        if (!isTilingLayoutConfig(config)) {
-            throw new Error("Config needs to be a TilingLayoutConfig");
-        }
-        // not sure about this
-        this._cfg.events.removeListener("changed", this._changedCallback);
-        this._cfg = config as TilingLayoutConfig;
-        this._cfg.events.on("changed", this._changedCallback);
+    clone() {
+        const c = new TilingLayoutPolicy(this._policy);
+        c.config = this._cfg.clone();
+        return c;
     }
 
-    _configChanged() {
+    private _configChanged() {
         this._events.emit("needsLayout");
     }
 }

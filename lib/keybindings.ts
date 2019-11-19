@@ -1,6 +1,7 @@
 import { OWMLib } from "./owm";
 import { Logger } from "./logger";
 import { XCB } from "native";
+import { EventEmitter } from "events";
 
 class Keybinding
 {
@@ -111,7 +112,7 @@ class Keybinding
     }
 }
 
-export class KeybindingsMode
+export class KeybindingsMode extends EventEmitter
 {
     private _parent: Keybindings;
     private _bindings: Map<string, Keybinding>;
@@ -119,6 +120,8 @@ export class KeybindingsMode
     private _matchModifiers: boolean;
 
     constructor(owm: OWMLib, name?: string, match?: boolean) {
+        super();
+
         this._parent = owm.bindings;
         this._bindings = new Map<string, Keybinding>();
         this._name = name;
@@ -148,7 +151,13 @@ export class KeybindingsMode
     addMode(binding: string, mode: KeybindingsMode) {
         this._parent.registerMode(mode);
         const keybinding = new Keybinding(this._parent.owm, binding, (bindings: Keybindings, binding: string) => {
-            this._parent.enterMode(mode);
+            try {
+                this._parent.enterMode(mode);
+            } catch (e) {
+                this._parent.owm.xcb.allow_events(this._parent.owm.wm, { mode: this._parent.owm.xcb.allow.ASYNC_KEYBOARD,
+                                                                         time: this._parent.owm.currentTime });
+                throw e;
+            }
             this._parent.owm.xcb.allow_events(this._parent.owm.wm, { mode: this._parent.owm.xcb.allow.ASYNC_KEYBOARD,
                                                                      time: this._parent.owm.currentTime });
         }, true);
@@ -202,8 +211,6 @@ export class Keybindings
     }
 
     enterMode(mode: KeybindingsMode) {
-        this._owm.events.emit("enterMode", mode);
-
         const match = mode.matchModifiers;
         for (const [str, binding] of mode.bindings) {
             if (match && this._hasSym(binding.sym, binding.mods))
@@ -228,6 +235,9 @@ export class Keybindings
         }
 
         this._enteredModes.push(mode);
+
+        mode.emit("entered");
+        this._owm.events.emit("enterMode", mode);
     }
 
     exitMode(mode: KeybindingsMode) {
@@ -254,6 +264,7 @@ export class Keybindings
         }
 
         this._owm.events.emit("exitMode", mode);
+        mode.emit("exited");
     }
 
     registerMode(mode: KeybindingsMode) {

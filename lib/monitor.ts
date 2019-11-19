@@ -1,6 +1,6 @@
 import { Workspace, Workspaces } from "./workspace";
 import { OWMLib } from "./owm";
-import { ContainerItem } from "./container";
+import { ContainerItem, ContainerItemType } from "./container";
 import { Strut } from "./utils";
 import { XCB, OWM } from "native";
 
@@ -110,9 +110,9 @@ export class Monitor
         }
     }
 
-    findItemByPosition(x: number, y: number): ContainerItem | undefined {
+    findItemByPosition(x: number, y: number, itemType: ContainerItemType): ContainerItem | undefined {
         if (this._workspace)
-            return this._workspace.findItemByPosition(x, y);
+            return this._workspace.findItemByPosition(x, y, itemType);
         return undefined;
     }
 }

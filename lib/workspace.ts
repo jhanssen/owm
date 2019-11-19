@@ -1,6 +1,6 @@
 import { XCB } from "native";
 import { OWMLib } from "./owm";
-import { Container, ContainerItem } from "./container";
+import { Container, ContainerItem, ContainerItemType } from "./container";
 import { Geometry, Strut } from "./utils";
 import { Client } from "./client";
 import { Monitor } from "./monitor";
@@ -129,8 +129,8 @@ export class Workspace
             this._monitor.workspace = this;
     }
 
-    findItemByPosition(x: number, y: number): ContainerItem | undefined {
-        return this._container.findItemByPosition(x, y);
+    findItemByPosition(x: number, y: number, itemType: ContainerItemType): ContainerItem | undefined {
+        return this._container.findItemByPosition(x, y, itemType);
     }
 }
 

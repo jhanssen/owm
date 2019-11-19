@@ -22,6 +22,12 @@ export interface ContainerItem
     readonly fullscreen: boolean;
 }
 
+export enum ContainerItemType
+{
+    Container,
+    Client
+}
+
 export class Container implements ContainerItem
 {
     private _owm: OWMLib;
@@ -44,7 +50,7 @@ export class Container implements ContainerItem
     constructor(owm: OWMLib, containerType: Container.Type, monitor?: Monitor) {
         this._owm = owm;
         this._items = [];
-        this._layout = owm.policy.layout;
+        this._layout = owm.policy.layout.clone();
         this._monitor = monitor;
         if (monitor) {
             this._geometry = new Geometry(monitor.screen);
@@ -63,7 +69,7 @@ export class Container implements ContainerItem
         this._layout.events.on("needsLayout", this._layoutCallback);
     }
 
-    get layout() {
+    get layoutPolicy() {
         return this._layout;
     }
 
@@ -431,7 +437,7 @@ export class Container implements ContainerItem
         }
     }
 
-    findItemByPosition(x: number, y: number): ContainerItem | undefined {
+    findItemByPosition(x: number, y: number, itemType: ContainerItemType): ContainerItem | undefined {
         // walk items from the top-most item to the bottom-most one
         const len = this._items.length;
         if (len === 0)
@@ -443,8 +449,8 @@ export class Container implements ContainerItem
                 && x <= geom.x + geom.width
                 && y >= geom.y
                 && y <= geom.y + geom.height) {
-                if (isContainer(item)) {
-                    return (item as Container).findItemByPosition(x, y);
+                if (isContainer(item) && itemType === ContainerItemType.Client) {
+                    return (item as Container).findItemByPosition(x, y, itemType);
                 } else {
                     return item;
                 }

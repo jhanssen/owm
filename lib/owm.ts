@@ -6,6 +6,7 @@ import { Logger, ConsoleLogger } from "./logger";
 import { Workspace } from "./workspace";
 import { Monitors } from "./monitor";
 import { Client, ClientGroup, isClient } from "./client";
+import { Container, ContainerItemType, isContainer } from "./container";
 import { Match } from "./match";
 import { Geometry } from "./utils";
 import { IPC, IPCMessage } from "./ipc";
@@ -391,7 +392,7 @@ export class OWMLib {
 
     findClientByPosition(x: number, y: number): Client | undefined {
         const monitor = this._monitors.monitorByPosition(x, y);
-        const item = monitor.findItemByPosition(x, y);
+        const item = monitor.findItemByPosition(x, y, ContainerItemType.Client);
         if (item && isClient(item)) {
             return item as Client;
         }
@@ -401,6 +402,20 @@ export class OWMLib {
     findClientUnderCursor() : Client | undefined {
         const ptr = this._xcb.query_pointer(this._wm);
         return this.findClientByPosition(ptr.root_x, ptr.root_y);
+    }
+
+    findContainerByPosition(x: number, y: number): Container | undefined {
+        const monitor = this._monitors.monitorByPosition(x, y);
+        const item = monitor.findItemByPosition(x, y, ContainerItemType.Container);
+        if (item && isContainer(item)) {
+            return item as Container;
+        }
+        return undefined;
+    }
+
+    findContainerUnderCursor() : Container | undefined {
+        const ptr = this._xcb.query_pointer(this._wm);
+        return this.findContainerByPosition(ptr.root_x, ptr.root_y);
     }
 
     addClient(win: XCB.Window, focus?: boolean) {
