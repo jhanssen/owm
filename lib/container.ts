@@ -456,6 +456,9 @@ export class Container implements ContainerItem
                 }
             }
         }
+        // if we got to this point we're either out of luck (if itemType is Client)
+        // or we want the current container (if itemType is Container)
+        return itemType === ContainerItemType.Container ? this : undefined;
     }
 
     private _policyNeedsLayout() {
