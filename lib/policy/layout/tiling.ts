@@ -131,6 +131,11 @@ export class TilingLayoutPolicy implements LayoutPolicy
             return item.fullscreen || (!item.floating && !item.ignoreWorkspace);
         });
 
+        if (filtered.length === 0) {
+            // nothing to lay out
+            return;
+        }
+
         if (filtered.length === 1 && filtered[0].fullscreen) {
             const item = filtered[0];
             item.move(geometry.x, geometry.y);

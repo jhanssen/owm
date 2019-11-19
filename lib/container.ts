@@ -441,7 +441,7 @@ export class Container implements ContainerItem
         // walk items from the top-most item to the bottom-most one
         const len = this._items.length;
         if (len === 0)
-            return undefined;
+            return itemType === ContainerItemType.Container ? this : undefined;
         for (let i = len - 1; i >= 0; --i) {
             const item = this._items[i];
             const geom = item.geometry;
@@ -449,9 +449,9 @@ export class Container implements ContainerItem
                 && x <= geom.x + geom.width
                 && y >= geom.y
                 && y <= geom.y + geom.height) {
-                if (isContainer(item) && itemType === ContainerItemType.Client) {
+                if (isContainer(item)) {
                     return (item as Container).findItemByPosition(x, y, itemType);
-                } else {
+                } else if (itemType === ContainerItemType.Client) {
                     return item;
                 }
             }
