@@ -121,6 +121,14 @@ native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XK
         level: level,
         killTimeout: options.int("kill-timeout", 1000)
     });
+
+    lib.events.on("exit", () => {
+        process.nextTick(() => {
+            lib.cleanup();
+            native.stop();
+            process.exit();
+        });
+    });
 }).catch((err: Error) => {
     console.log("error", err);
     native.stop();

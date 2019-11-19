@@ -15,6 +15,7 @@
    "devDependencies": {
       "@types/node": "^12.11.7",
       "@types/shell-quote": "^1.6.1",
+      "@types/ws": "^6.0.3",
       "nodemon": "^1.19.4",
       "rimraf": "^3.0.0",
       "ts-node": "^8.4.1",
@@ -24,6 +25,7 @@
       "@jhanssen/options": "^1.0.26",
       "hex-rgb": "^4.1.0",
       "shell-quote": "^1.7.2",
+      "ws": "^7.2.0",
       "xdg-basedir": "^4.0.0"
    }
 }

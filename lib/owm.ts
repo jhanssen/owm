@@ -8,6 +8,7 @@ import { Monitors } from "./monitor";
 import { Client, ClientGroup, isClient } from "./client";
 import { Match } from "./match";
 import { Geometry } from "./utils";
+import { IPC, IPCMessage } from "./ipc";
 import { EventEmitter } from "events";
 import { spawn, StdioOptions } from "child_process";
 import { default as hexRgb } from "hex-rgb";
@@ -91,6 +92,7 @@ export class OWMLib {
     private _focused: Client | undefined;
     private _log: Logger;
     private _bindings: Keybindings;
+    private _ipc: IPC;
     private _root: number;
     private _events: EventEmitter;
     private _settled: boolean;
@@ -120,6 +122,7 @@ export class OWMLib {
         this._log = new ConsoleLogger(options.level);
         this._root = 0;
         this._events = new EventEmitter();
+        this._ipc = new IPC();
 
         this._policy = new Policy(this);
 
@@ -205,6 +208,12 @@ export class OWMLib {
                 const client = this._moveResize.resizingKeyboard;
                 const geom = client.frameGeometry;
                 client.resize(geom.width, geom.height + MoveResize.AdjustBy, true);
+            }
+        });
+
+        this._ipc.events.on("message", (msg: IPCMessage) => {
+            if (msg.message === "exit") {
+                this._events.emit("exit");
             }
         });
     };
