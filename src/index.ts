@@ -35,7 +35,11 @@ function loadConfig(dir: string, lib: OWMLib)
 let owm: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB };
 let lib: OWMLib;
 
-const extraConfig = stringOption("config");
+const configDir = stringOption("config") || xdgBaseDir.config;
+if (configDir === undefined) {
+    console.error("no config dir");
+    process.exit();
+}
 
 let display = stringOption("display");
 if (display === undefined) {
@@ -65,14 +69,12 @@ function event(e: OWM.Event) {
             lib.updateScreens(screens);
         });
     } else if (e.type === "settled") {
-        const configDirs = xdgBaseDir.configDirs.slice(0);
-        if (extraConfig) {
-            configDirs.push(extraConfig);
+        if (configDir === undefined) {
+            // can't happen silly typescript, I already checked
+            // and did a process.exit() above
+            return;
         }
-
-        const promises: Promise<void>[] = [];
-        configDirs.forEach(dir => { promises.push(loadConfig(dir, lib)); });
-        Promise.all(promises).then(() => {
+        loadConfig(configDir, lib).then(() => {
             process.nextTick(() => {
                 lib.settled();
                 lib.createMoveGrab();
