@@ -633,6 +633,15 @@ export class OWMLib {
                 client.kill();
             }
             break; }
+        case atom._NET_ACTIVE_WINDOW: {
+            const client = this._clientsByWindow.get(event.window);
+            if (client) {
+                if (client.workspace)
+                    client.workspace.activate();
+                client.focus();
+                client.raise();
+            }
+            break; }
         case atom._NET_WM_DESKTOP: {
             const u32 = new Uint32Array(event.data);
             if (u32.length >= 1) {
@@ -987,6 +996,7 @@ export class OWMLib {
         default: throw new Error(`Bad stdio ${stdio}`); break;
         }
 
+        this._log.debug("spawn", shell, spawnArgs, "detached", detached, "stdio", stdioValue);
         const subprocess = spawn(shell, spawnArgs, {
             detached: detached,
             stdio: stdioValue,
