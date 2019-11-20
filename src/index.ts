@@ -63,57 +63,25 @@ if (display === undefined) {
 }
 
 function event(e: OWM.Event) {
-    //console.log("got event2", e);
+    // console.log("got event2", e);
 
     if (e.type == "xcb") {
         lib.handleXCB(e);
-    } else if (e.type == "windows" && e.windows) {
-        const windows = e.windows as XCB.Window[];
-        //console.log("got wins", windows);
-        lib.onsettled(() => {
-            for (const window of windows) {
-                if (!window.attributes.override_redirect)
-                    lib.addClient(window, false);
-            }
-        });
     } else if (e.type == "screens" && e.screens) {
         const screens = e.screens;
-        lib.onsettled(() => {
-            lib.updateScreens(screens);
-        });
-    } else if (e.type === "settled") {
-        if (configDir === undefined) {
-            // can't happen silly typescript, I already checked
-            // and did a process.exit() above
-            return;
-        }
-        loadConfig(configDir, lib).then(() => {
-            process.nextTick(() => {
-                lib.settled();
-                lib.createMoveGrab();
-                lib.bindings.enable();
-                lib.inited();
-            });
-        }).catch(err => {
-            console.error("error loading module");
-            console.error(err);
-
-            native.stop();
-            process.exit();
-        });
+        lib.updateScreens(screens);
     } else if (e.type === "xkb" && e.xkb === "recreate") {
         lib.recreateKeyBindings();
     }
 }
 
-native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB }) => {
-    console.log("owm started");
-    owm = data;
+const data = native.start(event, display);
+console.log("owm started");
 
-    let level = Logger.Level.Warning;
-    const logLevel = stringOption("log");
-    if (logLevel !== undefined) {
-        switch (logLevel.toLowerCase()) {
+let level = Logger.Level.Warning;
+const logLevel = stringOption("log");
+if (logLevel !== undefined) {
+    switch (logLevel.toLowerCase()) {
         case "debug":
             level = Logger.Level.Debug;
             break;
@@ -135,33 +103,56 @@ native.start(event, display).then((data: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XK
             native.stop();
             process.exit();
             break;
-        }
     }
+}
 
-    lib = new OWMLib(data.wm, data.xcb, data.xkb, {
-        display: display,
-        level: level,
-        killTimeout: options.int("kill-timeout", 1000)
-    });
+lib = new OWMLib(data.wm, data.xcb, data.xkb, {
+    display: display,
+    level: level,
+    killTimeout: options.int("kill-timeout", 1000)
+});
 
-    lib.events.on("exit", (exitCode?: number) => {
+if (configDir !== undefined) {
+    loadConfig(configDir, lib).then(() => {
         process.nextTick(() => {
-            lib.cleanup();
-            native.stop();
-            process.exit(exitCode || 0);
+            const screens = data.screens;
+            lib.updateScreens(screens);
+
+            lib.createMoveGrab();
+            lib.bindings.enable();
+
+            const windows = data.windows as XCB.Window[];
+            //console.log("got wins", windows);
+            for (const window of windows) {
+                if (!window.attributes.override_redirect)
+                    lib.addClient(window, false);
+            }
+
+            lib.inited();
         });
+    }).catch(err => {
+        console.error("error loading module");
+        console.error(err);
+
+        native.stop();
+        process.exit();
     });
-    lib.events.on("restart", () => {
-        process.nextTick(() => {
-            lib.cleanup();
-            native.stop();
-            process.exit(1);
-        });
+}
+
+lib.events.on("exit", (exitCode?: number) => {
+    process.nextTick(() => {
+        lib.cleanup();
+        native.stop();
+        process.exit(exitCode || 0);
     });
-}).catch((err: Error) => {
-    console.log("error", err);
-    native.stop();
-    process.exit();
+});
+
+lib.events.on("restart", () => {
+    process.nextTick(() => {
+        lib.cleanup();
+        native.stop();
+        process.exit(1);
+    });
 });
 
 process.on("SIGINT", () => {

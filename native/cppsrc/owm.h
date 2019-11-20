@@ -169,21 +169,6 @@ struct Wrap
     static T unwrap(const Napi::Value& value);
 };
 
-struct Connection
-{
-    xcb_connection_t* conn { nullptr };
-
-    Connection(xcb_connection_t* c)
-        : conn(c)
-    {
-    }
-    ~Connection()
-    {
-        if (conn)
-            xcb_disconnect(conn);
-    }
-};
-
 struct WM
 {
     xcb_connection_t* conn { nullptr };
@@ -193,9 +178,6 @@ struct WM
     xcb_screen_t* defaultScreen;
     Atoms atoms;
     uv_async_t* asyncFlush { nullptr };
-
-    // hold the connection alive
-    std::shared_ptr<Connection> connection;
 
     struct XKB
     {
@@ -216,9 +198,9 @@ struct WM
     std::vector<Response*> responses;
 };
 
-void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event);
+void handleXcb(const std::shared_ptr<WM>& wm, const Napi::FunctionReference& fn, xcb_generic_event_t* event);
 void queryScreens(std::shared_ptr<WM>& wm);
-void sendScreens(const std::shared_ptr<WM>&wm, const Napi::ThreadSafeFunction& tsfn);
+Napi::Value makeScreens(napi_env env, const std::shared_ptr<WM>&wm);
 Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm);
 Napi::Value makeXkb(napi_env env, const std::shared_ptr<WM>& wm);
 Napi::Value makeWindow(napi_env env, const Window& win);
@@ -235,7 +217,7 @@ typedef union {
     xcb_xkb_map_notify_event_t map_notify;
     xcb_xkb_state_notify_event_t state_notify;
 } _xkb_event;
-void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsfn, _xkb_event* event);
+void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::FunctionReference& fn, _xkb_event* event);
 
 template<typename T, size_t Count>
 T* Stack<T, Count>::acquire()

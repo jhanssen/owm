@@ -325,7 +325,7 @@ static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* e
     return obj;
 }
 
-void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& tsfn, xcb_generic_event_t* event)
+void handleXcb(const std::shared_ptr<WM>& wm, const Napi::FunctionReference& fn, xcb_generic_event_t* xcb)
 {
     struct Data
     {
@@ -333,110 +333,104 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::ThreadSafeFunction& ts
         xcb_generic_event_t* event;
     };
 
-    auto callback = [](Napi::Env env, Napi::Function js, Data* data) {
-        Napi::Value value;
+    Napi::Value value;
 
-        auto xcb = data->event;
-        const auto type = xcb->response_type & ~0x80;
+    const auto type = xcb->response_type & ~0x80;
 
-        bool log = true;
+    bool log = true;
 
-        switch (type) {
-        case XCB_BUTTON_PRESS:
-        case XCB_BUTTON_RELEASE: {
-            value = makeButtonPress(env, reinterpret_cast<xcb_button_press_event_t*>(xcb));
-            break; }
-        case XCB_MOTION_NOTIFY: {
-            value = makeMotionNotify(env, reinterpret_cast<xcb_motion_notify_event_t*>(xcb));
-            break; }
-        case XCB_KEY_PRESS:
-        case XCB_KEY_RELEASE: {
-            value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb), data->wm);
-            break; }
-        case XCB_ENTER_NOTIFY:
-        case XCB_LEAVE_NOTIFY: {
-            value = makeEnterNotify(env, reinterpret_cast<xcb_enter_notify_event_t*>(xcb));
-            break; }
-        case XCB_FOCUS_IN:
-        case XCB_FOCUS_OUT: {
-            value = makeFocusIn(env, reinterpret_cast<xcb_focus_in_event_t*>(xcb));
-            break; }
-        case XCB_KEYMAP_NOTIFY: {
-            value = makeKeymapNotify(env, reinterpret_cast<xcb_keymap_notify_event_t*>(xcb));
-            break; }
-        case XCB_EXPOSE: {
-            value = makeExpose(env, reinterpret_cast<xcb_expose_event_t*>(xcb));
-            break; }
-        case XCB_UNMAP_NOTIFY: {
-            value = makeUnmapNotify(env, reinterpret_cast<xcb_unmap_notify_event_t*>(xcb));
-            break; }
-        case XCB_DESTROY_NOTIFY: {
-            value = makeDestroyNotify(env, reinterpret_cast<xcb_destroy_notify_event_t*>(xcb));
-            break; }
-        case XCB_MAP_REQUEST: {
-            value = makeMapRequest(env, reinterpret_cast<xcb_map_request_event_t*>(xcb));
-            break; }
-        case XCB_MAP_NOTIFY: {
-            value = makeMapNotify(env, reinterpret_cast<xcb_map_notify_event_t*>(xcb));
-            break; }
-        case XCB_REPARENT_NOTIFY: {
-            value = makeReparentNotify(env, reinterpret_cast<xcb_reparent_notify_event_t*>(xcb));
-            break; }
-        case XCB_CONFIGURE_NOTIFY: {
-            value = makeConfigureNotify(env, reinterpret_cast<xcb_configure_notify_event_t*>(xcb));
-            break; }
-        case XCB_CONFIGURE_REQUEST: {
-            value = makeConfigureRequest(env, reinterpret_cast<xcb_configure_request_event_t*>(xcb));
-            break; }
-        case XCB_GRAVITY_NOTIFY: {
-            value = makeGravityNotify(env, reinterpret_cast<xcb_gravity_notify_event_t*>(xcb));
-            break; }
-        case XCB_RESIZE_REQUEST: {
-            value = makeResizeRequest(env, reinterpret_cast<xcb_resize_request_event_t*>(xcb));
-            break; }
-        case XCB_CIRCULATE_NOTIFY:
-        case XCB_CIRCULATE_REQUEST: {
-            value = makeCirculateNotify(env, reinterpret_cast<xcb_circulate_notify_event_t*>(xcb));
-            break; }
-        case XCB_PROPERTY_NOTIFY: {
-            value = makePropertyNotify(env, reinterpret_cast<xcb_property_notify_event_t*>(xcb));
-            break; }
-        case XCB_CLIENT_MESSAGE: {
-            value = makeClientMessage(env, reinterpret_cast<xcb_client_message_event_t*>(xcb));
-            break; }
-        case XCB_CREATE_NOTIFY:
-            // we don't care about these
-            log = false;
-            break;
-        }
-        free(data->event);
-        delete data;
+    auto env = fn.Env();
+    Napi::HandleScope scope(env);
 
-        if (value.IsEmpty()) {
-            if (log)
-                printf("unhandled xcb type %d\n", type);
-            return;
-        }
+    switch (type) {
+    case XCB_BUTTON_PRESS:
+    case XCB_BUTTON_RELEASE: {
+        value = makeButtonPress(env, reinterpret_cast<xcb_button_press_event_t*>(xcb));
+        break; }
+    case XCB_MOTION_NOTIFY: {
+        value = makeMotionNotify(env, reinterpret_cast<xcb_motion_notify_event_t*>(xcb));
+        break; }
+    case XCB_KEY_PRESS:
+    case XCB_KEY_RELEASE: {
+        value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb), wm);
+        break; }
+    case XCB_ENTER_NOTIFY:
+    case XCB_LEAVE_NOTIFY: {
+        value = makeEnterNotify(env, reinterpret_cast<xcb_enter_notify_event_t*>(xcb));
+        break; }
+    case XCB_FOCUS_IN:
+    case XCB_FOCUS_OUT: {
+        value = makeFocusIn(env, reinterpret_cast<xcb_focus_in_event_t*>(xcb));
+        break; }
+    case XCB_KEYMAP_NOTIFY: {
+        value = makeKeymapNotify(env, reinterpret_cast<xcb_keymap_notify_event_t*>(xcb));
+        break; }
+    case XCB_EXPOSE: {
+        value = makeExpose(env, reinterpret_cast<xcb_expose_event_t*>(xcb));
+        break; }
+    case XCB_UNMAP_NOTIFY: {
+        value = makeUnmapNotify(env, reinterpret_cast<xcb_unmap_notify_event_t*>(xcb));
+        break; }
+    case XCB_DESTROY_NOTIFY: {
+        value = makeDestroyNotify(env, reinterpret_cast<xcb_destroy_notify_event_t*>(xcb));
+        break; }
+    case XCB_MAP_REQUEST: {
+        value = makeMapRequest(env, reinterpret_cast<xcb_map_request_event_t*>(xcb));
+        break; }
+    case XCB_MAP_NOTIFY: {
+        value = makeMapNotify(env, reinterpret_cast<xcb_map_notify_event_t*>(xcb));
+        break; }
+    case XCB_REPARENT_NOTIFY: {
+        value = makeReparentNotify(env, reinterpret_cast<xcb_reparent_notify_event_t*>(xcb));
+        break; }
+    case XCB_CONFIGURE_NOTIFY: {
+        value = makeConfigureNotify(env, reinterpret_cast<xcb_configure_notify_event_t*>(xcb));
+        break; }
+    case XCB_CONFIGURE_REQUEST: {
+        value = makeConfigureRequest(env, reinterpret_cast<xcb_configure_request_event_t*>(xcb));
+        break; }
+    case XCB_GRAVITY_NOTIFY: {
+        value = makeGravityNotify(env, reinterpret_cast<xcb_gravity_notify_event_t*>(xcb));
+        break; }
+    case XCB_RESIZE_REQUEST: {
+        value = makeResizeRequest(env, reinterpret_cast<xcb_resize_request_event_t*>(xcb));
+        break; }
+    case XCB_CIRCULATE_NOTIFY:
+    case XCB_CIRCULATE_REQUEST: {
+        value = makeCirculateNotify(env, reinterpret_cast<xcb_circulate_notify_event_t*>(xcb));
+        break; }
+    case XCB_PROPERTY_NOTIFY: {
+        value = makePropertyNotify(env, reinterpret_cast<xcb_property_notify_event_t*>(xcb));
+        break; }
+    case XCB_CLIENT_MESSAGE: {
+        value = makeClientMessage(env, reinterpret_cast<xcb_client_message_event_t*>(xcb));
+        break; }
+    case XCB_CREATE_NOTIFY:
+        // we don't care about these
+        log = false;
+        break;
+    }
+    free(xcb);
 
-        Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", "xcb");
-        obj.Set("xcb", value);
+    if (value.IsEmpty()) {
+        if (log)
+            printf("unhandled xcb type %d\n", type);
+        return;
+    }
 
-        try {
-            napi_value nvalue = obj;
-            js.Call(1, &nvalue);
-        } catch (const Napi::Error& e) {
-            printf("handleXcb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
-        }
-    };
+    Napi::Object obj = Napi::Object::New(env);
+    obj.Set("type", "xcb");
+    obj.Set("xcb", value);
 
-    auto status = tsfn.BlockingCall(new Data{ wm, event }, callback);
-    if (status != napi_ok) {
-        // error?
+    try {
+        napi_value nvalue = obj;
+        fn.Call({ nvalue });
+    } catch (const Napi::Error& e) {
+        printf("handleXcb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
     }
 }
 
-void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsfn, _xkb_event* event)
+void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::FunctionReference& fn, _xkb_event* event)
 {
     if (event->any.deviceID == wm->xkb.device) {
         switch (event->any.xkbType) {
@@ -453,28 +447,22 @@ void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::ThreadSafeFunction& tsf
         case XCB_XKB_MAP_NOTIFY: {
             //auto map = reinterpret_cast<xcb_xkb_map_notify_event_t*>(event);
 
-            auto cwm = wm;
-            auto callback = [cwm](Napi::Env env, Napi::Function js) mutable {
-                // do this in the callback so we can safely access this memory from the JS thread in other places
-                assert(cwm->xkb.syms);
-                xcb_key_symbols_free(cwm->xkb.syms);
-                cwm->xkb.syms = xcb_key_symbols_alloc(cwm->conn);
+            auto env = fn.Env();
+            Napi::HandleScope scope(env);
 
-                Napi::Object obj = Napi::Object::New(env);
-                obj.Set("type", "xkb");
-                obj.Set("xkb", Napi::String::New(env, "recreate"));
+            assert(wm->xkb.syms);
+            xcb_key_symbols_free(wm->xkb.syms);
+            wm->xkb.syms = xcb_key_symbols_alloc(wm->conn);
 
-                try {
-                    napi_value nvalue = obj;
-                    js.Call(1, &nvalue);
-                } catch (const Napi::Error& e) {
-                    printf("handleXkb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
-                }
-            };
+            Napi::Object obj = Napi::Object::New(env);
+            obj.Set("type", "xkb");
+            obj.Set("xkb", Napi::String::New(env, "recreate"));
 
-            auto status = tsfn.BlockingCall(callback);
-            if (status != napi_ok) {
-                // error?
+            try {
+                napi_value nvalue = obj;
+                fn.Call({ nvalue });
+            } catch (const Napi::Error& e) {
+                printf("handleXkb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
             }
 
             break; }
@@ -546,46 +534,34 @@ void queryScreens(std::shared_ptr<WM>& wm)
     free(reply);
 }
 
-void sendScreens(const std::shared_ptr<WM>&wm, const Napi::ThreadSafeFunction& tsfn)
+Napi::Value makeScreens(napi_env env, const std::shared_ptr<WM>&wm)
 {
     std::vector<owm::Screen> screens = wm->screens;
     const xcb_window_t root = wm->defaultScreen->root;
-    auto screensCallback = [screens{std::move(screens)}, root](Napi::Env env, Napi::Function js) {
-        Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", "screens");
 
-        Napi::Object scr = Napi::Object::New(env);
-        scr.Set("root", root);
-        Napi::Array arr = Napi::Array::New(env, screens.size());
-        for (size_t i = 0; i < screens.size(); ++i) {
-            const auto& screen = screens[i];
-            Napi::Object s = Napi::Object::New(env);
-            s.Set("x", screen.x);
-            s.Set("y", screen.y);
-            s.Set("width", screen.w);
-            s.Set("height", screen.h);
-            s.Set("name", screen.name);
-            s.Set("primary", screen.primary);
-            const auto outsz = screen.outputs.size();
-            Napi::Array outs = Napi::Array::New(env, outsz);
-            for (size_t i = 0; i < outsz; ++i) {
-                outs.Set(i, screen.outputs[i]);
-            }
-            s.Set("outputs", outs);
-            arr.Set(i, s);
+    Napi::Object scr = Napi::Object::New(env);
+    scr.Set("root", root);
+    Napi::Array arr = Napi::Array::New(env, screens.size());
+    for (size_t i = 0; i < screens.size(); ++i) {
+        const auto& screen = screens[i];
+        Napi::Object s = Napi::Object::New(env);
+        s.Set("x", screen.x);
+        s.Set("y", screen.y);
+        s.Set("width", screen.w);
+        s.Set("height", screen.h);
+        s.Set("name", screen.name);
+        s.Set("primary", screen.primary);
+        const auto outsz = screen.outputs.size();
+        Napi::Array outs = Napi::Array::New(env, outsz);
+        for (size_t i = 0; i < outsz; ++i) {
+            outs.Set(i, screen.outputs[i]);
         }
-        scr.Set("entries", arr);
-        obj.Set("screens", scr);
+        s.Set("outputs", outs);
+        arr.Set(i, s);
+    }
+    scr.Set("entries", arr);
 
-        try {
-            napi_value nvalue = obj;
-            js.Call(1, &nvalue);
-        } catch (const Napi::Error& e) {
-            printf("sendScreens: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
-        }
-    };
-
-    tsfn.BlockingCall(screensCallback);
+    return scr;
 }
 
 static Napi::Object initAtoms(napi_env env, const std::shared_ptr<WM>& wm)

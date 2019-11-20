@@ -1,5 +1,4 @@
 #include "owm.h"
-#include <thread>
 #include <atomic>
 #include <fcntl.h>
 #include <unistd.h>
@@ -15,13 +14,12 @@
 
 struct Data
 {
-    std::atomic<bool> started { false };
-    std::weak_ptr<owm::Connection> connection;
-    std::thread thread;
-    int wakeup[2];
-    Napi::ThreadSafeFunction tsfn;
+    bool started { false };
+    std::shared_ptr<owm::WM> wm;
     xcb_window_t ewmhWindow;
     uv_async_t asyncFlush;
+    uv_poll_t pollXcb;
+    Napi::FunctionReference callback;
 };
 
 static Data data;
@@ -226,420 +224,366 @@ Napi::Value Start(const Napi::CallbackInfo& info)
 {
     auto env = info.Env();
 
-    std::shared_ptr<Napi::AsyncContext> ctx = std::make_shared<Napi::AsyncContext>(env, "ThreadSafePromise");
-    std::shared_ptr<owm::ThreadSafePromise> deferred = std::make_shared<owm::ThreadSafePromise>(env, ctx);
-    if (data.started.load()) {
-        deferred->Reject("owm already started");
-        return deferred->Promise();
+    if (data.started) {
+        throw Napi::TypeError::New(env, "owm already started");
     }
     if (!info[0].IsFunction()) {
         throw Napi::TypeError::New(env, "First argument needs to be a callback function");
     }
+    data.callback = Napi::Persistent(info[0].As<Napi::Function>());
 
     std::string display;
     if (info[1].IsString()) {
         display = info[1].As<Napi::String>();
     }
 
-    data.started.store(true);
-    data.tsfn = Napi::ThreadSafeFunction::New(env,
-                                              info[0].As<Napi::Function>(),
-                                              "owm callback",
-                                              0,              // unlimited queue
-                                              1,              // number of threads using this
-                                              [](Napi::Env) { // finalizer
-                                                  data.thread.join();
-                                              });
+    data.started = true;
     data.ewmhWindow = XCB_WINDOW_NONE;
 
-    int ret = pipe2(data.wakeup, O_NONBLOCK);
-    if (ret == -1) {
-        // so, so bad
-        deferred->Reject("unable to pipe2()");
-        return deferred->Promise();
-    }
-
     auto flush = [](uv_async_t* async) {
-        auto conn = data.connection.lock();
-        if (conn) {
-            xcb_flush(conn->conn);
+        if (data.wm) {
+            xcb_flush(data.wm->conn);
         }
     };
 
     uv_async_init(uv_default_loop(), &data.asyncFlush, flush);
 
-    auto promise = deferred->Promise();
+    auto loop = uv_default_loop();
 
-    const int wakeupfd = data.wakeup[0];
-    data.thread = std::thread([wakeupfd, display, deferred{std::move(deferred)}, loop{uv_default_loop()}]() mutable {
-        int epoll = epoll_create1(0);
+    auto wm = data.wm = std::make_shared<owm::WM>();
 
-        epoll_event event;
+    int defaultScreen;
+    wm->conn = xcb_connect(display.empty() ? nullptr : display.c_str(), &defaultScreen);
+    if (!wm->conn) { // boo
+        throw Napi::TypeError::New(env, "Unable to xcb_connect()");
+    }
 
-        event.events = EPOLLIN;
-        event.data.fd = wakeupfd;
-        epoll_ctl(epoll, EPOLL_CTL_ADD, wakeupfd, &event);
+    wm->asyncFlush = &data.asyncFlush;
 
-        std::shared_ptr<owm::WM> wm = std::make_shared<owm::WM>();
+    wm->defaultScreenNo = defaultScreen;
+    wm->defaultScreen = xcb_aux_get_screen(wm->conn, wm->defaultScreenNo);
+    if (!wm->defaultScreen) {
+        throw Napi::TypeError::New(env, "Couldn't get default screen");
+    }
+    if (wm->defaultScreen->root_depth != 32 && wm->defaultScreen->root_depth != 24) {
+        throw Napi::TypeError::New(env, "Only supports true color screens");
+    }
 
-        auto callback = [wm](Napi::Env env, Napi::Function js, owm::Response* resp) {
-            //js.Call({ Napi::Number::New(env, *value) });
-            wm->responsePool.release(resp);
-        };
+    // prefetch extensions
+    xcb_prefetch_extension_data(wm->conn, &xcb_xkb_id);
+    xcb_prefetch_extension_data(wm->conn, &xcb_randr_id);
 
-        int defaultScreen;
-        wm->conn = xcb_connect(display.empty() ? nullptr : display.c_str(), &defaultScreen);
-        if (!wm->conn) { // boo
-            deferred->Reject("Unable to xcb_connect()");
-            return;
+    std::unique_ptr<xcb_generic_error_t> err;
+
+    {
+        const uint32_t values[] = { XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT };
+        xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, wm->defaultScreen->root, XCB_CW_EVENT_MASK, values);
+        err.reset(xcb_request_check(wm->conn, cookie));
+        if (err) { // another wm already running
+            throw Napi::TypeError::New(env, "Another wm is already running?");
+        }
+    }
+
+    wm->ewmh = new xcb_ewmh_connection_t;
+    xcb_intern_atom_cookie_t* ewmhCookie = xcb_ewmh_init_atoms(wm->conn, wm->ewmh);
+    if (!ewmhCookie) {
+        throw Napi::TypeError::New(env, "Unable to init ewmh atoms");
+    }
+    if (!xcb_ewmh_init_atoms_replies(wm->ewmh, ewmhCookie, 0)) {
+        throw Napi::TypeError::New(env, "Unable to init ewmh atoms");
+    }
+
+    initAtoms(wm);
+
+    std::vector<owm::Window> windows;
+    auto queryWindows = [&windows](xcb_connection_t* conn, xcb_ewmh_connection_t* ewmh, const owm::Atoms& atoms, xcb_window_t root) {
+        std::vector<xcb_get_window_attributes_cookie_t> attribCookies;
+        std::vector<xcb_get_geometry_cookie_t> geomCookies;
+        std::vector<xcb_get_property_cookie_t> leaderCookies;
+        std::vector<xcb_get_property_cookie_t> roleCookies;
+        std::vector<xcb_get_property_cookie_t> normalHintsCookies;
+        std::vector<xcb_get_property_cookie_t> transientCookies;
+        std::vector<xcb_get_property_cookie_t> hintsCookies;
+        std::vector<xcb_get_property_cookie_t> classCookies;
+        std::vector<xcb_get_property_cookie_t> nameCookies;
+        std::vector<xcb_get_property_cookie_t> ewmhNameCookies;
+        std::vector<xcb_get_property_cookie_t> protocolsCookies;
+        std::vector<xcb_get_property_cookie_t> strutCookies;
+        std::vector<xcb_get_property_cookie_t> partialStrutCookies;
+        std::vector<xcb_get_property_cookie_t> stateCookies;
+        std::vector<xcb_get_property_cookie_t> typeCookies;
+        std::vector<xcb_get_property_cookie_t> pidCookies;
+        std::vector<xcb_get_property_cookie_t> desktopCookies;
+
+        xcb_query_tree_cookie_t cookie = xcb_query_tree_unchecked(conn, root);
+        xcb_query_tree_reply_t *tree = xcb_query_tree_reply(conn, cookie, nullptr);
+        xcb_window_t *wins = xcb_query_tree_children(tree);
+
+        attribCookies.reserve(tree->children_len);
+        geomCookies.reserve(tree->children_len);
+        leaderCookies.reserve(tree->children_len);
+        roleCookies.reserve(tree->children_len);
+        normalHintsCookies.reserve(tree->children_len);
+        transientCookies.reserve(tree->children_len);
+        hintsCookies.reserve(tree->children_len);
+        classCookies.reserve(tree->children_len);
+        nameCookies.reserve(tree->children_len);
+        ewmhNameCookies.reserve(tree->children_len);
+        protocolsCookies.reserve(tree->children_len);
+        strutCookies.reserve(tree->children_len);
+        partialStrutCookies.reserve(tree->children_len);
+        stateCookies.reserve(tree->children_len);
+        typeCookies.reserve(tree->children_len);
+        pidCookies.reserve(tree->children_len);
+        desktopCookies.reserve(tree->children_len);
+
+        const auto wm_client_leader = atoms.at("WM_CLIENT_LEADER");
+        const auto wm_protocols = atoms.at("WM_PROTOCOLS");
+        const auto net_wm_desktop = atoms.at("_NET_WM_DESKTOP");
+        const auto wm_window_role = atoms.at("WM_WINDOW_ROLE");
+        const auto utf8_string = atoms.at("UTF8_STRING");
+
+        for (unsigned int i = 0; i < tree->children_len; ++i) {
+            attribCookies.push_back(xcb_get_window_attributes_unchecked(conn, wins[i]));
+            geomCookies.push_back(xcb_get_geometry_unchecked(conn, wins[i]));
+            leaderCookies.push_back(xcb_get_property(conn, 0, wins[i], wm_client_leader, XCB_ATOM_WINDOW, 0, 1));
+            roleCookies.push_back(xcb_get_property(conn, 0, wins[i], wm_window_role, XCB_GET_PROPERTY_TYPE_ANY, 0, 128));
+            normalHintsCookies.push_back(xcb_icccm_get_wm_normal_hints(conn, wins[i]));
+            transientCookies.push_back(xcb_icccm_get_wm_transient_for(conn, wins[i]));
+            hintsCookies.push_back(xcb_icccm_get_wm_hints(conn, wins[i]));
+            classCookies.push_back(xcb_icccm_get_wm_class(conn, wins[i]));
+            nameCookies.push_back(xcb_icccm_get_wm_name(conn, wins[i]));
+            ewmhNameCookies.push_back(xcb_ewmh_get_wm_name(ewmh, wins[i]));
+            protocolsCookies.push_back(xcb_icccm_get_wm_protocols(conn, wins[i], wm_protocols));
+            strutCookies.push_back(xcb_ewmh_get_wm_strut(ewmh, wins[i]));
+            partialStrutCookies.push_back(xcb_ewmh_get_wm_strut_partial(ewmh, wins[i]));
+            stateCookies.push_back(xcb_ewmh_get_wm_state(ewmh, wins[i]));
+            typeCookies.push_back(xcb_ewmh_get_wm_window_type(ewmh, wins[i]));
+            pidCookies.push_back(xcb_ewmh_get_wm_pid(ewmh, wins[i]));
+            desktopCookies.push_back(xcb_get_property(conn, 0, wins[i], net_wm_desktop, XCB_ATOM_CARDINAL, 0, 1));
         }
 
-        wm->connection = std::make_shared<owm::Connection>(wm->conn);
-        wm->asyncFlush = &data.asyncFlush;
-        data.connection = wm->connection;
+        xcb_size_hints_t normalHints;
+        xcb_icccm_wm_hints_t wmHints;
+        xcb_icccm_get_wm_class_reply_t wmClass;
+        xcb_icccm_get_text_property_reply_t wmName;
+        xcb_window_t transientWin, leaderWin;
+        xcb_icccm_get_wm_protocols_reply_t wmProtocols;
+        xcb_ewmh_get_extents_reply_t ewmhStrut;
+        xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
+        xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
+        xcb_ewmh_get_utf8_strings_reply_t ewmhName;
+        std::string wmRole;
+        uint32_t pid, desktop;
 
-        wm->defaultScreenNo = defaultScreen;
-        wm->defaultScreen = xcb_aux_get_screen(wm->conn, wm->defaultScreenNo);
-        if (!wm->defaultScreen) {
-            deferred->Reject("Couldn't get default screen");
-            return;
-        }
-        if (wm->defaultScreen->root_depth != 32 && wm->defaultScreen->root_depth != 24) {
-            deferred->Reject("Only supports true color screens");
-            return;
-        }
-
-        // prefetch extensions
-        xcb_prefetch_extension_data(wm->conn, &xcb_xkb_id);
-        xcb_prefetch_extension_data(wm->conn, &xcb_randr_id);
-
-        const int xcbfd = xcb_get_file_descriptor(wm->conn);
-
-        event.events = EPOLLIN;
-        event.data.fd = xcbfd;
-        epoll_ctl(epoll, EPOLL_CTL_ADD, xcbfd, &event);
-
-        std::unique_ptr<xcb_generic_error_t> err;
-
-        {
-            const uint32_t values[] = { XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT };
-            xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, wm->defaultScreen->root, XCB_CW_EVENT_MASK, values);
-            err.reset(xcb_request_check(wm->conn, cookie));
-            if (err) { // another wm already running
-                deferred->Reject("Another wm is already running?");
-                return;
+        for (unsigned int i = 0; i < tree->children_len; ++i) {
+            xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(conn, attribCookies[i], nullptr);
+            if (attrib->map_state == XCB_MAP_STATE_UNMAPPED) {
+                xcb_discard_reply(conn, geomCookies[i].sequence);
+                free(attrib);
+                continue;
             }
-        }
-
-        wm->ewmh = new xcb_ewmh_connection_t;
-        xcb_intern_atom_cookie_t* ewmhCookie = xcb_ewmh_init_atoms(wm->conn, wm->ewmh);
-        if (!ewmhCookie) {
-            deferred->Reject("Unable to init ewmh atoms");
-            return;
-        }
-        if (!xcb_ewmh_init_atoms_replies(wm->ewmh, ewmhCookie, 0)) {
-            deferred->Reject("Unable to init ewmh atoms");
-            return;
-        }
-
-        initAtoms(wm);
-
-        std::shared_ptr<std::vector<owm::Window> > windows = std::make_shared<std::vector<owm::Window> >();
-        auto queryWindows = [&windows](xcb_connection_t* conn, xcb_ewmh_connection_t* ewmh, const owm::Atoms& atoms, xcb_window_t root) {
-            std::vector<xcb_get_window_attributes_cookie_t> attribCookies;
-            std::vector<xcb_get_geometry_cookie_t> geomCookies;
-            std::vector<xcb_get_property_cookie_t> leaderCookies;
-            std::vector<xcb_get_property_cookie_t> roleCookies;
-            std::vector<xcb_get_property_cookie_t> normalHintsCookies;
-            std::vector<xcb_get_property_cookie_t> transientCookies;
-            std::vector<xcb_get_property_cookie_t> hintsCookies;
-            std::vector<xcb_get_property_cookie_t> classCookies;
-            std::vector<xcb_get_property_cookie_t> nameCookies;
-            std::vector<xcb_get_property_cookie_t> ewmhNameCookies;
-            std::vector<xcb_get_property_cookie_t> protocolsCookies;
-            std::vector<xcb_get_property_cookie_t> strutCookies;
-            std::vector<xcb_get_property_cookie_t> partialStrutCookies;
-            std::vector<xcb_get_property_cookie_t> stateCookies;
-            std::vector<xcb_get_property_cookie_t> typeCookies;
-            std::vector<xcb_get_property_cookie_t> pidCookies;
-            std::vector<xcb_get_property_cookie_t> desktopCookies;
-
-            xcb_query_tree_cookie_t cookie = xcb_query_tree_unchecked(conn, root);
-            xcb_query_tree_reply_t *tree = xcb_query_tree_reply(conn, cookie, nullptr);
-            xcb_window_t *wins = xcb_query_tree_children(tree);
-
-            attribCookies.reserve(tree->children_len);
-            geomCookies.reserve(tree->children_len);
-            leaderCookies.reserve(tree->children_len);
-            roleCookies.reserve(tree->children_len);
-            normalHintsCookies.reserve(tree->children_len);
-            transientCookies.reserve(tree->children_len);
-            hintsCookies.reserve(tree->children_len);
-            classCookies.reserve(tree->children_len);
-            nameCookies.reserve(tree->children_len);
-            ewmhNameCookies.reserve(tree->children_len);
-            protocolsCookies.reserve(tree->children_len);
-            strutCookies.reserve(tree->children_len);
-            partialStrutCookies.reserve(tree->children_len);
-            stateCookies.reserve(tree->children_len);
-            typeCookies.reserve(tree->children_len);
-            pidCookies.reserve(tree->children_len);
-            desktopCookies.reserve(tree->children_len);
-
-            const auto wm_client_leader = atoms.at("WM_CLIENT_LEADER");
-            const auto wm_protocols = atoms.at("WM_PROTOCOLS");
-            const auto net_wm_desktop = atoms.at("_NET_WM_DESKTOP");
-            const auto wm_window_role = atoms.at("WM_WINDOW_ROLE");
-            const auto utf8_string = atoms.at("UTF8_STRING");
-
-            for (unsigned int i = 0; i < tree->children_len; ++i) {
-                attribCookies.push_back(xcb_get_window_attributes_unchecked(conn, wins[i]));
-                geomCookies.push_back(xcb_get_geometry_unchecked(conn, wins[i]));
-                leaderCookies.push_back(xcb_get_property(conn, 0, wins[i], wm_client_leader, XCB_ATOM_WINDOW, 0, 1));
-                roleCookies.push_back(xcb_get_property(conn, 0, wins[i], wm_window_role, XCB_GET_PROPERTY_TYPE_ANY, 0, 128));
-                normalHintsCookies.push_back(xcb_icccm_get_wm_normal_hints(conn, wins[i]));
-                transientCookies.push_back(xcb_icccm_get_wm_transient_for(conn, wins[i]));
-                hintsCookies.push_back(xcb_icccm_get_wm_hints(conn, wins[i]));
-                classCookies.push_back(xcb_icccm_get_wm_class(conn, wins[i]));
-                nameCookies.push_back(xcb_icccm_get_wm_name(conn, wins[i]));
-                ewmhNameCookies.push_back(xcb_ewmh_get_wm_name(ewmh, wins[i]));
-                protocolsCookies.push_back(xcb_icccm_get_wm_protocols(conn, wins[i], wm_protocols));
-                strutCookies.push_back(xcb_ewmh_get_wm_strut(ewmh, wins[i]));
-                partialStrutCookies.push_back(xcb_ewmh_get_wm_strut_partial(ewmh, wins[i]));
-                stateCookies.push_back(xcb_ewmh_get_wm_state(ewmh, wins[i]));
-                typeCookies.push_back(xcb_ewmh_get_wm_window_type(ewmh, wins[i]));
-                pidCookies.push_back(xcb_ewmh_get_wm_pid(ewmh, wins[i]));
-                desktopCookies.push_back(xcb_get_property(conn, 0, wins[i], net_wm_desktop, XCB_ATOM_CARDINAL, 0, 1));
+            xcb_get_geometry_reply_t* geom = xcb_get_geometry_reply(conn, geomCookies[i], nullptr);
+            if (geom->width < 1 || geom->height < 1) {
+                free(attrib);
+                free(geom);
+                continue;
             }
-
-            xcb_size_hints_t normalHints;
-            xcb_icccm_wm_hints_t wmHints;
-            xcb_icccm_get_wm_class_reply_t wmClass;
-            xcb_icccm_get_text_property_reply_t wmName;
-            xcb_window_t transientWin, leaderWin;
-            xcb_icccm_get_wm_protocols_reply_t wmProtocols;
-            xcb_ewmh_get_extents_reply_t ewmhStrut;
-            xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
-            xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
-            xcb_ewmh_get_utf8_strings_reply_t ewmhName;
-            std::string wmRole;
-            uint32_t pid, desktop;
-
-            for (unsigned int i = 0; i < tree->children_len; ++i) {
-                xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(conn, attribCookies[i], nullptr);
-                if (attrib->map_state == XCB_MAP_STATE_UNMAPPED) {
-                    xcb_discard_reply(conn, geomCookies[i].sequence);
-                    free(attrib);
-                    continue;
-                }
-                xcb_get_geometry_reply_t* geom = xcb_get_geometry_reply(conn, geomCookies[i], nullptr);
-                if (geom->width < 1 || geom->height < 1) {
-                    free(attrib);
-                    free(geom);
-                    continue;
-                }
-                xcb_get_property_reply_t* leaderReply = xcb_get_property_reply(conn, leaderCookies[i], nullptr);
-                if (!leaderReply) {
+            xcb_get_property_reply_t* leaderReply = xcb_get_property_reply(conn, leaderCookies[i], nullptr);
+            if (!leaderReply) {
+                leaderWin = XCB_NONE;
+            } else {
+                if (leaderReply->type != XCB_ATOM_WINDOW || leaderReply->format != 32 || !leaderReply->length) {
                     leaderWin = XCB_NONE;
                 } else {
-                    if (leaderReply->type != XCB_ATOM_WINDOW || leaderReply->format != 32 || !leaderReply->length) {
-                        leaderWin = XCB_NONE;
-                    } else {
-                        leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leaderReply));
-                    }
-                    free(leaderReply);
+                    leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leaderReply));
                 }
-                xcb_get_property_reply_t* roleReply = xcb_get_property_reply(conn, roleCookies[i], nullptr);
-                if (!roleReply) {
+                free(leaderReply);
+            }
+            xcb_get_property_reply_t* roleReply = xcb_get_property_reply(conn, roleCookies[i], nullptr);
+            if (!roleReply) {
+                wmRole.clear();
+            } else {
+                const auto len = xcb_get_property_value_length(roleReply);
+                if (roleReply->format != 8 || !len) {
                     wmRole.clear();
+                } else if (roleReply->type == utf8_string) {
+                    wmRole = std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len);
                 } else {
-                    const auto len = xcb_get_property_value_length(roleReply);
-                    if (roleReply->format != 8 || !len) {
-                        wmRole.clear();
-                    } else if (roleReply->type == utf8_string) {
-                        wmRole = std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len);
-                    } else {
-                        wmRole = owm::latin1toutf8(std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len));
-                    }
-                    free(roleReply);
+                    wmRole = owm::latin1toutf8(std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len));
                 }
-                if (!xcb_icccm_get_wm_normal_hints_reply(conn, normalHintsCookies[i], &normalHints, nullptr)) {
-                    memset(&normalHints, 0, sizeof(normalHints));
-                }
-                if (!xcb_icccm_get_wm_transient_for_reply(conn, transientCookies[i], &transientWin, nullptr)) {
-                    transientWin = XCB_NONE;
-                }
-                if (!xcb_icccm_get_wm_hints_reply(conn, hintsCookies[i], &wmHints, nullptr)) {
-                    memset(&wmHints, 0, sizeof(wmHints));
-                }
-                if (!xcb_icccm_get_wm_class_reply(conn, classCookies[i], &wmClass, nullptr)) {
-                    memset(&wmClass, 0, sizeof(wmClass));
-                }
-                if (!xcb_icccm_get_wm_name_reply(conn, nameCookies[i], &wmName, nullptr)) {
-                    memset(&wmName, 0, sizeof(wmName));
-                }
-                if (!xcb_ewmh_get_wm_name_reply(ewmh, ewmhNameCookies[i], &ewmhName, nullptr)) {
-                    memset(&ewmhName, 0, sizeof(ewmhName));
-                }
-                if (!xcb_icccm_get_wm_protocols_reply(conn, protocolsCookies[i], &wmProtocols, nullptr)) {
-                    memset(&wmProtocols, 0, sizeof(wmProtocols));
-                }
-                if (!xcb_ewmh_get_wm_strut_reply(ewmh, strutCookies[i], &ewmhStrut, nullptr)) {
-                    memset(&ewmhStrut, 0, sizeof(ewmhStrut));
-                }
-                if (!xcb_ewmh_get_wm_strut_partial_reply(ewmh, partialStrutCookies[i], &ewmhStrutPartial, nullptr)) {
-                    memset(&ewmhStrutPartial, 0, sizeof(ewmhStrutPartial));
-                }
-                if (!xcb_ewmh_get_wm_state_reply(ewmh, stateCookies[i], &ewmhState, nullptr)) {
-                    memset(&ewmhState, 0, sizeof(ewmhState));
-                }
-                if (!xcb_ewmh_get_wm_window_type_reply(ewmh, typeCookies[i], &ewmhWindowType, nullptr)) {
-                    memset(&ewmhWindowType, 0, sizeof(ewmhWindowType));
-                }
-                if (!xcb_ewmh_get_wm_pid_reply(ewmh, pidCookies[i], &pid, nullptr)) {
-                    pid = 0;
-                }
-                xcb_get_property_reply_t* desktopReply = xcb_get_property_reply(conn, desktopCookies[i], nullptr);
-                if (!desktopReply) {
+                free(roleReply);
+            }
+            if (!xcb_icccm_get_wm_normal_hints_reply(conn, normalHintsCookies[i], &normalHints, nullptr)) {
+                memset(&normalHints, 0, sizeof(normalHints));
+            }
+            if (!xcb_icccm_get_wm_transient_for_reply(conn, transientCookies[i], &transientWin, nullptr)) {
+                transientWin = XCB_NONE;
+            }
+            if (!xcb_icccm_get_wm_hints_reply(conn, hintsCookies[i], &wmHints, nullptr)) {
+                memset(&wmHints, 0, sizeof(wmHints));
+            }
+            if (!xcb_icccm_get_wm_class_reply(conn, classCookies[i], &wmClass, nullptr)) {
+                memset(&wmClass, 0, sizeof(wmClass));
+            }
+            if (!xcb_icccm_get_wm_name_reply(conn, nameCookies[i], &wmName, nullptr)) {
+                memset(&wmName, 0, sizeof(wmName));
+            }
+            if (!xcb_ewmh_get_wm_name_reply(ewmh, ewmhNameCookies[i], &ewmhName, nullptr)) {
+                memset(&ewmhName, 0, sizeof(ewmhName));
+            }
+            if (!xcb_icccm_get_wm_protocols_reply(conn, protocolsCookies[i], &wmProtocols, nullptr)) {
+                memset(&wmProtocols, 0, sizeof(wmProtocols));
+            }
+            if (!xcb_ewmh_get_wm_strut_reply(ewmh, strutCookies[i], &ewmhStrut, nullptr)) {
+                memset(&ewmhStrut, 0, sizeof(ewmhStrut));
+            }
+            if (!xcb_ewmh_get_wm_strut_partial_reply(ewmh, partialStrutCookies[i], &ewmhStrutPartial, nullptr)) {
+                memset(&ewmhStrutPartial, 0, sizeof(ewmhStrutPartial));
+            }
+            if (!xcb_ewmh_get_wm_state_reply(ewmh, stateCookies[i], &ewmhState, nullptr)) {
+                memset(&ewmhState, 0, sizeof(ewmhState));
+            }
+            if (!xcb_ewmh_get_wm_window_type_reply(ewmh, typeCookies[i], &ewmhWindowType, nullptr)) {
+                memset(&ewmhWindowType, 0, sizeof(ewmhWindowType));
+            }
+            if (!xcb_ewmh_get_wm_pid_reply(ewmh, pidCookies[i], &pid, nullptr)) {
+                pid = 0;
+            }
+            xcb_get_property_reply_t* desktopReply = xcb_get_property_reply(conn, desktopCookies[i], nullptr);
+            if (!desktopReply) {
+                desktop = 0;
+            } else {
+                if (desktopReply->type != XCB_ATOM_CARDINAL || desktopReply->format != 32 || !desktopReply->length) {
                     desktop = 0;
                 } else {
-                    if (desktopReply->type != XCB_ATOM_CARDINAL || desktopReply->format != 32 || !desktopReply->length) {
-                        desktop = 0;
-                    } else {
-                        desktop = *static_cast<uint32_t*>(xcb_get_property_value(desktopReply));
-                    }
-                    free(desktopReply);
+                    desktop = *static_cast<uint32_t*>(xcb_get_property_value(desktopReply));
                 }
+                free(desktopReply);
+            }
 
-                windows->push_back({
-                        wins[i],
-                        {
-                            attrib->bit_gravity,
+            windows.push_back({
+                    wins[i],
+                    {
+                        attrib->bit_gravity,
                             attrib->win_gravity,
                             attrib->map_state,
                             attrib->override_redirect,
                             attrib->all_event_masks,
                             attrib->your_event_mask,
                             attrib->do_not_propagate_mask
-                        }, {
-                            geom->root,
+                            }, {
+                        geom->root,
                             geom->x,
                             geom->y,
                             geom->width,
                             geom->height,
                             geom->border_width
-                        },
-                        owm::makeSizeHint(normalHints),
-                        owm::makeWMHints(wmHints),
-                        owm::makeWMClass(wmClass),
-                        std::move(wmRole),
-                        owm::makeString(wmName, wmName.encoding == utf8_string),
-                        owm::makeString(ewmhName, true), // always UTF8
-                        owm::makeAtoms(wmProtocols),
-                        owm::makeAtoms(ewmhState),
-                        owm::makeAtoms(ewmhWindowType),
-                        owm::makeExtents(ewmhStrut),
-                        owm::makeStrutPartial(ewmhStrutPartial),
-                        pid, transientWin, leaderWin, desktop
-                });
+                            },
+                                   owm::makeSizeHint(normalHints),
+                                       owm::makeWMHints(wmHints),
+                                       owm::makeWMClass(wmClass),
+                                       std::move(wmRole),
+                                       owm::makeString(wmName, wmName.encoding == utf8_string),
+                                       owm::makeString(ewmhName, true), // always UTF8
+                                       owm::makeAtoms(wmProtocols),
+                                       owm::makeAtoms(ewmhState),
+                                       owm::makeAtoms(ewmhWindowType),
+                                       owm::makeExtents(ewmhStrut),
+                                       owm::makeStrutPartial(ewmhStrutPartial),
+                                       pid, transientWin, leaderWin, desktop
+                                       });
 
 
-                if (wmName.name && wmName.name_len) {
-                    xcb_icccm_get_text_property_reply_wipe(&wmName);
-                }
-                if (wmClass.instance_name || wmClass.class_name) {
-                    xcb_icccm_get_wm_class_reply_wipe(&wmClass);
-                }
-                if (wmProtocols.atoms && wmProtocols.atoms_len) {
-                    xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
-                }
-                if (ewmhName.strings && ewmhName.strings_len) {
-                    xcb_ewmh_get_utf8_strings_reply_wipe(&ewmhName);
-                }
-                if (ewmhState.atoms && ewmhState.atoms_len) {
-                    xcb_ewmh_get_atoms_reply_wipe(&ewmhState);
-                }
-                if (ewmhWindowType.atoms && ewmhWindowType.atoms_len) {
-                    xcb_ewmh_get_atoms_reply_wipe(&ewmhWindowType);
-                }
-
-                free(attrib);
-                free(geom);
+            if (wmName.name && wmName.name_len) {
+                xcb_icccm_get_text_property_reply_wipe(&wmName);
             }
-            free(tree);
-        };
-
-        {
-            const uint32_t values[] = { XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
-                                        | XCB_EVENT_MASK_ENTER_WINDOW
-                                        | XCB_EVENT_MASK_LEAVE_WINDOW
-                                        | XCB_EVENT_MASK_STRUCTURE_NOTIFY
-                                        | XCB_EVENT_MASK_BUTTON_PRESS
-                                        | XCB_EVENT_MASK_BUTTON_RELEASE
-                                        | XCB_EVENT_MASK_FOCUS_CHANGE
-                                        | XCB_EVENT_MASK_PROPERTY_CHANGE };
-            const auto root = wm->defaultScreen->root;
-            xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, root, XCB_CW_EVENT_MASK, values);
-            queryWindows(wm->conn, wm->ewmh, wm->atoms, root);
-            err.reset(xcb_request_check(wm->conn, cookie));
-            if (err) {
-                deferred->Reject("Unable to change attributes on the root window");
-                return;
+            if (wmClass.instance_name || wmClass.class_name) {
+                xcb_icccm_get_wm_class_reply_wipe(&wmClass);
             }
+            if (wmProtocols.atoms && wmProtocols.atoms_len) {
+                xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
+            }
+            if (ewmhName.strings && ewmhName.strings_len) {
+                xcb_ewmh_get_utf8_strings_reply_wipe(&ewmhName);
+            }
+            if (ewmhState.atoms && ewmhState.atoms_len) {
+                xcb_ewmh_get_atoms_reply_wipe(&ewmhState);
+            }
+            if (ewmhWindowType.atoms && ewmhWindowType.atoms_len) {
+                xcb_ewmh_get_atoms_reply_wipe(&ewmhWindowType);
+            }
+
+            free(attrib);
+            free(geom);
+        }
+        free(tree);
+    };
+
+    {
+        const uint32_t values[] = { XCB_EVENT_MASK_SUBSTRUCTURE_REDIRECT
+                                    | XCB_EVENT_MASK_ENTER_WINDOW
+                                    | XCB_EVENT_MASK_LEAVE_WINDOW
+                                    | XCB_EVENT_MASK_STRUCTURE_NOTIFY
+                                    | XCB_EVENT_MASK_BUTTON_PRESS
+                                    | XCB_EVENT_MASK_BUTTON_RELEASE
+                                    | XCB_EVENT_MASK_FOCUS_CHANGE
+                                    | XCB_EVENT_MASK_PROPERTY_CHANGE };
+        const auto root = wm->defaultScreen->root;
+        xcb_void_cookie_t cookie = xcb_change_window_attributes_checked(wm->conn, root, XCB_CW_EVENT_MASK, values);
+        queryWindows(wm->conn, wm->ewmh, wm->atoms, root);
+        err.reset(xcb_request_check(wm->conn, cookie));
+        if (err) {
+            throw Napi::TypeError::New(env, "Unable to change attributes on the root window");
+        }
+    }
+
+    {
+        // xkb stuffs
+        const int ret = xkb_x11_setup_xkb_extension(wm->conn,
+                                                    XKB_X11_MIN_MAJOR_XKB_VERSION,
+                                                    XKB_X11_MIN_MINOR_XKB_VERSION,
+                                                    XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
+                                                    nullptr, nullptr, nullptr, nullptr);
+        if (!ret) {
+            throw Napi::TypeError::New(env, "Unable to setup xkb");
         }
 
-        {
-            // xkb stuffs
-            const int ret = xkb_x11_setup_xkb_extension(wm->conn,
-                                                        XKB_X11_MIN_MAJOR_XKB_VERSION,
-                                                        XKB_X11_MIN_MINOR_XKB_VERSION,
-                                                        XKB_X11_SETUP_XKB_EXTENSION_NO_FLAGS,
-                                                        nullptr, nullptr, nullptr, nullptr);
-            if (!ret) {
-                deferred->Reject("Unable to setup xkb");
-                return;
-            }
+        xkb_context* ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
+        if (!ctx) {
+            throw Napi::TypeError::New(env, "Unable create new xkb context");
+        }
 
-            xkb_context* ctx = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
-            if (!ctx) {
-                deferred->Reject("Unable create new xkb context");
-                return;
-            }
+        const int32_t deviceId = xkb_x11_get_core_keyboard_device_id(wm->conn);
+        if (!deviceId) {
+            xkb_context_unref(ctx);
+            throw Napi::TypeError::New(env, "Unable get core xkb device id");
+        }
 
-            const int32_t deviceId = xkb_x11_get_core_keyboard_device_id(wm->conn);
-            if (!deviceId) {
-                xkb_context_unref(ctx);
-                deferred->Reject("Unable get core xkb device id");
-                return;
-            }
+        xkb_keymap* keymap = xkb_x11_keymap_new_from_device(ctx, wm->conn, deviceId, XKB_KEYMAP_COMPILE_NO_FLAGS);
+        if (!keymap) {
+            xkb_context_unref(ctx);
+            throw Napi::TypeError::New(env, "Unable get xkb keymap from device");
+        }
 
-            xkb_keymap* keymap = xkb_x11_keymap_new_from_device(ctx, wm->conn, deviceId, XKB_KEYMAP_COMPILE_NO_FLAGS);
-            if (!keymap) {
-                xkb_context_unref(ctx);
-                deferred->Reject("Unable get xkb keymap from device");
-                return;
-            }
+        xkb_state* state = xkb_x11_state_new_from_device(keymap, wm->conn, deviceId);
+        if (!state) {
+            xkb_keymap_unref(keymap);
+            xkb_context_unref(ctx);
+            throw Napi::TypeError::New(env, "Unable get xkb state from device");
+        }
 
-            xkb_state* state = xkb_x11_state_new_from_device(keymap, wm->conn, deviceId);
-            if (!state) {
-                xkb_keymap_unref(keymap);
-                xkb_context_unref(ctx);
-                deferred->Reject("Unable get xkb state from device");
-                return;
-            }
-
-            const xcb_query_extension_reply_t *reply = xcb_get_extension_data(wm->conn, &xcb_xkb_id);
-            if (!reply || !reply->present) {
-                xkb_state_unref(state);
-                xkb_keymap_unref(keymap);
-                xkb_context_unref(ctx);
-                deferred->Reject("Unable get xkb extension reply");
-                return;
-            }
+        const xcb_query_extension_reply_t *reply = xcb_get_extension_data(wm->conn, &xcb_xkb_id);
+        if (!reply || !reply->present) {
+            xkb_state_unref(state);
+            xkb_keymap_unref(keymap);
+            xkb_context_unref(ctx);
+            throw Napi::TypeError::New(env, "Unable get xkb extension reply");
+        }
 
 
-            unsigned int affectMap, map;
-            affectMap = map = XCB_XKB_MAP_PART_KEY_TYPES
+        unsigned int affectMap, map;
+        affectMap = map = XCB_XKB_MAP_PART_KEY_TYPES
             | XCB_XKB_MAP_PART_KEY_SYMS
             | XCB_XKB_MAP_PART_MODIFIER_MAP
             | XCB_XKB_MAP_PART_EXPLICIT_COMPONENTS
@@ -648,215 +592,146 @@ Napi::Value Start(const Napi::CallbackInfo& info)
             | XCB_XKB_MAP_PART_VIRTUAL_MODS
             | XCB_XKB_MAP_PART_VIRTUAL_MOD_MAP;
 
-            xcb_void_cookie_t select = xcb_xkb_select_events_checked(wm->conn, XCB_XKB_ID_USE_CORE_KBD,
-                                                                     XCB_XKB_EVENT_TYPE_STATE_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY,
-                                                                     0,
-                                                                     XCB_XKB_EVENT_TYPE_STATE_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY,
-                                                                     affectMap, map, nullptr);
-            err.reset(xcb_request_check(wm->conn, select));
-            if (err) {
-                xkb_state_unref(state);
-                xkb_keymap_unref(keymap);
-                xkb_context_unref(ctx);
-                deferred->Reject("Unable get select xkb events");
-                return;
-            }
-
-            wm->xkb = { reply->first_event, ctx, xcb_key_symbols_alloc(wm->conn), keymap, state, deviceId };
+        xcb_void_cookie_t select = xcb_xkb_select_events_checked(wm->conn, XCB_XKB_ID_USE_CORE_KBD,
+                                                                 XCB_XKB_EVENT_TYPE_STATE_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY,
+                                                                 0,
+                                                                 XCB_XKB_EVENT_TYPE_STATE_NOTIFY | XCB_XKB_EVENT_TYPE_MAP_NOTIFY,
+                                                                 affectMap, map, nullptr);
+        err.reset(xcb_request_check(wm->conn, select));
+        if (err) {
+            xkb_state_unref(state);
+            xkb_keymap_unref(keymap);
+            xkb_context_unref(ctx);
+            throw Napi::TypeError::New(env, "Unable get select xkb events");
         }
 
-        {
-            // randr stuff
-            auto reply = xcb_get_extension_data(wm->conn, &xcb_randr_id);
-            if(!reply || !reply->present) {
-                deferred->Reject("Unable get select xkb events");
-                return;
-            }
+        wm->xkb = { reply->first_event, ctx, xcb_key_symbols_alloc(wm->conn), keymap, state, deviceId };
+    }
 
-            auto versionCookie = xcb_randr_query_version(wm->conn, 1, 5);
-            auto versionReply = xcb_randr_query_version_reply(wm->conn, versionCookie, nullptr);
-            if(!versionReply) {
-                return;
-            }
-
-            if (versionReply->major_version != 1 || versionReply->minor_version < 5) {
-                free(versionReply);
-                return;
-            }
-
-            xcb_randr_select_input(wm->conn, wm->defaultScreen->root, XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
-
-            wm->randr.event = reply->first_event;
-            owm::queryScreens(wm);
-
-            if (wm->screens.empty()) {
-                deferred->Reject("No screens queried from randr");
-                return;
-            }
+    {
+        // randr stuff
+        auto reply = xcb_get_extension_data(wm->conn, &xcb_randr_id);
+        if(!reply || !reply->present) {
+            throw Napi::TypeError::New(env, "Unable get select xkb events");
         }
 
-        // make our supporting window
-        data.ewmhWindow = xcb_generate_id(wm->conn);
-        xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, data.ewmhWindow, wm->defaultScreen->root, -1, -1, 1, 1, 0,
-                          XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, nullptr);
-        xcb_icccm_set_wm_class(wm->conn, data.ewmhWindow, 7, "owm\0Owm");
+        auto versionCookie = xcb_randr_query_version(wm->conn, 1, 5);
+        auto versionReply = xcb_randr_query_version_reply(wm->conn, versionCookie, nullptr);
+        if(!versionReply) {
+            throw Napi::TypeError::New(env, "No version reply from randr");
+        }
 
-        xcb_ewmh_set_supporting_wm_check(wm->ewmh, wm->defaultScreen->root, data.ewmhWindow);
-        xcb_ewmh_set_supporting_wm_check(wm->ewmh, data.ewmhWindow, data.ewmhWindow);
-        xcb_ewmh_set_wm_name(wm->ewmh, data.ewmhWindow, 3, "owm");
-        xcb_ewmh_set_wm_pid(wm->ewmh, data.ewmhWindow, getpid());
+        if (versionReply->major_version != 1 || versionReply->minor_version < 5) {
+            free(versionReply);
+            throw Napi::TypeError::New(env, "Need at least randr 1.5");
+        }
 
-        const auto ewmhWindow = data.ewmhWindow;
-        deferred->Resolve([wm, ewmhWindow](napi_env env) -> Napi::Value {
-            Napi::Object obj = Napi::Object::New(env);
-            obj.Set("xcb", owm::makeXcb(env, wm));
-            obj.Set("xkb", owm::makeXkb(env, wm));
-            obj.Set("wm", owm::Wrap<std::shared_ptr<owm::WM> >::wrap(env, wm));
-            obj.Set("ewmh", Napi::Number::New(env, ewmhWindow));
-            return obj;
-        });
-        deferred.reset();
+        xcb_randr_select_input(wm->conn, wm->defaultScreen->root, XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE);
 
-        owm::sendScreens(wm, data.tsfn);
+        wm->randr.event = reply->first_event;
+        owm::queryScreens(wm);
 
-        auto windowsCallback = [windows{std::move(windows)}](Napi::Env env, Napi::Function js) mutable {
-            Napi::Object obj = Napi::Object::New(env);
-            obj.Set("type", "windows");
-            Napi::Array arr = Napi::Array::New(env, windows->size());
-            for (size_t i = 0; i < windows->size(); ++i) {
-                arr.Set(i, owm::makeWindow(env, (*windows)[i]));
-            }
-            obj.Set("windows", arr);
+        if (wm->screens.empty()) {
+            throw Napi::TypeError::New(env, "No screens queried from randr");
+        }
+    }
 
-            try {
-                napi_value nvalue = obj;
-                js.Call(1, &nvalue);
-            } catch (const Napi::Error& e) {
-                printf("windowsCallback: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
-            }
+    // make our supporting window
+    data.ewmhWindow = xcb_generate_id(wm->conn);
+    xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, data.ewmhWindow, wm->defaultScreen->root, -1, -1, 1, 1, 0,
+                      XCB_WINDOW_CLASS_INPUT_ONLY, XCB_COPY_FROM_PARENT, XCB_NONE, nullptr);
+    xcb_icccm_set_wm_class(wm->conn, data.ewmhWindow, 7, "owm\0Owm");
 
-            windows.reset();
-        };
+    xcb_ewmh_set_supporting_wm_check(wm->ewmh, wm->defaultScreen->root, data.ewmhWindow);
+    xcb_ewmh_set_supporting_wm_check(wm->ewmh, data.ewmhWindow, data.ewmhWindow);
+    xcb_ewmh_set_wm_name(wm->ewmh, data.ewmhWindow, 3, "owm");
+    xcb_ewmh_set_wm_pid(wm->ewmh, data.ewmhWindow, getpid());
 
-        data.tsfn.BlockingCall(windowsCallback);
+    Napi::Object obj = Napi::Object::New(env);
+    obj.Set("xcb", owm::makeXcb(env, wm));
+    obj.Set("xkb", owm::makeXkb(env, wm));
+    obj.Set("wm", owm::Wrap<std::shared_ptr<owm::WM> >::wrap(env, wm));
+    obj.Set("ewmh", Napi::Number::New(env, data.ewmhWindow));
 
-        auto settledCallback = [](Napi::Env env, Napi::Function js) {
-            Napi::Object obj = Napi::Object::New(env);
-            obj.Set("type", "settled");
+    obj.Set("screens", owm::makeScreens(env, wm));
 
-            try {
-                napi_value nvalue = obj;
-                js.Call(1, &nvalue);
-            } catch (const Napi::Error& e) {
-                printf("settledCallback: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
-            }
-        };
+    Napi::Array arr = Napi::Array::New(env, windows.size());
+    for (size_t i = 0; i < windows.size(); ++i) {
+        arr.Set(i, owm::makeWindow(env, windows[i]));
+    }
+    obj.Set("windows", arr);
 
-        data.tsfn.BlockingCall(settledCallback);
+    // flush out everything before we enter the event loop
+    xcb_flush(wm->conn);
 
-        std::vector<std::function<void()> > cleanups;
-
-        auto cleanup = [&cleanups]() {
-            for (const auto& f : cleanups) {
-                f();
-            }
-        };
-
-        cleanups.push_back([&wm]() {
-            xcb_ewmh_connection_wipe(wm->ewmh);
-            xcb_destroy_window(wm->conn, data.ewmhWindow);
-            free(wm->ewmh);
-            xcb_flush(wm->conn);
-            wm->connection.reset();
-        });
-
-        enum { MaxEvents = 5 };
-        epoll_event events[MaxEvents];
+    auto handleXcbEvent = [](uv_poll_t* handle, int status, int events) -> void {
+        auto wm = data.wm;
+        if (!wm) {
+            // uuuh, bad!
+            return;
+        }
 
         const auto xkbevent = wm->xkb.event;
         const auto randrevent = wm->randr.event;
 
-        // flush out everything before we enter the event loop
-        xcb_flush(wm->conn);
-
         for (;;) {
-            const int count = epoll_wait(epoll, events, MaxEvents, -1);
-            if (count <= 0) {
-                // bad stuff
-                if (errno != EINTR)
-                    return;
+            if (xcb_connection_has_error(wm->conn)) {
+                // more badness
+                printf("bad conn\n");
+                return;
             }
-
-            for (int i = 0; i < count; ++i) {
-                if (events[i].data.fd == xcbfd) {
-                    // handle xcb event
-                    for (;;) {
-                        if (xcb_connection_has_error(wm->conn)) {
-                            // more badness
-                            printf("bad conn\n");
-                            return;
-                        }
-                        xcb_generic_event_t *event = xcb_poll_for_event(wm->conn);
-                        if (!event)
-                            break;
-                        if (event->response_type == xkbevent) {
-                            owm::handleXkb(wm, data.tsfn, reinterpret_cast<owm::_xkb_event*>(event));
-                        } else if (event->response_type == randrevent + XCB_RANDR_NOTIFY) {
-                            // handle this?
-                        } else if (event->response_type == randrevent + XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE) {
-                            // type xcb_randr_screen_change_notify_event_t
-                            owm::queryScreens(wm);
-                            owm::sendScreens(wm, data.tsfn);
-                        } else {
-                            owm::handleXcb(wm, data.tsfn, event);
-                        }
-                    }
-                } else if (events[i].data.fd == wakeupfd) {
-                    // wakeup!
-
-                    // flush the pipe
-                    for (;;) {
-                        char c;
-                        const int r = ::read(wakeupfd, &c, 1);
-                        if (r == -1) {
-                            if (errno == EAGAIN)
-                                break;
-                            // bad error
-                            printf("bad read\n");
-                            return;
-                        }
-                    }
-
-                    if (!data.started.load()) {
-                        cleanup();
-                        return;
-                    }
+            xcb_generic_event_t *event = xcb_poll_for_event(wm->conn);
+            if (!event)
+                break;
+            if (event->response_type == xkbevent) {
+                owm::handleXkb(wm, data.callback, reinterpret_cast<owm::_xkb_event*>(event));
+            } else if (event->response_type == randrevent + XCB_RANDR_NOTIFY) {
+                // handle this?
+            } else if (event->response_type == randrevent + XCB_RANDR_NOTIFY_MASK_OUTPUT_CHANGE) {
+                // type xcb_randr_screen_change_notify_event_t
+                owm::queryScreens(wm);
+                auto env = data.callback.Env();
+                Napi::HandleScope scope(env);
+                try {
+                    napi_value nvalue = owm::makeScreens(env, wm);
+                    data.callback.Call({ nvalue });
+                } catch (const Napi::Error& e) {
+                    printf("handleRandr: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
                 }
+            } else {
+                owm::handleXcb(wm, data.callback, event);
             }
         }
+    };
 
-        data.tsfn.Release();
-    });
+    const int xcbfd = xcb_get_file_descriptor(wm->conn);
+    uv_poll_init(loop, &data.pollXcb, xcbfd);
+    uv_poll_start(&data.pollXcb, UV_READABLE, handleXcbEvent);
 
-    return promise;
+    return obj;
 }
 
 void Stop(const Napi::CallbackInfo& info)
 {
     auto env = info.Env();
 
-    if (!data.started.load())
+    if (!data.started) {
         throw Napi::TypeError::New(env, "Not started");
-    data.started.store(false);
+    }
+    data.started = false;
+
+    xcb_ewmh_connection_wipe(data.wm->ewmh);
+    xcb_destroy_window(data.wm->conn, data.ewmhWindow);
+    free(data.wm->ewmh);
+    xcb_disconnect(data.wm->conn);
+
+    uv_poll_stop(&data.pollXcb);
 
     uv_close(reinterpret_cast<uv_handle_t*>(&data.asyncFlush), nullptr);
+    uv_close(reinterpret_cast<uv_handle_t*>(&data.pollXcb), nullptr);
 
-    char c = 'q';
-    EINTRWRAP(::write(data.wakeup[1], &c, 1));
-
-    data.thread.join();
-    EINTRWRAP(::close(data.wakeup[0]));
-    EINTRWRAP(::close(data.wakeup[1]));
+    data.callback.Reset();
+    data.wm.reset();
 }
 
 Napi::Object Setup(Napi::Env env, Napi::Object exports)

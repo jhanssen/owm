@@ -96,8 +96,6 @@ export class OWMLib {
     private _ipc: IPC;
     private _root: number;
     private _events: EventEmitter;
-    private _settled: boolean;
-    private _onsettled: { (): void }[];
     private _activeColor: number;
     private _inactiveColor: number;
     private _groups: Map<number, ClientGroup>;
@@ -117,8 +115,6 @@ export class OWMLib {
         this._wm = wm;
         this._xcb = xcb;
         this._xkb = xkb;
-        this._settled = false;
-        this._onsettled = [];
         this._options = options;
 
         this._log = new ConsoleLogger(options.level);
@@ -943,22 +939,6 @@ export class OWMLib {
     recreateKeyBindings() {
         this._bindings.recreate();
         this._moveResizeMode.recreate();
-    }
-
-    onsettled(func: () => void) {
-        if (this._settled) {
-            func();
-        } else {
-            this._onsettled.push(func);
-        }
-    }
-
-    settled() {
-        this._settled = true;
-        for (let func of this._onsettled) {
-            func();
-        }
-        this._onsettled = [];
     }
 
     inited() {

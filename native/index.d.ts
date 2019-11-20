@@ -648,7 +648,6 @@ export namespace OWM {
     }
     export interface Event {
         readonly type: string;
-        readonly windows?: XCB.Window[];
         readonly screens?: Screens;
         readonly xcb?: XCB_Type;
         readonly xkb?: string;
@@ -658,17 +657,19 @@ export namespace OWM {
 
 declare function nativeCallback(data: OWM.Event): void;
 
-interface PromiseArgs
+interface Start
 {
     readonly wm: OWM.WM;
     readonly xcb: OWM.XCB;
     readonly xkb: OWM.XKB;
     readonly ewmh: number;
+    readonly windows: XCB.Window[];
+    readonly screens: OWM.Screens;
 }
 
 declare namespace Native
 {
-    export function start(callback: typeof nativeCallback, display?: string): Promise<PromiseArgs>;
+    export function start(callback: typeof nativeCallback, display?: string): Start
     export function stop(): void;
 }
 
