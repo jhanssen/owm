@@ -518,11 +518,6 @@ export class OWMLib {
         this._log.info("screens", screens);
         this._root = screens.root;
         this._monitors.update(screens.entries);
-
-        process.nextTick(() => {
-            this._ewmh.updateSupported();
-            this._ewmh.updateViewport();
-        });
     }
 
     mapRequest(event: XCB.MapRequest) {
@@ -967,7 +962,14 @@ export class OWMLib {
     }
 
     inited() {
-        this._events.emit("inited");
+        process.nextTick(() => {
+            this._ewmh.updateSupported();
+            this._ewmh.updateViewport();
+            // do an explicit flush here
+            this._xcb.flush(this._wm);
+
+            this._events.emit("inited");
+        });
     }
 
     launch(opts: string | LaunchOptions, ...args: string[]) {
