@@ -1284,6 +1284,72 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return Napi::Number::New(env, pm);
     }));
 
+    xcb.Set("copy_area", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "copy_area requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
+
+        uint32_t src_d, dst_d, gc;
+        uint32_t src_x, src_y, dst_x, dst_y;
+        uint32_t width, height;
+
+        if (!arg.Has("src_d")) {
+            throw Napi::TypeError::New(env, "copy_area requires a src_d");
+        }
+        src_d = arg.Get("src_d").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("dst_d")) {
+            throw Napi::TypeError::New(env, "copy_area requires a dst_d");
+        }
+        dst_d = arg.Get("dst_d").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("gc")) {
+            throw Napi::TypeError::New(env, "copy_area requires a gc");
+        }
+        gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("src_x")) {
+            throw Napi::TypeError::New(env, "copy_area requires a src_x");
+        }
+        src_x = arg.Get("src_x").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("src_y")) {
+            throw Napi::TypeError::New(env, "copy_area requires a src_y");
+        }
+        src_y = arg.Get("src_y").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("dst_x")) {
+            throw Napi::TypeError::New(env, "copy_area requires a dst_x");
+        }
+        dst_x = arg.Get("dst_x").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("dst_y")) {
+            throw Napi::TypeError::New(env, "copy_area requires a dst_y");
+        }
+        dst_y = arg.Get("dst_y").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("width")) {
+            throw Napi::TypeError::New(env, "copy_area requires a width");
+        }
+        width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("height")) {
+            throw Napi::TypeError::New(env, "copy_area requires a height");
+        }
+        height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+        xcb_copy_area(wm->conn, src_d, dst_d, gc, src_x, src_y, dst_x, dst_y, width, height);
+
+        return env.Undefined();
+    }));
+
     xcb.Set("flush", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

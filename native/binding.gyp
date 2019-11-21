@@ -14,10 +14,14 @@
 	],
 	"sources": [
 	    "cppsrc/main.cc",
-	    "cppsrc/owm.cc"
+	    "cppsrc/owm.cc",
+	    "cppsrc/graphics.cc"
 	],
 	'include_dirs': [
-	    "<!@(node -p \"require('node-addon-api').include\")"
+	    "<!@(node -p \"require('node-addon-api').include\")",
+	    "<!@(pkg-config cairo --cflags-only-I | sed s/-I//g)",
+	    "<!@(pkg-config libpng --cflags-only-I | sed s/-I//g)",
+	    "<!@(pkg-config pangocairo --cflags-only-I | sed s/-I//g)",
 	],
 	'libraries': [
 	    "-lxcb",
@@ -28,7 +32,11 @@
 	    "-lxcb-keysyms",
 	    "-lxcb-randr",
 	    "-lxkbcommon",
-	    "-lxkbcommon-x11"
+	    "-lxkbcommon-x11",
+	    "<!@(pkg-config pixman-1 --libs)",
+	    "<!@(pkg-config cairo --libs)",
+	    "<!@(pkg-config libpng --libs)",
+	    "<!@(pkg-config pangocairo --libs)",
 	],
 	'dependencies': [
 	    "<!(node -p \"require('node-addon-api').gyp\")"

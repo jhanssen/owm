@@ -1,4 +1,5 @@
 #include "owm.h"
+#include "graphics.h"
 #include <atomic>
 #include <fcntl.h>
 #include <unistd.h>
@@ -650,6 +651,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
     Napi::Object obj = Napi::Object::New(env);
     obj.Set("xcb", owm::makeXcb(env, wm));
     obj.Set("xkb", owm::makeXkb(env, wm));
+    obj.Set("graphics", graphics::make(env));
     obj.Set("wm", owm::Wrap<std::shared_ptr<owm::WM> >::wrap(env, wm));
     obj.Set("ewmh", Napi::Number::New(env, data.ewmhWindow));
 

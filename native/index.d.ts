@@ -548,6 +548,18 @@ interface PolyRectangleArgs {
     readonly rects: Rectangle | Rectangle[];
 }
 
+interface CopyAreaArgs {
+    readonly src_d: number;
+    readonly dst_d: number;
+    readonly gc: number;
+    readonly src_x: number;
+    readonly src_y: number;
+    readonly dst_x: number;
+    readonly dst_y: number;
+    readonly width: number;
+    readonly height: number;
+}
+
 interface QueryPointerReply {
     readonly same_screen: number;
     readonly root: number;
@@ -578,6 +590,87 @@ interface EWMHEnums {
     readonly moveResizeWindow: {[key: string]: number};
     readonly moveResizeDirection: {[key: string]: number};
     readonly stateAction: {[key: string]: number};
+}
+
+export namespace Graphics {
+    interface CreateArgs {
+        readonly drawable: number;
+        readonly width: number;
+        readonly height: number;
+    }
+    interface SetSourceRGBAArgs {
+        readonly r: number;
+        readonly g: number;
+        readonly b: number;
+        readonly a: number;
+    }
+    interface PathArcArgs {
+        readonly xc: number;
+        readonly yc: number;
+        readonly radius: number;
+        readonly angle1: number;
+        readonly angle2: number;
+    }
+    interface PathCurveArgs {
+        readonly x1: number;
+        readonly y1: number;
+        readonly x2: number;
+        readonly y2: number;
+        readonly x3: number;
+        readonly y3: number;
+    }
+    interface PathXYArgs {
+        readonly x: number;
+        readonly y: number;
+    }
+    interface PathRectangleArgs {
+        readonly x: number;
+        readonly y: number;
+        readonly width: number;
+        readonly height: number;
+    }
+
+    export enum LineJoin {
+        Miter,
+        Round,
+        Bevel
+    }
+    export enum LineCap {
+        Butt,
+        Round,
+        Square
+    }
+    export interface StrokePathArgs {
+        lineWidth: number;
+        lineJoin: LineJoin;
+        lineCap: LineCap;
+    }
+
+    export interface Context {}
+    export interface Path {}
+    export interface Surface {}
+    export interface Engine {
+        create(wm: OWM.WM, args: CreateArgs): Context;
+        destroy(ctx: Context): void;
+        save(ctx: Context): void;
+        restore(ctx: Context): void;
+        createPath(ctx: Context): Path;
+        destroyPath(path: Path): void;
+        createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
+        setSourceSurface(ctx: Context, surface: Surface): void;
+        setSourceRGBA(ctx: Context, args: SetSourceRGBAArgs): void;
+        strokePath(ctx: Context, path: Path, args: StrokePathArgs): void;
+
+        pathClose(path: Path): void;
+        pathArc(path: Path, args: PathArcArgs): void;
+        pathArgNegative(path: Path, args: PathArcArgs): void;
+        pathCurveTo(path: Path, args: PathCurveArgs): void;
+        pathLineTo(path: Path, args: PathXYArgs): void;
+        pathMoveTo(path: Path, args: PathXYArgs): void;
+        pathRectangle(path: Path, args: PathRectangleArgs): void;
+        // this is also done implicitly by strokePath
+        pathFinalize(path: Path): void;
+    }
 }
 
 export namespace OWM {
@@ -622,6 +715,7 @@ export namespace OWM {
         change_gc(wm: OWM.WM, args: ChangeGCArgs): number | undefined;
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
+        copy_area(wm: OWM.WM, args: CopyAreaArgs): void;
         poly_fill_rectangle(wm: OWM.WM, args: PolyRectangleArgs): void;
         query_pointer(wm: OWM.WM, window?: number): QueryPointerReply;
         grab_button(wm: OWM.WM, args: GrabButtonArgs): void;
