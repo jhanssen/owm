@@ -660,7 +660,7 @@ export namespace Graphics {
         destroySurface(surface: Surface): void;
         setSourceSurface(ctx: Context, surface: Surface): void;
         setSourceRGBA(ctx: Context, args: SetSourceRGBAArgs): void;
-        stroke(ctx: Context, args: StrokePathArgs): void;
+        stroke(ctx: Context, args?: StrokePathArgs): void;
         fill(ctx: Context, path?: Context): void;
         paint(ctx: Context): void;
 

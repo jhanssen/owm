@@ -369,32 +369,34 @@ Napi::Object make(napi_env env)
     graphics.Set("stroke", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.stroke takes two arguments");
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.stroke takes one argument");
         }
 
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto args = info[1].As<Napi::Object>();
 
         cairo_save(cairo->cairo);
 
-        if (args.Has("path")) {
-            auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(args.Get("path").As<Napi::Object>());
-            cairo_append_path(cairo->cairo, path->finalizePath());
-        }
+        if (info.Length() > 1 && info[1].IsObject()) {
+            auto args = info[1].As<Napi::Object>();
+            if (args.Has("path")) {
+                auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(args.Get("path").As<Napi::Object>());
+                cairo_append_path(cairo->cairo, path->finalizePath());
+            }
 
-        // extract stroke params
-        if (args.Has("lineWidth")) {
-            cairo_set_line_width(cairo->cairo, args.Get("lineWidth").As<Napi::Number>().DoubleValue());
-        }
-        if (args.Has("lineJoin")) {
-            cairo_set_line_join(cairo->cairo, static_cast<cairo_line_join_t>(args.Get("lineWidth").As<Napi::Number>().Uint32Value()));
-        }
-        if (args.Has("lineCap")) {
-            cairo_set_line_join(cairo->cairo, static_cast<cairo_line_join_t>(args.Get("lineCap").As<Napi::Number>().Uint32Value()));
-        }
-        if (args.Has("dash")) {
-            // TODO
+            // extract stroke params
+            if (args.Has("lineWidth")) {
+                cairo_set_line_width(cairo->cairo, args.Get("lineWidth").As<Napi::Number>().DoubleValue());
+            }
+            if (args.Has("lineJoin")) {
+                cairo_set_line_join(cairo->cairo, static_cast<cairo_line_join_t>(args.Get("lineWidth").As<Napi::Number>().Uint32Value()));
+            }
+            if (args.Has("lineCap")) {
+                cairo_set_line_join(cairo->cairo, static_cast<cairo_line_join_t>(args.Get("lineCap").As<Napi::Number>().Uint32Value()));
+            }
+            if (args.Has("dash")) {
+                // TODO
+            }
         }
 
         cairo_stroke(cairo->cairo);
