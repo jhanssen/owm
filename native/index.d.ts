@@ -660,7 +660,9 @@ export namespace Graphics {
         destroySurface(surface: Surface): void;
         setSourceSurface(ctx: Context, surface: Surface): void;
         setSourceRGBA(ctx: Context, args: SetSourceRGBAArgs): void;
-        strokePath(ctx: Context, path: Path, args: StrokePathArgs): void;
+        stroke(ctx: Context, path: Path, args: StrokePathArgs): void;
+        fill(ctx: Context, path: Path): void;
+        paint(ctx: Context) void;
 
         pathClose(path: Path): void;
         pathArc(path: Path, args: PathArcArgs): void;
@@ -669,7 +671,7 @@ export namespace Graphics {
         pathLineTo(path: Path, args: PathXYArgs): void;
         pathMoveTo(path: Path, args: PathXYArgs): void;
         pathRectangle(path: Path, args: PathRectangleArgs): void;
-        // this is also done implicitly by strokePath
+        // this is also done implicitly by stroke
         pathFinalize(path: Path): void;
     }
 }
