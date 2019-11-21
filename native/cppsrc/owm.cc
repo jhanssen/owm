@@ -1252,6 +1252,38 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         return Napi::Number::New(env, win);
     }));
 
+    xcb.Set("create_pixmap", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "create_pixmap requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        uv_async_send(wm->asyncFlush);
+
+        uint32_t width, height;
+
+        if (!arg.Has("width")) {
+            throw Napi::TypeError::New(env, "create_pixmap needs a width");
+        }
+        width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("height")) {
+            throw Napi::TypeError::New(env, "create_pixmap needs a height");
+        }
+        height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+        auto screen = wm->defaultScreen;
+
+        auto pm = xcb_generate_id(wm->conn);
+        xcb_create_pixmap(wm->conn, screen->root_depth, pm, screen->root, width, height);
+
+        return Napi::Number::New(env, pm);
+    }));
+
     xcb.Set("flush", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

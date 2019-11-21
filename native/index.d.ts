@@ -354,6 +354,11 @@ interface CreateWindowArgs {
     readonly y?: number;
 }
 
+interface CreatePixmapArgs {
+    readonly width: number;
+    readonly height: number;
+}
+
 interface ReparentWindowArgs {
     readonly parent: number;
     readonly window: number;
@@ -604,6 +609,7 @@ export namespace OWM {
         configure_window(wm: OWM.WM, args: ConfigureWindowArgs): void;
         change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
+        create_pixmap(wm: OWM.WM, args: CreatePixmapArgs): number;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
         get_property(wm: OWM.WM, args: GetPropertyArgs): GetPropertyReply | undefined;
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
