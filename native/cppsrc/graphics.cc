@@ -94,30 +94,30 @@ Napi::Object make(napi_env env)
         auto env = info.Env();
 
         if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.create requires two arguments");
+            throw Napi::TypeError::New(env, "cairo.createFromDrawable requires two arguments");
         }
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
         if (!arg.Has("drawable")) {
-            throw Napi::TypeError::New(env, "cairo.create requires a drawable");
+            throw Napi::TypeError::New(env, "cairo.createFromDrawable requires a drawable");
         }
         const auto drawable = arg.Get("window").As<Napi::Number>().Uint32Value();
 
         if (!arg.Has("width")) {
-            throw Napi::TypeError::New(env, "cairo.create requires a width");
+            throw Napi::TypeError::New(env, "cairo.createFromDrawable requires a width");
         }
         const auto width = arg.Get("width").As<Napi::Number>().Uint32Value();
 
         if (!arg.Has("height")) {
-            throw Napi::TypeError::New(env, "cairo.create requires a height");
+            throw Napi::TypeError::New(env, "cairo.createFromDrawable requires a height");
         }
         const auto height = arg.Get("height").As<Napi::Number>().Uint32Value();
 
         auto visual = find_visual(wm->conn, wm->defaultScreen->root_visual);
         if (!visual) {
-            throw Napi::TypeError::New(env, "cairo.create couldn't find root visual from id");
+            throw Napi::TypeError::New(env, "cairo.createFromDrawable couldn't find root visual from id");
         }
 
         auto surface = cairo_xcb_surface_create(wm->conn, drawable, visual, width, height);
@@ -132,13 +132,13 @@ Napi::Object make(napi_env env)
         auto env = info.Env();
 
         if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.createPath takes one argument");
+            throw Napi::TypeError::New(env, "cairo.createFromContext takes one argument");
         }
 
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!c->cairo) {
-            throw Napi::TypeError::New(env, "cairo.createPath invalid cairo");
+            throw Napi::TypeError::New(env, "cairo.createFromContext invalid cairo");
         }
 
         auto nc = std::make_shared<Cairo>(c);
