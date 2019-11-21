@@ -1297,7 +1297,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         uv_async_send(wm->asyncFlush);
 
         uint32_t src_d, dst_d, gc;
-        uint32_t src_x, src_y, dst_x, dst_y;
+        int32_t src_x, src_y, dst_x, dst_y;
         uint32_t width, height;
 
         if (!arg.Has("src_d")) {
@@ -1318,22 +1318,22 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         if (!arg.Has("src_x")) {
             throw Napi::TypeError::New(env, "copy_area requires a src_x");
         }
-        src_x = arg.Get("src_x").As<Napi::Number>().Uint32Value();
+        src_x = arg.Get("src_x").As<Napi::Number>().Int32Value();
 
         if (!arg.Has("src_y")) {
             throw Napi::TypeError::New(env, "copy_area requires a src_y");
         }
-        src_y = arg.Get("src_y").As<Napi::Number>().Uint32Value();
+        src_y = arg.Get("src_y").As<Napi::Number>().Int32Value();
 
         if (!arg.Has("dst_x")) {
             throw Napi::TypeError::New(env, "copy_area requires a dst_x");
         }
-        dst_x = arg.Get("dst_x").As<Napi::Number>().Uint32Value();
+        dst_x = arg.Get("dst_x").As<Napi::Number>().Int32Value();
 
         if (!arg.Has("dst_y")) {
             throw Napi::TypeError::New(env, "copy_area requires a dst_y");
         }
-        dst_y = arg.Get("dst_y").As<Napi::Number>().Uint32Value();
+        dst_y = arg.Get("dst_y").As<Napi::Number>().Int32Value();
 
         if (!arg.Has("width")) {
             throw Napi::TypeError::New(env, "copy_area requires a width");
