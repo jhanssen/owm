@@ -9,64 +9,50 @@ using WM = owm::WM;
 
 struct Cairo
 {
-    Cairo(cairo_surface_t* s, cairo_t* c, const std::shared_ptr<WM>& w)
-        : surface(s), cairo(c), wm(w)
+    Cairo(cairo_surface_t* s, cairo_t* c)
+        : surface(s), path(nullptr), cairo(c), modified(false)
+    {
+    }
+    Cairo(const std::shared_ptr<Cairo>& other)
+        : surface(cairo_surface_reference(other->surface)),
+          cairo(cairo_create(surface)), modified(false)
     {
     }
     ~Cairo()
     {
         if (cairo) {
             cairo_destroy(cairo);
-            cairo_surface_destroy(surface);
         }
-    }
-
-    cairo_surface_t* surface;
-    cairo_t* cairo;
-    std::weak_ptr<WM> wm;
-};
-
-struct Path
-{
-    Path(const std::shared_ptr<Cairo>& parent)
-        : wm(parent->wm)
-    {
-        cairo = cairo_create(parent->surface);
-        path = nullptr;
-    }
-    ~Path()
-    {
-        if (cairo) {
-            cairo_destroy(cairo);
+        if (surface) {
+            cairo_surface_destroy(surface);
         }
         if (path) {
             cairo_path_destroy(path);
         }
     }
 
-    cairo_path_t* finalize()
+    cairo_path_t* finalizePath()
     {
-        if (path) {
-            return path;
-        }
-        if (cairo) {
+        if (modified || !path) {
+            if (path) {
+                cairo_path_destroy(path);
+            }
             path = cairo_copy_path(cairo);
-            cairo_destroy(cairo);
-            cairo = nullptr;
-            return path;
+            modified = false;
         }
-        return nullptr;
+        return path;
     }
 
-    cairo_t* cairo;
+    cairo_surface_t* surface;
     cairo_path_t* path;
-    std::weak_ptr<WM> wm;
+    cairo_t* cairo;
+    bool modified;
 };
 
 struct Surface
 {
     Surface(cairo_surface_t* s, const std::shared_ptr<Cairo>& parent)
-        : surface(s), wm(parent->wm)
+        : surface(s)
     {
     }
     ~Surface()
@@ -83,7 +69,6 @@ struct Surface
     };
 
     cairo_surface_t* surface;
-    std::weak_ptr<WM> wm;
 };
 
 static inline xcb_visualtype_t* find_visual(xcb_connection_t* c, xcb_visualid_t visual)
@@ -105,7 +90,7 @@ Napi::Object make(napi_env env)
 {
     Napi::Object graphics = Napi::Object::New(env);
 
-    graphics.Set("create", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+    graphics.Set("createFromDrawable", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
         if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
@@ -138,9 +123,27 @@ Napi::Object make(napi_env env)
         auto surface = cairo_xcb_surface_create(wm->conn, drawable, visual, width, height);
         auto cairo = cairo_create(surface);
 
-        auto c = std::make_shared<Cairo>(surface, cairo, wm);
+        auto c = std::make_shared<Cairo>(surface, cairo);
 
         return Wrap<std::shared_ptr<Cairo> >::wrap(env, c);
+    }));
+
+    graphics.Set("createFromContext", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.createPath takes one argument");
+        }
+
+        auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (!c->cairo) {
+            throw Napi::TypeError::New(env, "cairo.createPath invalid cairo");
+        }
+
+        auto nc = std::make_shared<Cairo>(c);
+
+        return Wrap<std::shared_ptr<Cairo> >::wrap(env, nc);
     }));
 
     graphics.Set("destroy", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
@@ -156,50 +159,33 @@ Napi::Object make(napi_env env)
             return env.Undefined();
         }
 
+        if (c->path) {
+            cairo_path_destroy(c->path);
+            c->path = nullptr;
+        }
         cairo_destroy(c->cairo);
         cairo_surface_destroy(c->surface);
-        c->wm.reset();
         c->cairo = nullptr;
         c->surface = nullptr;
 
         return env.Undefined();
     }));
 
-    graphics.Set("createPath", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+    graphics.Set("appendPath", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.createPath takes one argument");
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.appendPath takes two arguments");
         }
 
-        auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        auto dc = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        auto sc = Wrap<std::shared_ptr<Cairo> >::unwrap(info[1]);
 
-        if (!c->cairo) {
-            throw Napi::TypeError::New(env, "cairo.createPath invalid cairo");
+        if (!dc->cairo || !sc->cairo) {
+            return env.Undefined();
         }
 
-        auto p = std::make_shared<Path>(c);
-
-        return Wrap<std::shared_ptr<Path> >::wrap(env, p);
-    }));
-
-    graphics.Set("destroyPath", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.destroyPath takes one argument");
-        }
-
-        auto c = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
-
-        if (c->cairo) {
-            cairo_destroy(c->cairo);
-            c->cairo = nullptr;
-        }
-        if (c->path) {
-            cairo_path_destroy(c->path);
-            c->path = nullptr;
-        }
+        cairo_append_path(dc->cairo, sc->finalizePath());
 
         return env.Undefined();
     }));
@@ -383,16 +369,19 @@ Napi::Object make(napi_env env)
     graphics.Set("stroke", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 3 || !info[0].IsObject() || !info[1].IsObject() || !info[2].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.strokePath takes three arguments");
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.stroke takes two arguments");
         }
 
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[1]);
-        auto args = info[2].As<Napi::Object>();
+        auto args = info[1].As<Napi::Object>();
 
         cairo_save(cairo->cairo);
-        cairo_append_path(cairo->cairo, path->finalize());
+
+        if (args.Has("path")) {
+            auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(args.Get("path").As<Napi::Object>());
+            cairo_append_path(cairo->cairo, path->finalizePath());
+        }
 
         // extract stroke params
         if (args.Has("lineWidth")) {
@@ -417,14 +406,16 @@ Napi::Object make(napi_env env)
     graphics.Set("fill", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.strokePath takes two arguments");
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.fill takes one argument");
         }
 
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[1]);
 
-        cairo_append_path(cairo->cairo, path->finalize());
+        if (info.Length() > 1 && info[1].IsObject()) {
+            auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[1]);
+            cairo_append_path(cairo->cairo, path->finalizePath());
+        }
 
         cairo_fill(cairo->cairo);
 
@@ -438,31 +429,14 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathClose takes one argument");
         }
 
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
+        auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!path->cairo) {
             throw Napi::TypeError::New(env, "cairo.pathClose path finalized?");
         }
 
+        path->modified = true;
         cairo_close_path(path->cairo);
-
-        return env.Undefined();
-    }));
-
-    graphics.Set("pathFinalize", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.pathFinalize takes one argument");
-        }
-
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
-
-        if (!path->cairo) {
-            throw Napi::TypeError::New(env, "cairo.pathFinalize path finalized?");
-        }
-
-        path->finalize();
 
         return env.Undefined();
     }));
@@ -474,7 +448,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathArc takes two arguments");
         }
 
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
+        auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
@@ -508,6 +482,7 @@ Napi::Object make(napi_env env)
         }
         angle2 = arg.Get("angle2").As<Napi::Number>().DoubleValue();
 
+        path->modified = true;
         cairo_arc(path->cairo, xc, yc, radius, angle1, angle2);
 
         return env.Undefined();
@@ -520,7 +495,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathArcNegative takes two arguments");
         }
 
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
+        auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
@@ -554,6 +529,7 @@ Napi::Object make(napi_env env)
         }
         angle2 = arg.Get("angle2").As<Napi::Number>().DoubleValue();
 
+        path->modified = true;
         cairo_arc_negative(path->cairo, xc, yc, radius, angle1, angle2);
 
         return env.Undefined();
@@ -566,7 +542,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathCurveTo takes two arguments");
         }
 
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
+        auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
@@ -605,6 +581,7 @@ Napi::Object make(napi_env env)
         }
         y3 = arg.Get("y3").As<Napi::Number>().DoubleValue();
 
+        path->modified = true;
         cairo_curve_to(path->cairo, x1, y1, x2, y2, x3, y3);
 
         return env.Undefined();
@@ -617,7 +594,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathLineTo takes two arguments");
         }
 
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
+        auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
@@ -636,6 +613,7 @@ Napi::Object make(napi_env env)
         }
         y = arg.Get("y").As<Napi::Number>().DoubleValue();
 
+        path->modified = true;
         cairo_line_to(path->cairo, x, y);
 
         return env.Undefined();
@@ -648,7 +626,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathMoveTo takes two arguments");
         }
 
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
+        auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
@@ -667,6 +645,7 @@ Napi::Object make(napi_env env)
         }
         y = arg.Get("y").As<Napi::Number>().DoubleValue();
 
+        path->modified = true;
         cairo_move_to(path->cairo, x, y);
 
         return env.Undefined();
@@ -679,7 +658,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathRectangle takes two arguments");
         }
 
-        auto path = Wrap<std::shared_ptr<Path> >::unwrap(info[0]);
+        auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
         auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
@@ -708,6 +687,7 @@ Napi::Object make(napi_env env)
         }
         height = arg.Get("height").As<Napi::Number>().DoubleValue();
 
+        path->modified = true;
         cairo_rectangle(path->cairo, x, y, width, height);
 
         return env.Undefined();

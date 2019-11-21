@@ -593,7 +593,7 @@ interface EWMHEnums {
 }
 
 export namespace Graphics {
-    interface CreateArgs {
+    interface CreateFromDrawableArgs {
         readonly drawable: number;
         readonly width: number;
         readonly height: number;
@@ -641,38 +641,36 @@ export namespace Graphics {
         Square
     }
     export interface StrokePathArgs {
-        lineWidth: number;
-        lineJoin: LineJoin;
-        lineCap: LineCap;
+        path?: Context;
+        lineWidth?: number;
+        lineJoin?: LineJoin;
+        lineCap?: LineCap;
     }
 
     export interface Context {}
-    export interface Path {}
     export interface Surface {}
     export interface Engine {
-        create(wm: OWM.WM, args: CreateArgs): Context;
+        createFromDrawable(wm: OWM.WM, args: CreateFromDrawableArgs): Context;
+        createFromContext(ctx: Context): Context;
         destroy(ctx: Context): void;
         save(ctx: Context): void;
         restore(ctx: Context): void;
-        createPath(ctx: Context): Path;
-        destroyPath(path: Path): void;
+        appendPath(ctx: Context): void;
         createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
         destroySurface(surface: Surface): void;
         setSourceSurface(ctx: Context, surface: Surface): void;
         setSourceRGBA(ctx: Context, args: SetSourceRGBAArgs): void;
-        stroke(ctx: Context, path: Path, args: StrokePathArgs): void;
-        fill(ctx: Context, path: Path): void;
-        paint(ctx: Context) void;
+        stroke(ctx: Context, args: StrokePathArgs): void;
+        fill(ctx: Context, path?: Context): void;
+        paint(ctx: Context): void;
 
-        pathClose(path: Path): void;
-        pathArc(path: Path, args: PathArcArgs): void;
-        pathArgNegative(path: Path, args: PathArcArgs): void;
-        pathCurveTo(path: Path, args: PathCurveArgs): void;
-        pathLineTo(path: Path, args: PathXYArgs): void;
-        pathMoveTo(path: Path, args: PathXYArgs): void;
-        pathRectangle(path: Path, args: PathRectangleArgs): void;
-        // this is also done implicitly by stroke
-        pathFinalize(path: Path): void;
+        pathClose(ctx: Context): void;
+        pathArc(ctx: Context, args: PathArcArgs): void;
+        pathArgNegative(ctx: Context, args: PathArcArgs): void;
+        pathCurveTo(ctx: Context, args: PathCurveArgs): void;
+        pathLineTo(ctx: Context, args: PathXYArgs): void;
+        pathMoveTo(ctx: Context, args: PathXYArgs): void;
+        pathRectangle(ctx: Context, args: PathRectangleArgs): void;
     }
 }
 
