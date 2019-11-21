@@ -293,6 +293,23 @@ Napi::Object make(napi_env env)
         return Wrap<std::shared_ptr<Surface> >::wrap(env, s);
     }));
 
+    graphics.Set("destroySurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.destroySurface takes one argument");
+        }
+
+        auto c = Wrap<std::shared_ptr<Surface> >::unwrap(info[0]);
+
+        if (c->surface) {
+            cairo_surface_destroy(c->surface);
+            c->surface = nullptr;
+        }
+
+        return env.Undefined();
+    }));
+
     graphics.Set("setSourceSurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

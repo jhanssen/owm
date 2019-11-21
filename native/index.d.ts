@@ -657,6 +657,7 @@ export namespace Graphics {
         createPath(ctx: Context): Path;
         destroyPath(path: Path): void;
         createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
+        destroySurface(surface: Surface): void;
         setSourceSurface(ctx: Context, surface: Surface): void;
         setSourceRGBA(ctx: Context, args: SetSourceRGBAArgs): void;
         strokePath(ctx: Context, path: Path, args: StrokePathArgs): void;
