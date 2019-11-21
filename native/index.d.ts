@@ -762,6 +762,7 @@ interface Start
     readonly wm: OWM.WM;
     readonly xcb: OWM.XCB;
     readonly xkb: OWM.XKB;
+    readonly graphics: Graphics.Engine;
     readonly ewmh: number;
     readonly windows: XCB.Window[];
     readonly screens: OWM.Screens;
