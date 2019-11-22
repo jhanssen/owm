@@ -3,7 +3,6 @@
 #include <cairo-xcb.h>
 #include <pango/pangocairo.h>
 
-using namespace graphics;
 template<typename T>
 using Wrap = owm::Wrap<T>;
 using WM = owm::WM;
@@ -137,6 +136,7 @@ static inline xcb_visualtype_t* find_visual(xcb_connection_t* c, xcb_visualid_t 
     return nullptr;
 }
 
+namespace graphics {
 Napi::Object make(napi_env env)
 {
     Napi::Object graphics = Napi::Object::New(env);
@@ -154,7 +154,7 @@ Napi::Object make(napi_env env)
         if (!arg.Has("drawable")) {
             throw Napi::TypeError::New(env, "cairo.createFromDrawable requires a drawable");
         }
-        const auto drawable = arg.Get("window").As<Napi::Number>().Uint32Value();
+        const auto drawable = arg.Get("drawable").As<Napi::Number>().Uint32Value();
 
         if (!arg.Has("width")) {
             throw Napi::TypeError::New(env, "cairo.createFromDrawable requires a width");
@@ -381,37 +381,35 @@ Napi::Object make(napi_env env)
         return env.Undefined();
     }));
 
-    graphics.Set("setSourceRGBA", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+    graphics.Set("setSourceRGB", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.setSourceRGBA takes two arguments");
+        if (info.Length() < 4 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber() || !info[3].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.setSourceRGB takes four arguments");
         }
 
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
+        const double r = info[1].As<Napi::Number>().DoubleValue();
+        const double g = info[2].As<Napi::Number>().DoubleValue();
+        const double b = info[3].As<Napi::Number>().DoubleValue();
 
-        double r, g, b, a;
+        cairo_set_source_rgb(cairo->cairo, r, g, b);
 
-        if (!arg.Has("r")) {
-            throw Napi::TypeError::New(env, "cairo.setSourceRGBA requires a r");
+        return env.Undefined();
+    }));
+
+    graphics.Set("setSourceRGBA", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 5 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber() || !info[3].IsNumber() || !info[4].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.setSourceRGBA takes five arguments");
         }
-        r = arg.Get("r").As<Napi::Number>().DoubleValue();
 
-        if (!arg.Has("g")) {
-            throw Napi::TypeError::New(env, "cairo.setSourceRGBA requires a g");
-        }
-        g = arg.Get("g").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("b")) {
-            throw Napi::TypeError::New(env, "cairo.setSourceRGBA requires a b");
-        }
-        b = arg.Get("b").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("a")) {
-            throw Napi::TypeError::New(env, "cairo.setSourceRGBA requires a a");
-        }
-        a = arg.Get("a").As<Napi::Number>().DoubleValue();
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        const double r = info[1].As<Napi::Number>().DoubleValue();
+        const double g = info[2].As<Napi::Number>().DoubleValue();
+        const double b = info[3].As<Napi::Number>().DoubleValue();
+        const double a = info[4].As<Napi::Number>().DoubleValue();
 
         cairo_set_source_rgba(cairo->cairo, r, g, b, a);
 
@@ -1115,3 +1113,4 @@ Napi::Object make(napi_env env)
 
     return graphics;
 }
+} // namespace graphics

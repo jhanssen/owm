@@ -1,4 +1,4 @@
-import { XCB, OWM } from "native";
+import { XCB, OWM, Graphics } from "native";
 import { EWMH } from "./ewmh";
 import { Policy } from "./policy";
 import { Keybindings, KeybindingsMode } from "./keybindings";
@@ -99,6 +99,7 @@ export class OWMLib {
     private _activeColor: number;
     private _inactiveColor: number;
     private _groups: Map<number, ClientGroup>;
+    private _engine: Graphics.Engine;
     private _options: OWMOptions;
     private _moveModifier: string;
     private _moveModifierMask: number;
@@ -111,11 +112,12 @@ export class OWMLib {
     public readonly KeybindingsMode = KeybindingsMode;
     public readonly makePixel = makePixel;
 
-    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, options: OWMOptions) {
+    constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, engine: Graphics.Engine, options: OWMOptions) {
         this._wm = wm;
         this._xcb = xcb;
         this._xkb = xkb;
         this._options = options;
+        this._engine = engine;
 
         this._log = new ConsoleLogger(options.level);
         this._root = 0;
@@ -236,6 +238,10 @@ export class OWMLib {
 
     get xkb() {
         return this._xkb;
+    }
+
+    get engine() {
+        return this._engine;
     }
 
     get ewmh() {
@@ -604,10 +610,15 @@ export class OWMLib {
     expose(event: XCB.Expose) {
         if (event.count !== 0)
             return;
-        const client = this._clientsByFrame.get(event.window);
-        if (!client)
+        let client = this._clientsByFrame.get(event.window);
+        if (!client) {
+            client = this._clientsByWindow.get(event.window);
+            if (client) {
+                this._events.emit("clientExpose", client);
+            }
             return;
-        this._log.info("expose", client.frame, client.framePixel, client.frameGC);
+        }
+        this._log.info("frame expose", client.frame, client.framePixel, client.frameGC);
         const gc = client.frameGC;
         if (gc === undefined)
             return;

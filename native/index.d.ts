@@ -598,12 +598,6 @@ export namespace Graphics {
         readonly width: number;
         readonly height: number;
     }
-    interface SetSourceRGBAArgs {
-        readonly r: number;
-        readonly g: number;
-        readonly b: number;
-        readonly a: number;
-    }
     interface PathArcArgs {
         readonly xc: number;
         readonly yc: number;
@@ -670,7 +664,8 @@ export namespace Graphics {
         restore(ctx: Context): void;
         appendPath(ctx: Context): void;
         setSourceSurface(ctx: Context, surface: Surface): void;
-        setSourceRGBA(ctx: Context, args: SetSourceRGBAArgs): void;
+        setSourceRGB(ctx: Context, r: number, g: number, b: number): void;
+        setSourceRGBA(ctx: Context, r: number, g: number, b: number, a: number): void;
         drawText(ctx: Context, txt: Text): void;
         stroke(ctx: Context, args?: StrokePathArgs): void;
         fill(ctx: Context, path?: Context): void;

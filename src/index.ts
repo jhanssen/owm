@@ -106,7 +106,7 @@ if (logLevel !== undefined) {
     }
 }
 
-lib = new OWMLib(data.wm, data.xcb, data.xkb, {
+lib = new OWMLib(data.wm, data.xcb, data.xkb, data.graphics, {
     display: display,
     level: level,
     killTimeout: options.int("kill-timeout", 1000)
