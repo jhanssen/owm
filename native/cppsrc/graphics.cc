@@ -198,7 +198,7 @@ Napi::Object make(napi_env env)
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!c->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.destroy no cairo?");
         }
 
         if (c->path) {
@@ -224,7 +224,7 @@ Napi::Object make(napi_env env)
         auto sc = Wrap<std::shared_ptr<Cairo> >::unwrap(info[1]);
 
         if (!dc->cairo || !sc->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.appendPath no cairo?");
         }
 
         cairo_append_path(dc->cairo, sc->finalizePath());
@@ -242,7 +242,7 @@ Napi::Object make(napi_env env)
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!c->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.save no cairo?");
         }
 
         cairo_save(c->cairo);
@@ -260,7 +260,7 @@ Napi::Object make(napi_env env)
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!c->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.restore no cairo?");
         }
 
         cairo_restore(c->cairo);
@@ -458,7 +458,7 @@ Napi::Object make(napi_env env)
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!c->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.paint no cairo?");
         }
 
         cairo_paint(c->cairo);
@@ -478,7 +478,7 @@ Napi::Object make(napi_env env)
         const double ty = info[2].As<Napi::Number>().DoubleValue();
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.translate no cairo?");
         }
 
         cairo_translate(cairo->cairo, tx, ty);
@@ -498,7 +498,7 @@ Napi::Object make(napi_env env)
         const double sy = info[2].As<Napi::Number>().DoubleValue();
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.scale no cairo?");
         }
 
         cairo_scale(cairo->cairo, sx, sy);
@@ -517,7 +517,7 @@ Napi::Object make(napi_env env)
         const double a = info[1].As<Napi::Number>().DoubleValue();
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.rotate no cairo?");
         }
 
         cairo_rotate(cairo->cairo, a);
@@ -536,7 +536,7 @@ Napi::Object make(napi_env env)
         auto arg = info[1].As<Napi::Object>();
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.transform no cairo?");
         }
 
         // ### should probably expose cairo_matrix_t as a wrapped object
@@ -588,7 +588,7 @@ Napi::Object make(napi_env env)
         auto arg = info[1].As<Napi::Object>();
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.setMatrix no cairo?");
         }
 
         // ### should probably expose cairo_matrix_t as a wrapped object
@@ -639,7 +639,7 @@ Napi::Object make(napi_env env)
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.getMatrix no cairo?");
         }
 
         // ### should probably expose cairo_matrix_t as a wrapped object
@@ -667,7 +667,7 @@ Napi::Object make(napi_env env)
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.identityMatrix no cairo?");
         }
 
         cairo_identity_matrix(cairo->cairo);
@@ -956,7 +956,7 @@ Napi::Object make(napi_env env)
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!cairo->cairo) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.createText no cairo?");
         }
 
         auto txt = std::make_shared<Pango>(cairo);
@@ -1026,7 +1026,7 @@ Napi::Object make(napi_env env)
         const auto pc = p->cairo.lock();
 
         if (!pc->cairo || !p->layout) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.textMetrics no cairo?");
         }
 
         if (p->cairoId != pc->transformId) {
@@ -1056,7 +1056,7 @@ Napi::Object make(napi_env env)
         auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[1]);
 
         if (!c->cairo || !p->layout) {
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "cairo.drawText no cairo?");
         }
 
         const auto pc = p->cairo.lock();
