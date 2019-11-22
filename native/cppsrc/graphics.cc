@@ -29,14 +29,14 @@ struct Cairo
     }
     ~Cairo()
     {
+        if (path) {
+            cairo_path_destroy(path);
+        }
         if (cairo) {
             cairo_destroy(cairo);
         }
         if (surface) {
             cairo_surface_destroy(surface);
-        }
-        if (path) {
-            cairo_path_destroy(path);
         }
     }
 
