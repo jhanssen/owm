@@ -552,10 +552,10 @@ interface CopyAreaArgs {
     readonly src_d: number;
     readonly dst_d: number;
     readonly gc: number;
-    readonly src_x: number;
-    readonly src_y: number;
-    readonly dst_x: number;
-    readonly dst_y: number;
+    readonly src_x?: number;
+    readonly src_y?: number;
+    readonly dst_x?: number;
+    readonly dst_y?: number;
     readonly width: number;
     readonly height: number;
 }
