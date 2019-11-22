@@ -10,12 +10,14 @@ using WM = owm::WM;
 
 struct Cairo
 {
-    Cairo(cairo_surface_t* s, cairo_t* c)
-        : surface(s), path(nullptr), cairo(c), transformId(0), pathChanged(false)
+    Cairo(cairo_surface_t* s, cairo_t* c, uint32_t w, uint32_t h)
+        : surface(s), path(nullptr), cairo(c), width(w), height(h),
+          transformId(0), pathChanged(false)
     {
     }
     Cairo(const std::shared_ptr<Cairo>& other)
-        : cairo(cairo_create(surface)), transformId(0), pathChanged(false)
+        : cairo(cairo_create(surface)), width(other->width), height(other->height),
+          transformId(0), pathChanged(false)
     {
         surface = cairo_surface_reference(other->surface);
     }
@@ -47,6 +49,7 @@ struct Cairo
     cairo_surface_t* surface;
     cairo_path_t* path;
     cairo_t* cairo;
+    uint32_t width, height;
     uint32_t transformId;
     bool pathChanged;
 };
@@ -165,7 +168,7 @@ Napi::Object make(napi_env env)
         auto surface = cairo_xcb_surface_create(wm->conn, drawable, visual, width, height);
         auto cairo = cairo_create(surface);
 
-        auto c = std::make_shared<Cairo>(surface, cairo);
+        auto c = std::make_shared<Cairo>(surface, cairo, width, height);
 
         return Wrap<std::shared_ptr<Cairo> >::wrap(env, c);
     }));
@@ -211,6 +214,25 @@ Napi::Object make(napi_env env)
         c->surface = nullptr;
 
         return env.Undefined();
+    }));
+
+    graphics.Set("size", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.destroy takes one argument");
+        }
+
+        auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (!c->cairo) {
+            throw Napi::TypeError::New(env, "cairo.destroy no cairo?");
+        }
+
+        auto ret = Napi::Object::New(env);
+        ret.Set("width", Napi::Number::New(env, c->width));
+        ret.Set("height", Napi::Number::New(env, c->height));
+        return ret;
     }));
 
     graphics.Set("appendPath", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
@@ -1041,7 +1063,6 @@ Napi::Object make(napi_env env)
         auto ret = Napi::Object::New(env);
         ret.Set("width", Napi::Number::New(env, w / PANGO_SCALE));
         ret.Set("height", Napi::Number::New(env, w / PANGO_SCALE));
-
         return ret;
     }));
 

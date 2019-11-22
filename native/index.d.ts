@@ -654,7 +654,7 @@ export namespace Graphics {
         readonly lineJoin?: LineJoin;
         readonly lineCap?: LineCap;
     }
-    export interface TextMetrics {
+    export interface Size {
         readonly width: number;
         readonly height: number;
     }
@@ -675,6 +675,7 @@ export namespace Graphics {
         stroke(ctx: Context, args?: StrokePathArgs): void;
         fill(ctx: Context, path?: Context): void;
         paint(ctx: Context): void;
+        size(ctx: Context): Size;
 
         createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
         destroySurface(surface: Surface): void;
@@ -699,7 +700,7 @@ export namespace Graphics {
         destroyText(txt: Text): void;
         textSetFont(txt: Text, font: string): void;
         textSetText(txt: Text, text: string): void;
-        textMetrics(txt: Text): TextMetrics;
+        textMetrics(txt: Text): Size;
     }
 }
 
