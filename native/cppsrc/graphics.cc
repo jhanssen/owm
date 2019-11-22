@@ -1,6 +1,7 @@
 #include "graphics.h"
 #include "owm.h"
 #include <cairo-xcb.h>
+#include <pango/pangocairo.h>
 
 using namespace graphics;
 template<typename T>
@@ -10,13 +11,13 @@ using WM = owm::WM;
 struct Cairo
 {
     Cairo(cairo_surface_t* s, cairo_t* c)
-        : surface(s), path(nullptr), cairo(c), modified(false)
+        : surface(s), path(nullptr), cairo(c), transformId(0), pathChanged(false)
     {
     }
     Cairo(const std::shared_ptr<Cairo>& other)
-        : surface(cairo_surface_reference(other->surface)),
-          cairo(cairo_create(surface)), modified(false)
+        : cairo(cairo_create(surface)), transformId(0), pathChanged(false)
     {
+        surface = cairo_surface_reference(other->surface);
     }
     ~Cairo()
     {
@@ -33,12 +34,12 @@ struct Cairo
 
     cairo_path_t* finalizePath()
     {
-        if (modified || !path) {
+        if (pathChanged || !path) {
             if (path) {
                 cairo_path_destroy(path);
             }
             path = cairo_copy_path(cairo);
-            modified = false;
+            pathChanged = false;
         }
         return path;
     }
@@ -46,7 +47,8 @@ struct Cairo
     cairo_surface_t* surface;
     cairo_path_t* path;
     cairo_t* cairo;
-    bool modified;
+    uint32_t transformId;
+    bool pathChanged;
 };
 
 struct Surface
@@ -69,6 +71,46 @@ struct Surface
     };
 
     cairo_surface_t* surface;
+};
+
+struct Pango
+{
+    Pango(const std::shared_ptr<Cairo>& c)
+        : cairo(c)
+    {
+        layout = pango_cairo_create_layout(c->cairo);
+        cairoId = c->transformId;
+    }
+    ~Pango()
+    {
+        if (layout) {
+            g_object_unref(layout);
+        }
+    }
+
+    bool setFont(const std::string& font)
+    {
+        if (!layout)
+            return false;
+        auto desc = pango_font_description_from_string(font.c_str());
+        if (!desc)
+            return false;
+        pango_layout_set_font_description(layout, desc);
+        pango_font_description_free(desc);
+        return true;
+    }
+
+    bool setText(const std::string& text)
+    {
+        if (!layout)
+            return false;
+        pango_layout_set_text(layout, text.c_str(), text.size());
+        return true;
+    }
+
+    PangoLayout* layout;
+    uint32_t cairoId;
+    std::weak_ptr<Cairo> cairo;
 };
 
 static inline xcb_visualtype_t* find_visual(xcb_connection_t* c, xcb_visualid_t visual)
@@ -628,7 +670,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.pathClose path finalized?");
         }
 
-        path->modified = true;
+        path->pathChanged = true;
         cairo_close_path(path->cairo);
 
         return env.Undefined();
@@ -675,7 +717,7 @@ Napi::Object make(napi_env env)
         }
         angle2 = arg.Get("angle2").As<Napi::Number>().DoubleValue();
 
-        path->modified = true;
+        path->pathChanged = true;
         cairo_arc(path->cairo, xc, yc, radius, angle1, angle2);
 
         return env.Undefined();
@@ -722,7 +764,7 @@ Napi::Object make(napi_env env)
         }
         angle2 = arg.Get("angle2").As<Napi::Number>().DoubleValue();
 
-        path->modified = true;
+        path->pathChanged = true;
         cairo_arc_negative(path->cairo, xc, yc, radius, angle1, angle2);
 
         return env.Undefined();
@@ -774,7 +816,7 @@ Napi::Object make(napi_env env)
         }
         y3 = arg.Get("y3").As<Napi::Number>().DoubleValue();
 
-        path->modified = true;
+        path->pathChanged = true;
         cairo_curve_to(path->cairo, x1, y1, x2, y2, x3, y3);
 
         return env.Undefined();
@@ -806,7 +848,7 @@ Napi::Object make(napi_env env)
         }
         y = arg.Get("y").As<Napi::Number>().DoubleValue();
 
-        path->modified = true;
+        path->pathChanged = true;
         cairo_line_to(path->cairo, x, y);
 
         return env.Undefined();
@@ -838,7 +880,7 @@ Napi::Object make(napi_env env)
         }
         y = arg.Get("y").As<Napi::Number>().DoubleValue();
 
-        path->modified = true;
+        path->pathChanged = true;
         cairo_move_to(path->cairo, x, y);
 
         return env.Undefined();
@@ -880,8 +922,137 @@ Napi::Object make(napi_env env)
         }
         height = arg.Get("height").As<Napi::Number>().DoubleValue();
 
-        path->modified = true;
+        path->pathChanged = true;
         cairo_rectangle(path->cairo, x, y, width, height);
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("createText", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.createText takes one argument");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        auto txt = std::make_shared<Pango>(cairo);
+
+        return Wrap<std::shared_ptr<Pango> >::wrap(env, txt);
+    }));
+
+    graphics.Set("destroyText", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.destroyText takes one argument");
+        }
+
+        auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[0]);
+
+        if (p->layout) {
+            g_object_unref(p->layout);
+            p->layout = nullptr;
+        }
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("textSetFont", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsString()) {
+            throw Napi::TypeError::New(env, "cairo.textSetFont takes two arguments");
+        }
+
+        auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[0]);
+        const std::string f = info[1].As<Napi::String>();
+
+        if (!p->setFont(f)) {
+            throw Napi::TypeError::New(env, "cairo.textSetFont couldn't update font");
+        }
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("textSetText", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsString()) {
+            throw Napi::TypeError::New(env, "cairo.textSetText takes two arguments");
+        }
+
+        auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[0]);
+        const std::string t = info[1].As<Napi::String>();
+
+        if (!p->setText(t)) {
+            throw Napi::TypeError::New(env, "cairo.textSetText couldn't update text");
+        }
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("textMetrics", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.textMetrics takes one arguments");
+        }
+
+        auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[0]);
+        const auto pc = p->cairo.lock();
+
+        if (!pc->cairo || !p->layout) {
+            return env.Undefined();
+        }
+
+        if (p->cairoId != pc->transformId) {
+            // cairo has changed, update pango
+            pango_cairo_update_layout(pc->cairo, p->layout);
+            p->cairoId = pc->transformId;
+        }
+
+        int w, h;
+        pango_layout_get_size(p->layout, &w, &h);
+
+        auto ret = Napi::Object::New(env);
+        ret.Set("width", Napi::Number::New(env, w / PANGO_SCALE));
+        ret.Set("height", Napi::Number::New(env, w / PANGO_SCALE));
+
+        return ret;
+    }));
+
+    graphics.Set("drawText", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.drawText takes two arguments");
+        }
+
+        auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[1]);
+
+        if (!c->cairo || !p->layout) {
+            return env.Undefined();
+        }
+
+        const auto pc = p->cairo.lock();
+        if (pc != c) {
+            throw Napi::TypeError::New(env, "cairo.drawText cairo vs pango mismatch");
+        }
+
+        if (p->cairoId != c->transformId) {
+            // cairo has changed, update pango
+            pango_cairo_update_layout(c->cairo, p->layout);
+            p->cairoId = c->transformId;
+        }
+
+        pango_cairo_show_layout(c->cairo, p->layout);
 
         return env.Undefined();
     }));

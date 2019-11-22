@@ -649,14 +649,19 @@ export namespace Graphics {
         Square
     }
     export interface StrokePathArgs {
-        path?: Context;
-        lineWidth?: number;
-        lineJoin?: LineJoin;
-        lineCap?: LineCap;
+        readonly path?: Context;
+        readonly lineWidth?: number;
+        readonly lineJoin?: LineJoin;
+        readonly lineCap?: LineCap;
+    }
+    export interface TextMetrics {
+        readonly width: number;
+        readonly height: number;
     }
 
     export interface Context {}
     export interface Surface {}
+    export interface Text {}
     export interface Engine {
         createFromDrawable(wm: OWM.WM, args: CreateFromDrawableArgs): Context;
         createFromContext(ctx: Context): Context;
@@ -664,20 +669,22 @@ export namespace Graphics {
         save(ctx: Context): void;
         restore(ctx: Context): void;
         appendPath(ctx: Context): void;
-        createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
-        destroySurface(surface: Surface): void;
         setSourceSurface(ctx: Context, surface: Surface): void;
         setSourceRGBA(ctx: Context, args: SetSourceRGBAArgs): void;
+        drawText(ctx: Context, txt: Text): void;
         stroke(ctx: Context, args?: StrokePathArgs): void;
         fill(ctx: Context, path?: Context): void;
         paint(ctx: Context): void;
+
+        createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
+        destroySurface(surface: Surface): void;
 
         translate(ctx: Context, x: number, y: number): void;
         scale(ctx: Context, sx: number, sy: number): void;
         rotate(ctx: Context, angle: number): void;
         transform(ctx: Context, matrix: Matrix): void;
-        setTransform(ctx: Context, matrix: Matrix): void;
-        getTransform(ctx: Context): Matrix;
+        setMatrix(ctx: Context, matrix: Matrix): void;
+        getMatrix(ctx: Context): Matrix;
 
         pathClose(ctx: Context): void;
         pathArc(ctx: Context, args: PathArcArgs): void;
@@ -686,6 +693,12 @@ export namespace Graphics {
         pathLineTo(ctx: Context, args: PathXYArgs): void;
         pathMoveTo(ctx: Context, args: PathXYArgs): void;
         pathRectangle(ctx: Context, args: PathRectangleArgs): void;
+
+        createText(ctx: Context): Text;
+        destroyText(txt: Text): void;
+        textSetFont(txt: Text, font: string): void;
+        textSetText(txt: Text, text: string): void;
+        textMetrics(txt: Text): TextMetrics;
     }
 }
 
