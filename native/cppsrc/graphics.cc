@@ -757,43 +757,22 @@ Napi::Object make(napi_env env)
     graphics.Set("pathArc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.pathArc takes two arguments");
+        if (info.Length() < 6 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber()
+            || !info[3].IsNumber() || !info[4].IsNumber() || !info[5].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.pathArc takes six arguments");
         }
 
         auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
             throw Napi::TypeError::New(env, "cairo.pathArc path finalized?");
         }
 
-        double xc, yc, radius, angle1, angle2;
-
-        if (!arg.Has("xc")) {
-            throw Napi::TypeError::New(env, "cairo.pathArc requires a xc");
-        }
-        xc = arg.Get("xc").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("yc")) {
-            throw Napi::TypeError::New(env, "cairo.pathArc requires a yc");
-        }
-        yc = arg.Get("yc").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("radius")) {
-            throw Napi::TypeError::New(env, "cairo.pathArc requires a radius");
-        }
-        radius = arg.Get("radius").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("angle1")) {
-            throw Napi::TypeError::New(env, "cairo.pathArc requires a angle1");
-        }
-        angle1 = arg.Get("angle1").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("angle2")) {
-            throw Napi::TypeError::New(env, "cairo.pathArc requires a angle2");
-        }
-        angle2 = arg.Get("angle2").As<Napi::Number>().DoubleValue();
+        const double xc = info[1].As<Napi::Number>().DoubleValue();
+        const double yc = info[2].As<Napi::Number>().DoubleValue();
+        const double radius = info[3].As<Napi::Number>().DoubleValue();
+        const double angle1 = info[4].As<Napi::Number>().DoubleValue();
+        const double angle2 = info[5].As<Napi::Number>().DoubleValue();
 
         path->pathChanged = true;
         cairo_arc(path->cairo, xc, yc, radius, angle1, angle2);
@@ -804,43 +783,22 @@ Napi::Object make(napi_env env)
     graphics.Set("pathArcNegative", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.pathArcNegative takes two arguments");
+        if (info.Length() < 6 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber()
+            || !info[3].IsNumber() || !info[4].IsNumber() || !info[5].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.pathArcNegative takes six arguments");
         }
 
         auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
             throw Napi::TypeError::New(env, "cairo.pathArcNegative path finalized?");
         }
 
-        double xc, yc, radius, angle1, angle2;
-
-        if (!arg.Has("xc")) {
-            throw Napi::TypeError::New(env, "cairo.pathArcNegative requires a xc");
-        }
-        xc = arg.Get("xc").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("yc")) {
-            throw Napi::TypeError::New(env, "cairo.pathArcNegative requires a yc");
-        }
-        yc = arg.Get("yc").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("radius")) {
-            throw Napi::TypeError::New(env, "cairo.pathArcNegative requires a radius");
-        }
-        radius = arg.Get("radius").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("angle1")) {
-            throw Napi::TypeError::New(env, "cairo.pathArcNegative requires a angle1");
-        }
-        angle1 = arg.Get("angle1").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("angle2")) {
-            throw Napi::TypeError::New(env, "cairo.pathArcNegative requires a angle2");
-        }
-        angle2 = arg.Get("angle2").As<Napi::Number>().DoubleValue();
+        const double xc = info[1].As<Napi::Number>().DoubleValue();
+        const double yc = info[2].As<Napi::Number>().DoubleValue();
+        const double radius = info[3].As<Napi::Number>().DoubleValue();
+        const double angle1 = info[4].As<Napi::Number>().DoubleValue();
+        const double angle2 = info[5].As<Napi::Number>().DoubleValue();
 
         path->pathChanged = true;
         cairo_arc_negative(path->cairo, xc, yc, radius, angle1, angle2);
@@ -851,48 +809,23 @@ Napi::Object make(napi_env env)
     graphics.Set("pathCurveTo", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.pathCurveTo takes two arguments");
+        if (info.Length() < 7 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber()
+            || !info[3].IsNumber() || !info[4].IsNumber() || !info[5].IsNumber() || !info[6].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.pathCurveTo takes seven arguments");
         }
 
         auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
             throw Napi::TypeError::New(env, "cairo.pathCurveTo path finalized?");
         }
 
-        double x1, y1, x2, y2, x3, y3;
-
-        if (!arg.Has("x1")) {
-            throw Napi::TypeError::New(env, "cairo.pathCurveTo requires a x1");
-        }
-        x1 = arg.Get("x1").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("y1")) {
-            throw Napi::TypeError::New(env, "cairo.pathCurveTo requires a y1");
-        }
-        y1 = arg.Get("y1").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("x2")) {
-            throw Napi::TypeError::New(env, "cairo.pathCurveTo requires a x2");
-        }
-        x2 = arg.Get("x2").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("y2")) {
-            throw Napi::TypeError::New(env, "cairo.pathCurveTo requires a y2");
-        }
-        y2 = arg.Get("y2").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("x3")) {
-            throw Napi::TypeError::New(env, "cairo.pathCurveTo requires a x3");
-        }
-        x3 = arg.Get("x3").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("y3")) {
-            throw Napi::TypeError::New(env, "cairo.pathCurveTo requires a y3");
-        }
-        y3 = arg.Get("y3").As<Napi::Number>().DoubleValue();
+        const double x1 = info[1].As<Napi::Number>().DoubleValue();
+        const double y1 = info[2].As<Napi::Number>().DoubleValue();
+        const double x2 = info[3].As<Napi::Number>().DoubleValue();
+        const double y2 = info[4].As<Napi::Number>().DoubleValue();
+        const double x3 = info[5].As<Napi::Number>().DoubleValue();
+        const double y3 = info[6].As<Napi::Number>().DoubleValue();
 
         path->pathChanged = true;
         cairo_curve_to(path->cairo, x1, y1, x2, y2, x3, y3);
@@ -903,28 +836,18 @@ Napi::Object make(napi_env env)
     graphics.Set("pathLineTo", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.pathLineTo takes two arguments");
+        if (info.Length() < 3 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.pathLineTo takes three arguments");
         }
 
         auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
             throw Napi::TypeError::New(env, "cairo.pathLineTo path finalized?");
         }
 
-        double x, y;
-
-        if (!arg.Has("x")) {
-            throw Napi::TypeError::New(env, "cairo.pathLineTo requires a x");
-        }
-        x = arg.Get("x").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("y")) {
-            throw Napi::TypeError::New(env, "cairo.pathLineTo requires a y");
-        }
-        y = arg.Get("y").As<Napi::Number>().DoubleValue();
+        const double x = info[1].As<Napi::Number>().DoubleValue();
+        const double y = info[2].As<Napi::Number>().DoubleValue();
 
         path->pathChanged = true;
         cairo_line_to(path->cairo, x, y);
@@ -935,28 +858,18 @@ Napi::Object make(napi_env env)
     graphics.Set("pathMoveTo", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.pathMoveTo takes two arguments");
+        if (info.Length() < 3 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.pathMoveTo takes three arguments");
         }
 
         auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
             throw Napi::TypeError::New(env, "cairo.pathMoveTo path finalized?");
         }
 
-        double x, y;
-
-        if (!arg.Has("x")) {
-            throw Napi::TypeError::New(env, "cairo.pathMoveTo requires a x");
-        }
-        x = arg.Get("x").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("y")) {
-            throw Napi::TypeError::New(env, "cairo.pathMoveTo requires a y");
-        }
-        y = arg.Get("y").As<Napi::Number>().DoubleValue();
+        const double x = info[1].As<Napi::Number>().DoubleValue();
+        const double y = info[2].As<Napi::Number>().DoubleValue();
 
         path->pathChanged = true;
         cairo_move_to(path->cairo, x, y);
@@ -968,7 +881,7 @@ Napi::Object make(napi_env env)
         auto env = info.Env();
 
         if (info.Length() < 5 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber() || !info[3].IsNumber() || !info[4].IsNumber()) {
-            throw Napi::TypeError::New(env, "cairo.pathRectangle takes two arguments");
+            throw Napi::TypeError::New(env, "cairo.pathRectangle takes five arguments");
         }
 
         auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);

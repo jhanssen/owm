@@ -598,32 +598,12 @@ export namespace Graphics {
         readonly width: number;
         readonly height: number;
     }
-    interface PathArcArgs {
-        readonly xc: number;
-        readonly yc: number;
-        readonly radius: number;
-        readonly angle1: number;
-        readonly angle2: number;
+    export interface StrokePathArgs {
+        readonly path?: Context;
+        readonly lineWidth?: number;
+        readonly lineJoin?: LineJoin;
+        readonly lineCap?: LineCap;
     }
-    interface PathCurveArgs {
-        readonly x1: number;
-        readonly y1: number;
-        readonly x2: number;
-        readonly y2: number;
-        readonly x3: number;
-        readonly y3: number;
-    }
-    interface PathXYArgs {
-        readonly x: number;
-        readonly y: number;
-    }
-    interface PathRectangleArgs {
-        readonly x: number;
-        readonly y: number;
-        readonly width: number;
-        readonly height: number;
-    }
-
     export interface Matrix {
         xx: number;
         yx: number;
@@ -631,6 +611,10 @@ export namespace Graphics {
         yy: number;
         x0: number;
         y0: number;
+    }
+    export interface Size {
+        readonly width: number;
+        readonly height: number;
     }
     export enum LineJoin {
         Miter,
@@ -641,16 +625,6 @@ export namespace Graphics {
         Butt,
         Round,
         Square
-    }
-    export interface StrokePathArgs {
-        readonly path?: Context;
-        readonly lineWidth?: number;
-        readonly lineJoin?: LineJoin;
-        readonly lineCap?: LineCap;
-    }
-    export interface Size {
-        readonly width: number;
-        readonly height: number;
     }
 
     export interface Context {}
@@ -685,11 +659,11 @@ export namespace Graphics {
         identityMatrix(ctx: Context): void;
 
         pathClose(ctx: Context): void;
-        pathArc(ctx: Context, args: PathArcArgs): void;
-        pathArgNegative(ctx: Context, args: PathArcArgs): void;
-        pathCurveTo(ctx: Context, args: PathCurveArgs): void;
-        pathLineTo(ctx: Context, args: PathXYArgs): void;
-        pathMoveTo(ctx: Context, args: PathXYArgs): void;
+        pathArc(ctx: Context, xc: number, yc: number, radius: number, angle1: number, angle2: number): void;
+        pathArgNegative(ctx: Context, xc: number, yc: number, radius: number, angle1: number, angle2: number): void;
+        pathCurveTo(ctx: Context, x1: number, y1: number, x2: number, y2: number, x3: number, y3: number): void;
+        pathLineTo(ctx: Context, x: number, y: number): void;
+        pathMoveTo(ctx: Context, x: number, y: number): void;
         pathRectangle(ctx: Context, x: number, y: number, width: number, height: number): void;
 
         createText(ctx: Context): Text;
