@@ -685,6 +685,7 @@ export namespace Graphics {
         transform(ctx: Context, matrix: Matrix): void;
         setMatrix(ctx: Context, matrix: Matrix): void;
         getMatrix(ctx: Context): Matrix;
+        identityMatrix(ctx: Context): void;
 
         pathClose(ctx: Context): void;
         pathArc(ctx: Context, args: PathArcArgs): void;

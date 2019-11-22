@@ -657,6 +657,24 @@ Napi::Object make(napi_env env)
         return ret;
     }));
 
+    graphics.Set("identityMatrix", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.identityMatrix takes two arguments");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        cairo_identity_matrix(cairo->cairo);
+
+        return env.Undefined();
+    }));
+
     graphics.Set("pathClose", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
