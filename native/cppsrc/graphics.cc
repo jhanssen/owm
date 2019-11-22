@@ -226,24 +226,6 @@ Napi::Object make(napi_env env)
         return env.Undefined();
     }));
 
-    graphics.Set("paint", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "cairo.restore takes one argument");
-        }
-
-        auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-
-        if (!c->cairo) {
-            return env.Undefined();
-        }
-
-        cairo_paint(c->cairo);
-
-        return env.Undefined();
-    }));
-
     graphics.Set("createPNGSurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -422,6 +404,215 @@ Napi::Object make(napi_env env)
         cairo_fill(cairo->cairo);
 
         return env.Undefined();
+    }));
+
+    graphics.Set("paint", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.restore takes one argument");
+        }
+
+        auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (!c->cairo) {
+            return env.Undefined();
+        }
+
+        cairo_paint(c->cairo);
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("translate", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 3 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.translate takes three arguments");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        const double x = info[1].As<Napi::Number>().DoubleValue();
+        const double y = info[2].As<Napi::Number>().DoubleValue();
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        cairo_translate(cairo->cairo, x, y);
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("scale", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 3 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.scale takes three arguments");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        const double sx = info[1].As<Napi::Number>().DoubleValue();
+        const double sy = info[2].As<Napi::Number>().DoubleValue();
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        cairo_scale(cairo->cairo, sx, sy);
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("rotate", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+            throw Napi::TypeError::New(env, "cairo.rotate takes two arguments");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        const double a = info[1].As<Napi::Number>().DoubleValue();
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        cairo_rotate(cairo->cairo, a);
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("transform", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.transform takes two arguments");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        // ### should probably expose cairo_matrix_t as a wrapped object
+        cairo_matrix_t mat;
+
+        if (!arg.Has("xx")) {
+            throw Napi::TypeError::New(env, "cairo.transform requires a xx");
+        }
+        mat.xx = arg.Get("xx").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("yx")) {
+            throw Napi::TypeError::New(env, "cairo.transform requires a yx");
+        }
+        mat.yx = arg.Get("yx").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("xy")) {
+            throw Napi::TypeError::New(env, "cairo.transform requires a xy");
+        }
+        mat.xy = arg.Get("xy").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("yy")) {
+            throw Napi::TypeError::New(env, "cairo.transform requires a yy");
+        }
+        mat.yy = arg.Get("yy").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("x0")) {
+            throw Napi::TypeError::New(env, "cairo.transform requires a x0");
+        }
+        mat.x0 = arg.Get("x0").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("y0")) {
+            throw Napi::TypeError::New(env, "cairo.transform requires a y0");
+        }
+        mat.y0 = arg.Get("y0").As<Napi::Number>().DoubleValue();
+
+        cairo_transform(cairo->cairo, &mat);
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("setMatrix", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.setMatrix takes two arguments");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        // ### should probably expose cairo_matrix_t as a wrapped object
+        cairo_matrix_t mat;
+
+        if (!arg.Has("xx")) {
+            throw Napi::TypeError::New(env, "cairo.setMatrix requires a xx");
+        }
+        mat.xx = arg.Get("xx").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("yx")) {
+            throw Napi::TypeError::New(env, "cairo.setMatrix requires a yx");
+        }
+        mat.yx = arg.Get("yx").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("xy")) {
+            throw Napi::TypeError::New(env, "cairo.setMatrix requires a xy");
+        }
+        mat.xy = arg.Get("xy").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("yy")) {
+            throw Napi::TypeError::New(env, "cairo.setMatrix requires a yy");
+        }
+        mat.yy = arg.Get("yy").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("x0")) {
+            throw Napi::TypeError::New(env, "cairo.setMatrix requires a x0");
+        }
+        mat.x0 = arg.Get("x0").As<Napi::Number>().DoubleValue();
+
+        if (!arg.Has("y0")) {
+            throw Napi::TypeError::New(env, "cairo.setMatrix requires a y0");
+        }
+        mat.y0 = arg.Get("y0").As<Napi::Number>().DoubleValue();
+
+        cairo_set_matrix(cairo->cairo, &mat);
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("getMatrix", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.getMatrix takes two arguments");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (!cairo->cairo) {
+            return env.Undefined();
+        }
+
+        // ### should probably expose cairo_matrix_t as a wrapped object
+        cairo_matrix_t mat;
+        cairo_get_matrix(cairo->cairo, &mat);
+
+        auto ret = Napi::Object::New(env);
+        ret.Set("xx", Napi::Number::New(env, mat.xx));
+        ret.Set("yx", Napi::Number::New(env, mat.yx));
+        ret.Set("xy", Napi::Number::New(env, mat.xy));
+        ret.Set("yy", Napi::Number::New(env, mat.yy));
+        ret.Set("x0", Napi::Number::New(env, mat.x0));
+        ret.Set("y0", Napi::Number::New(env, mat.y0));
+
+        return ret;
     }));
 
     graphics.Set("pathClose", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {

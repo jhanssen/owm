@@ -630,6 +630,14 @@ export namespace Graphics {
         readonly height: number;
     }
 
+    export interface Matrix {
+        xx: number;
+        yx: number;
+        xy: number;
+        yy: number;
+        x0: number;
+        y0: number;
+    }
     export enum LineJoin {
         Miter,
         Round,
@@ -663,6 +671,13 @@ export namespace Graphics {
         stroke(ctx: Context, args?: StrokePathArgs): void;
         fill(ctx: Context, path?: Context): void;
         paint(ctx: Context): void;
+
+        translate(ctx: Context, x: number, y: number): void;
+        scale(ctx: Context, sx: number, sy: number): void;
+        rotate(ctx: Context, angle: number): void;
+        transform(ctx: Context, matrix: Matrix): void;
+        setTransform(ctx: Context, matrix: Matrix): void;
+        getTransform(ctx: Context): Matrix;
 
         pathClose(ctx: Context): void;
         pathArc(ctx: Context, args: PathArcArgs): void;
