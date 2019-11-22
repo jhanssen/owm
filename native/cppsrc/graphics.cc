@@ -503,6 +503,8 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.translate no cairo?");
         }
 
+        ++cairo->transformId;
+
         cairo_translate(cairo->cairo, tx, ty);
 
         return env.Undefined();
@@ -523,6 +525,8 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.scale no cairo?");
         }
 
+        ++cairo->transformId;
+
         cairo_scale(cairo->cairo, sx, sy);
 
         return env.Undefined();
@@ -542,6 +546,8 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.rotate no cairo?");
         }
 
+        ++cairo->transformId;
+
         cairo_rotate(cairo->cairo, a);
 
         return env.Undefined();
@@ -560,6 +566,8 @@ Napi::Object make(napi_env env)
         if (!cairo->cairo) {
             throw Napi::TypeError::New(env, "cairo.transform no cairo?");
         }
+
+        ++cairo->transformId;
 
         // ### should probably expose cairo_matrix_t as a wrapped object
         cairo_matrix_t mat;
@@ -612,6 +620,8 @@ Napi::Object make(napi_env env)
         if (!cairo->cairo) {
             throw Napi::TypeError::New(env, "cairo.setMatrix no cairo?");
         }
+
+        ++cairo->transformId;
 
         // ### should probably expose cairo_matrix_t as a wrapped object
         cairo_matrix_t mat;
@@ -691,6 +701,8 @@ Napi::Object make(napi_env env)
         if (!cairo->cairo) {
             throw Napi::TypeError::New(env, "cairo.identityMatrix no cairo?");
         }
+
+        ++cairo->transformId;
 
         cairo_identity_matrix(cairo->cairo);
 
