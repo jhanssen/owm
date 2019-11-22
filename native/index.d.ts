@@ -663,7 +663,7 @@ export namespace Graphics {
         save(ctx: Context): void;
         restore(ctx: Context): void;
         appendPath(ctx: Context): void;
-        setSourceSurface(ctx: Context, surface: Surface): void;
+        setSourceSurface(ctx: Context, surface: Surface, x?: number, y?: number): void;
         setSourceRGB(ctx: Context, r: number, g: number, b: number): void;
         setSourceRGBA(ctx: Context, r: number, g: number, b: number, a: number): void;
         drawText(ctx: Context, txt: Text): void;
@@ -674,6 +674,7 @@ export namespace Graphics {
 
         createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
         // destroySurface(surface: Surface): void;
+        surfaceSize(surface: Surface): Size;
 
         translate(ctx: Context, tx: number, ty: number): void;
         scale(ctx: Context, sx: number, sy: number): void;
@@ -689,7 +690,7 @@ export namespace Graphics {
         pathCurveTo(ctx: Context, args: PathCurveArgs): void;
         pathLineTo(ctx: Context, args: PathXYArgs): void;
         pathMoveTo(ctx: Context, args: PathXYArgs): void;
-        pathRectangle(ctx: Context, args: PathRectangleArgs): void;
+        pathRectangle(ctx: Context, x: number, y: number, width: number, height: number): void;
 
         createText(ctx: Context): Text;
         // destroyText(txt: Text): void;

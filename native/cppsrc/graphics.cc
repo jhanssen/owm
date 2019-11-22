@@ -299,25 +299,20 @@ Napi::Object make(napi_env env)
     graphics.Set("createPNGSurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+        if (info.Length() < 2 || !info[0].IsObject() || (!info[1].IsArrayBuffer() && !info[1].IsTypedArray())) {
             throw Napi::TypeError::New(env, "cairo.createPNGSurface takes two arguments");
         }
 
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
 
         if (!c->cairo) {
             throw Napi::TypeError::New(env, "cairo.createPNGSurface invalid cairo");
         }
 
-        if (!arg.Has("data")) {
-            throw Napi::TypeError::New(env, "cairo.createPNGSurface requires a data");
-        }
-
         size_t size;
         size_t offset;
 
-        const auto ndata = arg.Get("data");
+        const auto ndata = info[1];
         Napi::ArrayBuffer data;
         if (ndata.IsArrayBuffer()) {
             data = ndata.As<Napi::ArrayBuffer>();
@@ -366,6 +361,25 @@ Napi::Object make(napi_env env)
         return env.Undefined();
     }));
 
+    graphics.Set("surfaceSize", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.surfaceSize takes one argument");
+        }
+
+        auto s = Wrap<std::shared_ptr<Surface> >::unwrap(info[0]);
+
+        if (!s->surface) {
+            throw Napi::TypeError::New(env, "cairo.destroy no cairo?");
+        }
+
+        auto ret = Napi::Object::New(env);
+        ret.Set("width", Napi::Number::New(env, cairo_image_surface_get_width(s->surface)));
+        ret.Set("height", Napi::Number::New(env, cairo_image_surface_get_height(s->surface)));
+        return ret;
+    }));
+
     graphics.Set("setSourceSurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -376,7 +390,15 @@ Napi::Object make(napi_env env)
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
         auto s = Wrap<std::shared_ptr<Surface> >::unwrap(info[1]);
 
-        cairo_set_source_surface(c->cairo, s->surface, 0., 0.);
+        double x = 0, y = 0;
+        if (info.Length() > 2 && info[2].IsNumber()) {
+            x = info[2].As<Napi::Number>().DoubleValue();
+        }
+        if (info.Length() > 3 && info[3].IsNumber()) {
+            y = info[3].As<Napi::Number>().DoubleValue();
+        }
+
+        cairo_set_source_surface(c->cairo, s->surface, x, y);
 
         return env.Undefined();
     }));
@@ -945,38 +967,20 @@ Napi::Object make(napi_env env)
     graphics.Set("pathRectangle", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+        if (info.Length() < 5 || !info[0].IsObject() || !info[1].IsNumber() || !info[2].IsNumber() || !info[3].IsNumber() || !info[4].IsNumber()) {
             throw Napi::TypeError::New(env, "cairo.pathRectangle takes two arguments");
         }
 
         auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
 
         if (!path->cairo) {
             throw Napi::TypeError::New(env, "cairo.pathRectangle path finalized?");
         }
 
-        double x, y, width, height;
-
-        if (!arg.Has("x")) {
-            throw Napi::TypeError::New(env, "cairo.pathRectangle requires a x");
-        }
-        x = arg.Get("x").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("y")) {
-            throw Napi::TypeError::New(env, "cairo.pathRectangle requires a y");
-        }
-        y = arg.Get("y").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("width")) {
-            throw Napi::TypeError::New(env, "cairo.pathRectangle requires a width");
-        }
-        width = arg.Get("width").As<Napi::Number>().DoubleValue();
-
-        if (!arg.Has("height")) {
-            throw Napi::TypeError::New(env, "cairo.pathRectangle requires a height");
-        }
-        height = arg.Get("height").As<Napi::Number>().DoubleValue();
+        const double x = info[1].As<Napi::Number>().DoubleValue();
+        const double y = info[2].As<Napi::Number>().DoubleValue();
+        const double width = info[3].As<Napi::Number>().DoubleValue();
+        const double height = info[4].As<Napi::Number>().DoubleValue();
 
         path->pathChanged = true;
         cairo_rectangle(path->cairo, x, y, width, height);
