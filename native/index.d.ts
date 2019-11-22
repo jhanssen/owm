@@ -665,7 +665,7 @@ export namespace Graphics {
     export interface Engine {
         createFromDrawable(wm: OWM.WM, args: CreateFromDrawableArgs): Context;
         createFromContext(ctx: Context): Context;
-        destroy(ctx: Context): void;
+        // destroy(ctx: Context): void;
         save(ctx: Context): void;
         restore(ctx: Context): void;
         appendPath(ctx: Context): void;
@@ -678,7 +678,7 @@ export namespace Graphics {
         size(ctx: Context): Size;
 
         createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
-        destroySurface(surface: Surface): void;
+        // destroySurface(surface: Surface): void;
 
         translate(ctx: Context, tx: number, ty: number): void;
         scale(ctx: Context, sx: number, sy: number): void;
@@ -697,7 +697,7 @@ export namespace Graphics {
         pathRectangle(ctx: Context, args: PathRectangleArgs): void;
 
         createText(ctx: Context): Text;
-        destroyText(txt: Text): void;
+        // destroyText(txt: Text): void;
         textSetFont(txt: Text, font: string): void;
         textSetText(txt: Text, text: string): void;
         textMetrics(txt: Text): Size;
