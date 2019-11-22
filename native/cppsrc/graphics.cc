@@ -474,14 +474,14 @@ Napi::Object make(napi_env env)
         }
 
         auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
-        const double x = info[1].As<Napi::Number>().DoubleValue();
-        const double y = info[2].As<Napi::Number>().DoubleValue();
+        const double tx = info[1].As<Napi::Number>().DoubleValue();
+        const double ty = info[2].As<Napi::Number>().DoubleValue();
 
         if (!cairo->cairo) {
             return env.Undefined();
         }
 
-        cairo_translate(cairo->cairo, x, y);
+        cairo_translate(cairo->cairo, tx, ty);
 
         return env.Undefined();
     }));

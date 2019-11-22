@@ -679,7 +679,7 @@ export namespace Graphics {
         createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
         destroySurface(surface: Surface): void;
 
-        translate(ctx: Context, x: number, y: number): void;
+        translate(ctx: Context, tx: number, ty: number): void;
         scale(ctx: Context, sx: number, sy: number): void;
         rotate(ctx: Context, angle: number): void;
         transform(ctx: Context, matrix: Matrix): void;
