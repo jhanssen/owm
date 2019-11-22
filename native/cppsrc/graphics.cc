@@ -11,15 +11,21 @@ using WM = owm::WM;
 struct Cairo
 {
     Cairo(cairo_surface_t* s, cairo_t* c, uint32_t w, uint32_t h)
-        : surface(s), path(nullptr), cairo(c), width(w), height(h),
+        : surface(s), cairo(c), path(nullptr), width(w), height(h),
           transformId(0), pathChanged(false)
     {
     }
     Cairo(const std::shared_ptr<Cairo>& other)
-        : cairo(cairo_create(surface)), width(other->width), height(other->height),
+        : path(nullptr), width(other->width), height(other->height),
           transformId(0), pathChanged(false)
     {
-        surface = cairo_surface_reference(other->surface);
+        if (other->surface) {
+            surface = cairo_surface_reference(other->surface);
+            cairo = cairo_create(other->surface);
+        } else {
+            surface = nullptr;
+            cairo = nullptr;
+        }
     }
     ~Cairo()
     {
@@ -47,8 +53,8 @@ struct Cairo
     }
 
     cairo_surface_t* surface;
-    cairo_path_t* path;
     cairo_t* cairo;
+    cairo_path_t* path;
     uint32_t width, height;
     uint32_t transformId;
     bool pathChanged;
