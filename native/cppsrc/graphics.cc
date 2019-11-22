@@ -113,7 +113,7 @@ struct Pango
 
     PangoLayout* layout;
     uint32_t cairoId;
-    std::weak_ptr<Cairo> cairo;
+    std::shared_ptr<Cairo> cairo;
 };
 
 static inline xcb_visualtype_t* find_visual(xcb_connection_t* c, xcb_visualid_t visual)
@@ -1045,7 +1045,7 @@ Napi::Object make(napi_env env)
         }
 
         auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[0]);
-        const auto pc = p->cairo.lock();
+        const auto pc = p->cairo;
 
         if (!pc->cairo || !p->layout) {
             throw Napi::TypeError::New(env, "cairo.textMetrics no cairo?");
@@ -1080,8 +1080,7 @@ Napi::Object make(napi_env env)
             throw Napi::TypeError::New(env, "cairo.drawText no cairo?");
         }
 
-        const auto pc = p->cairo.lock();
-        if (pc != c) {
+        if (p->cairo != c) {
             throw Napi::TypeError::New(env, "cairo.drawText cairo vs pango mismatch");
         }
 
