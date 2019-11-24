@@ -55,6 +55,6 @@ export class Clock extends EventEmitter implements BarModule
     }
 
     geometry(geometry: Geometry) {
-        return new Geometry({ x: 0, y: 0, width: this._metrics.width, height: 16});
+        return new Geometry({ x: 0, y: 0, width: this._metrics.width, height: this._metrics.height});
     }
 }
