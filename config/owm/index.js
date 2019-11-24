@@ -14,7 +14,8 @@ function init(owmlib) {
                 clock: {
                     position: owmlib.Bar.Position.Middle,
                     config: {
-                        textColor: "#888"
+                        textColor: "#888",
+                        prefix: "🕒 "
                     }
                 }
             }
