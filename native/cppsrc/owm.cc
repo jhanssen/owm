@@ -2530,13 +2530,13 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
         }
 
-        if (off) {
-            auto gcid = xcb_generate_id(wm->conn);
-            xcb_create_gc(wm->conn, gcid, window, mask, values);
-            return Napi::Number::New(env, gcid);
+        if (!off) {
+            throw Napi::TypeError::New(env, "create_gc no value");
         }
 
-        return env.Undefined();
+        auto gcid = xcb_generate_id(wm->conn);
+        xcb_create_gc(wm->conn, gcid, window, mask, values);
+        return Napi::Number::New(env, gcid);
     }));
 
     xcb.Set("change_gc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
@@ -2659,9 +2659,11 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
             values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
         }
 
-        if (off) {
-            xcb_change_gc(wm->conn, gc, mask, values);
+        if (!off) {
+            throw Napi::TypeError::New(env, "change_gc no value");
         }
+
+        xcb_change_gc(wm->conn, gc, mask, values);
 
         return env.Undefined();
     }));
@@ -2769,7 +2771,7 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         if (geom->width < 1 || geom->height < 1) {
             free(attrib);
             free(geom);
-            return env.Undefined();
+            throw Napi::TypeError::New(env, "request_window_information width/height < 1");
         }
         xcb_get_property_reply_t* leaderReply = xcb_get_property_reply(wm->conn, leaderCookie, nullptr);
         if (!leaderReply) {

@@ -712,8 +712,8 @@ export namespace OWM {
         send_client_message(wm: OWM.WM, args: SendClientMessageArgs): void;
         send_expose(wm: OWM.WM, args: SendExposeArgs): void;
         send_configure_notify(wm: OWM.WM, args: SendConfigureNotifyArgs): void;
-        create_gc(wm: OWM.WM, args: CreateGCArgs): number | undefined;
-        change_gc(wm: OWM.WM, args: ChangeGCArgs): number | undefined;
+        create_gc(wm: OWM.WM, args: CreateGCArgs): number;
+        change_gc(wm: OWM.WM, args: ChangeGCArgs): void;
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
         copy_area(wm: OWM.WM, args: CopyAreaArgs): void;
@@ -733,7 +733,7 @@ export namespace OWM {
         map_window(wm: OWM.WM, window: number): void;
         unmap_window(wm: OWM.WM, window: number): void;
         destroy_window(wm: OWM.WM, window: number): void;
-        request_window_information(wm: OWM.WM, window: number): XCB.Window | undefined;
+        request_window_information(wm: OWM.WM, window: number): XCB.Window;
         kill_client(wm: OWM.WM, window: number): void;
         free_gc(wm: OWM.WM, gc: number): void;
         grab_server(wm: OWM.WM): void;
