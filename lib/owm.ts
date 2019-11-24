@@ -10,6 +10,7 @@ import { Container, ContainerItemType, isContainer } from "./container";
 import { Match } from "./match";
 import { Geometry } from "./utils";
 import { IPC, IPCMessage } from "./ipc";
+import { Bar } from "../applets";
 import { EventEmitter } from "events";
 import { spawn, StdioOptions } from "child_process";
 import { default as hexRgb } from "hex-rgb";
@@ -110,6 +111,7 @@ export class OWMLib {
     public readonly Workspace = Workspace;
     public readonly Match = Match;
     public readonly KeybindingsMode = KeybindingsMode;
+    public readonly Bar = Bar;
     public readonly makePixel = makePixel;
 
     constructor(wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB, engine: Graphics.Engine, options: OWMOptions) {

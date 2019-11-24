@@ -10,6 +10,7 @@
     "rootDirs": [ 
         "src",
         "lib",
+        "applets",
         "cli"
     ],
 
