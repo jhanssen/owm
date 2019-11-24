@@ -1013,8 +1013,8 @@ Napi::Object make(napi_env env)
         pango_layout_get_size(p->layout, &w, &h);
 
         auto ret = Napi::Object::New(env);
-        ret.Set("width", Napi::Number::New(env, w / PANGO_SCALE));
-        ret.Set("height", Napi::Number::New(env, w / PANGO_SCALE));
+        ret.Set("width", Napi::Number::New(env, w / static_cast<double>(PANGO_SCALE)));
+        ret.Set("height", Napi::Number::New(env, h / static_cast<double>(PANGO_SCALE)));
         return ret;
     }));
 
