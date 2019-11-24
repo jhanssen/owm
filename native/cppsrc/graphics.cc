@@ -496,6 +496,25 @@ Napi::Object make(napi_env env)
         return env.Undefined();
     }));
 
+    graphics.Set("clip", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.clip takes one argument");
+        }
+
+        auto cairo = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (info.Length() > 1 && info[1].IsObject()) {
+            auto path = Wrap<std::shared_ptr<Cairo> >::unwrap(info[1]);
+            cairo_append_path(cairo->cairo, path->finalizePath());
+        }
+
+        cairo_clip(cairo->cairo);
+
+        return env.Undefined();
+    }));
+
     graphics.Set("paint", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 

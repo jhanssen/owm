@@ -259,6 +259,8 @@ export class Bar
         for (const [position, modules] of this._modules) {
             for (const module of modules) {
                 engine.save(this._ctx);
+                engine.pathRectangle(this._ctx, module.geometry.x, module.geometry.y, module.geometry.width, module.geometry.height);
+                engine.clip(this._ctx);
                 engine.translate(this._ctx, module.geometry.x, module.geometry.y);
                 module.module.paint(engine, this._ctx, module.geometry);
                 engine.restore(this._ctx);

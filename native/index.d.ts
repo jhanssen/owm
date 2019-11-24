@@ -643,6 +643,7 @@ export namespace Graphics {
         drawText(ctx: Context, txt: Text): void;
         stroke(ctx: Context, args?: StrokePathArgs): void;
         fill(ctx: Context, path?: Context): void;
+        clip(ctx: Context, path?: Context): void;
         paint(ctx: Context): void;
         size(ctx: Context): Size;
 
