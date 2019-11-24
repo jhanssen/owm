@@ -1,14 +1,13 @@
 let logger;
+let bar;
 
 function init(owmlib) {
     logger = owmlib.logger.prefixed("config");
 
-    const bar = {};
-
     owmlib.events.on("inited", () => {
         logger.error("owm inited");
 
-        bar.bar = new owmlib.Bar(owmlib, "default", {
+        bar = new owmlib.Bar(owmlib, "default", {
             backgroundColor: "#333",
             modules: {
                 clock: {
@@ -20,12 +19,6 @@ function init(owmlib) {
                 }
             }
         });
-    });
-
-    owmlib.events.on("clientExpose", client => {
-        if (bar.bar && client === bar.bar.client) {
-            bar.bar.onExpose();
-        }
     });
 
     const mod = "Ctrl";
@@ -115,27 +108,6 @@ function init(owmlib) {
 
     owmlib.activeColor = "#33c";
     owmlib.moveModifier = "Ctrl";
-
-    const barMatchClassCondition = new owmlib.Match.MatchWMClass({ class: "OwmBar" });
-    const barMatch = new owmlib.Match((client) => {
-        bar.bar.client = client;
-
-        const xcb = owmlib.xcb;
-        const winMask = xcb.eventMask.ENTER_WINDOW |
-              xcb.eventMask.LEAVE_WINDOW |
-              xcb.eventMask.EXPOSURE |
-              xcb.eventMask.POINTER_MOTION |
-              xcb.eventMask.BUTTON_PRESS |
-              xcb.eventMask.BUTTON_RELEASE |
-              xcb.eventMask.PROPERTY_CHANGE |
-              xcb.eventMask.STRUCTURE_NOTIFY |
-              xcb.eventMask.FOCUS_CHANGE;
-
-        xcb.change_window_attributes(owmlib.wm, { window: client.window.window, event_mask: winMask });
-        bar.bar.update();
-    });
-    barMatch.addCondition(barMatchClassCondition);
-    owmlib.addMatch(barMatch);
 
     owmlib.events.on("monitors", monitors => {
         // console.log("got screens?", screens, owmlib.Workspace);

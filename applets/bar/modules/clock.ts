@@ -1,13 +1,16 @@
 import { Graphics } from "../../../native";
 import { OWMLib, Geometry } from "../../../lib";
-import { Bar, BarModule } from "..";
+import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 
-export interface ClockConfig
+export class ClockConfig implements BarModuleConfig
 {
-    textColor: string;
+    constructor() { }
+
+    textColor?: string;
     seconds?: boolean;
     prefix?: string;
+    font?: string;
 }
 
 export class Clock extends EventEmitter implements BarModule
@@ -19,31 +22,33 @@ export class Clock extends EventEmitter implements BarModule
     private _metrics: { width: number, height: number };
     private _prefix: string;
 
-    constructor(owm: OWMLib, bar: Bar, config: ClockConfig) {
+    constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
         super();
 
-        this._config = config;
-        this._color = Bar.makeColor(config.textColor);
+        const clockConfig = config as ClockConfig;
+
+        this._config = clockConfig;
+        this._color = Bar.makeColor(clockConfig.textColor || "#fff");
 
         this._dateOptions = {
             hour: "2-digit",
             minute: "2-digit",
             hour12: false
         };
-        if (config.seconds) {
+        if (clockConfig.seconds) {
             this._dateOptions.second = "2-digit";
         }
 
-        this._prefix = config.prefix || "";
+        this._prefix = clockConfig.prefix || "";
 
         this._clock = owm.engine.createText(bar.ctx);
-        owm.engine.textSetFont(this._clock, "Sans Bold 10");
-        owm.engine.textSetText(this._clock, this._prefix + (config.seconds ? "00:00:00" : "00:00"));
+        owm.engine.textSetFont(this._clock, clockConfig.font || "Sans Bold 10");
+        owm.engine.textSetText(this._clock, this._prefix + (clockConfig.seconds ? "00:00:00" : "00:00"));
         this._metrics = owm.engine.textMetrics(this._clock);
 
         setInterval(() => {
             this.emit("updated");
-        }, config.seconds ? 1000 : 1000 * 60);
+        }, clockConfig.seconds ? 1000 : 1000 * 60);
     }
 
     paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {

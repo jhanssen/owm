@@ -1,21 +1,25 @@
-import { OWMLib, Client, Geometry } from "../../lib";
+import { OWMLib, Geometry } from "../../lib";
 import { Graphics } from "../../native";
 import { Clock, ClockConfig } from "./modules";
 import { EventEmitter } from "events";
 import { default as hexRgb } from "hex-rgb";
 
-type ModuleConfig = ClockConfig;
-
-interface BarConfig
+export interface BarModuleConfig
 {
-    backgroundColor: string;
-    modules: {[key: string]: { position: Bar.Position, config: ModuleConfig }};
 }
 
 export interface BarModule extends EventEmitter
 {
     paint: (engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) => void;
     geometry: (geometry: Geometry) => Geometry;
+}
+type BarModuleConstructor = { new(owm: OWMLib, bar: Bar, config: BarModuleConfig): BarModule };
+
+interface BarConfig
+{
+    backgroundColor: string;
+    modules: {[key: string]: { position: Bar.Position, config: BarModuleConfig }};
+    height?: number;
 }
 
 interface Module
@@ -43,17 +47,22 @@ export class Bar
     private _win: number;
     private _pixmap: number;
     private _gc: number;
-    private _client: Client | undefined;
+    private _ready: boolean;
     private _owm: OWMLib;
     private _ctx: Graphics.Context;
     private _copyArgs: { src_d: number, dst_d: number, gc: number, width: number, height: number };
     private _modules: Map<Bar.Position, Module[]>;
     private _backgroundColor: { red: number, green: number, blue: number, alpha: number };
+    private _availableModules: {[key: string]: BarModuleConstructor };
 
-    constructor(owm: OWMLib, output: string, config: BarConfig, height?: number) {
+    constructor(owm: OWMLib, output: string, config: BarConfig, extraModules?: {[key: string]: BarModuleConstructor }) {
         this._owm = owm;
-        this._client = undefined;
         this._modules = new Map<Bar.Position, Module[]>();
+        this._ready = false;
+
+        this._availableModules = {
+            clock: Clock
+        };
 
         const monitor = owm.monitors.monitorByOutput(output);
         if (!monitor) {
@@ -63,25 +72,22 @@ export class Bar
 
         // console.log("bar width", width);
         this._width = width;
-
-        if (height === undefined)
-            height = 20;
-        this._height = height;
+        this._height = config.height || 20;
 
         const xcb = owm.xcb;
         const win = xcb.create_window(owm.wm, {
             parent: owm.root,
             x: 0,
             y: 0,
-            width: width,
-            height: height
+            width: this._width,
+            height: this._height
         });
         this._win = win;
 
         // console.log("parent is/was", owm.root.toString(16));
 
         const strutData = new Uint32Array(12);
-        strutData[2] = height;
+        strutData[2] = this._height;
         xcb.change_property(owm.wm, {
             window: win,
             mode: xcb.propMode.REPLACE,
@@ -134,11 +140,41 @@ export class Bar
             owm.addClient(wininfo);
         });
 
-        this._pixmap = xcb.create_pixmap(owm.wm, { width: width, height: height });
-        this._ctx = owm.engine.createFromDrawable(owm.wm, { drawable: this._pixmap, width: width, height: height });
+        this._pixmap = xcb.create_pixmap(owm.wm, { width: this._width, height: this._height });
+        this._ctx = owm.engine.createFromDrawable(owm.wm, { drawable: this._pixmap, width: this._width, height: this._height });
         // this._surface = owm.engine.createPNGSurface(this._ctx, pngBuffer);
         // this._surfaceSize = owm.engine.surfaceSize(this._surface);
-        // this._surfaceRatio = height / this._surfaceSize.width;
+        // this._surfaceRatio = this._height / this._surfaceSize.width;
+
+        const barMatchClassCondition = new owm.Match.MatchWMClass({ class: "OwmBar" });
+        const barMatch = new owm.Match((client) => {
+            if (client.window.window !== this._win) {
+                throw new Error("bar and client window mismatch");
+            }
+            this._ready = true;
+
+            const xcb = owm.xcb;
+            const winMask = xcb.eventMask.ENTER_WINDOW |
+                xcb.eventMask.LEAVE_WINDOW |
+                xcb.eventMask.EXPOSURE |
+                xcb.eventMask.POINTER_MOTION |
+                xcb.eventMask.BUTTON_PRESS |
+                xcb.eventMask.BUTTON_RELEASE |
+                xcb.eventMask.PROPERTY_CHANGE |
+                xcb.eventMask.STRUCTURE_NOTIFY |
+                xcb.eventMask.FOCUS_CHANGE;
+
+            xcb.change_window_attributes(owm.wm, { window: client.window.window, event_mask: winMask });
+            this.update();
+        });
+        barMatch.addCondition(barMatchClassCondition);
+        owm.addMatch(barMatch);
+
+        owm.events.on("clientExpose", client => {
+            if (client.window.window === this._win) {
+                this._onExpose();
+            }
+        });
 
         const black = owm.makePixel("#000");
         const white = owm.makePixel("#fff");
@@ -155,21 +191,26 @@ export class Bar
         this._backgroundColor = makeColor(config.backgroundColor);
 
         // initialize modules
-        const fullGeom = new Geometry({ x: 0, y: 0, width: width, height: height });
+        const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
+
+        const createModule = (module: { position: Bar.Position, config: BarModuleConfig }, ctor: BarModuleConstructor) => {
+            const c = new ctor(owm, this, module.config);
+            const m = { position: module.position, geometry: fullGeom, module: c };
+            const a = this._modules.get(m.position);
+            if (a !== undefined) {
+                a.push(m);
+            } else {
+                this._modules.set(m.position, [m]);
+            }
+            c.on("updated", () => { this.update(); });
+        };
+
         for (const [name, module] of Object.entries(config.modules)) {
-            switch (name) {
-            case "clock": {
-                const c = new Clock(owm, this, module.config as ClockConfig);
-                const m = { position: module.position, geometry: fullGeom, module: c };
-                const a = this._modules.get(m.position);
-                if (a !== undefined) {
-                    a.push(m);
-                } else {
-                    this._modules.set(m.position, [m]);
-                }
-                c.on("updated", () => { this.update(); });
-                break; }
-            default:
+            if (name in this._availableModules) {
+                createModule(module, this._availableModules[name]);
+            } else if (extraModules && name in extraModules) {
+                createModule(module, extraModules[name]);
+            } else {
                 throw new Error(`unknown bar module ${name}`);
             }
         }
@@ -226,30 +267,21 @@ export class Bar
         return this._ctx;
     }
 
-    get client() {
-        return this._client;
-    }
-
-    set client(c) {
-        this._client = c;
-    }
-
     update() {
-        const owm = this._owm;
-        const client = this._client;
-        if (!client)
+        if (!this._ready)
             return;
 
         this._redraw();
-        owm.xcb.send_expose(owm.wm, { window: client.window.window, width: client.frameWidth, height: client.frameHeight });
+        const owm = this._owm;
+        owm.xcb.send_expose(owm.wm, { window: this._win, width: this._width, height: this._height });
     }
 
-    onExpose() {
+    private _onExpose() {
         const xcb = this._owm.xcb;
         xcb.copy_area(this._owm.wm, this._copyArgs);
     }
 
-    _redraw() {
+    private _redraw() {
         const engine = this._owm.engine;
 
         const { red, green, blue } = this._backgroundColor;

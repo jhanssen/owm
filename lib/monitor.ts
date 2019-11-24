@@ -32,16 +32,8 @@ export class Monitor
         this._workspaces.updateScreen();
     }
 
-    get workspaces() {
-        return this._workspaces;
-    }
-
     get workspace() {
         return this._workspace;
-    }
-
-    get items() {
-        return this._items;
     }
 
     set workspace(ws: Workspace | undefined) {
@@ -59,7 +51,16 @@ export class Monitor
             this._workspace.visible = true;
 
             this._monitors.owm.ewmh.updateCurrentWorkspace(this._workspace.id);
+            this._monitors.owm.events.emit("workspaceActivated", this);
         }
+    }
+
+    get workspaces() {
+        return this._workspaces;
+    }
+
+    get items() {
+        return this._items;
     }
 
     workspaceById(id: number): Workspace | undefined {
