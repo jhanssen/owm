@@ -138,7 +138,6 @@ export class Workspace extends EventEmitter implements BarModule
         engine.setSourceRGB(activeCtx, ared, ablue, agreen);
         engine.pathRectangle(activeCtx, border, border, size - (border * 2), size - (border * 2));
         engine.fill(activeCtx);
-        engine.surfaceFlush(this._activePixmap);
 
         const { red: ired, blue: iblue, green: igreen } = this._inactiveBackgroundColor;
         engine.setSourceRGB(inactiveCtx, bred, bblue, bgreen);
@@ -146,6 +145,5 @@ export class Workspace extends EventEmitter implements BarModule
         engine.setSourceRGB(inactiveCtx, ired, iblue, igreen);
         engine.pathRectangle(inactiveCtx, border, border, size - (border * 2), size - (border * 2));
         engine.fill(inactiveCtx);
-        engine.surfaceFlush(this._inactivePixmap);
     }
 }
