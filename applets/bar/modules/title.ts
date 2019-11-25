@@ -33,7 +33,7 @@ export class Title extends EventEmitter implements BarModule
         owm.engine.textSetFont(this._title, titleConfig.font || "Sans Bold 10");
 
         owm.events.on("clientFocusIn", client => {
-            this._titleText = client.window.ewmhName || client.window.wmName;
+            this._titleText = client.window.ewmhName || client.window.wmName || "<no title>";
             this.emit("updated");
         });
     }
