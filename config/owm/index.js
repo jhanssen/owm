@@ -21,6 +21,9 @@ function init(owmlib) {
                 workspace: {
                     position: owmlib.Bar.Position.Left,
                     config: {
+                        nameMapping: {
+                            1: "🥰"
+                        }
                     }
                 }
             }

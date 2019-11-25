@@ -13,6 +13,7 @@ export class WorkspaceConfig implements BarModuleConfig
     activeBackgroundColor?: string;
     inactiveTextColor?: string;
     activeTextColor?: string;
+    nameMapping?: {[key: string]: string};
     font?: string;
 }
 
@@ -93,7 +94,7 @@ export class Workspace extends EventEmitter implements BarModule
                 const { red: tr, green: tg, blue: tb, alpha: ta } = this._activeTextColor;
                 engine.translate(ctx, Workspace.Pad, 1);
                 engine.setSourceRGBA(ctx, tr, tg, tb, ta);
-                engine.textSetText(this._text, `${ws.id}`);
+                engine.textSetText(this._text, this._mapName(`${ws.id}`));
                 engine.drawText(ctx, this._text);
                 engine.restore(ctx);
             } else {
@@ -107,7 +108,7 @@ export class Workspace extends EventEmitter implements BarModule
                 const { red: tr, green: tg, blue: tb, alpha: ta } = this._inactiveTextColor;
                 engine.translate(ctx, Workspace.Pad, 1);
                 engine.setSourceRGBA(ctx, tr, tg, tb, ta);
-                engine.textSetText(this._text, `${ws.id}`);
+                engine.textSetText(this._text, this._mapName(`${ws.id}`));
                 engine.drawText(ctx, this._text);
                 engine.restore(ctx);
             }
@@ -145,5 +146,13 @@ export class Workspace extends EventEmitter implements BarModule
         engine.setSourceRGB(inactiveCtx, ired, iblue, igreen);
         engine.pathRectangle(inactiveCtx, border, border, size - (border * 2), size - (border * 2));
         engine.fill(inactiveCtx);
+    }
+
+    private _mapName(name: string) {
+        if (!this._config.nameMapping)
+            return name;
+        if (name in this._config.nameMapping)
+            return this._config.nameMapping[name];
+        return name;
     }
 }
