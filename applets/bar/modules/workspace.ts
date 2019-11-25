@@ -24,8 +24,8 @@ export class Workspace extends EventEmitter implements BarModule
     private _activeBackgroundColor: { red: number, green: number, blue: number, alpha: number };
     private _inactiveTextColor: { red: number, green: number, blue: number, alpha: number };
     private _activeTextColor: { red: number, green: number, blue: number, alpha: number };
-    private _inactivePixmap: Graphics.Surface;
-    private _activePixmap: Graphics.Surface;
+    private _inactiveSurface: Graphics.Surface;
+    private _activeSurface: Graphics.Surface;
     private _text: Graphics.Text;
     private _border: number;
     private _monitor: Monitor;
@@ -67,15 +67,15 @@ export class Workspace extends EventEmitter implements BarModule
         this._width = (Workspace.SizePerWorkspace * this._monitor.workspaces.size) + ((this._monitor.workspaces.size - 1) * Workspace.Pad);
 
         const ip = owm.xcb.create_pixmap(owm.wm, { width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
-        this._inactivePixmap = owm.engine.createSurfaceFromDrawable(owm.wm, { drawable: ip, width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
+        this._inactiveSurface = owm.engine.createSurfaceFromDrawable(owm.wm, { drawable: ip, width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
 
         const ap = owm.xcb.create_pixmap(owm.wm, { width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
-        this._activePixmap = owm.engine.createSurfaceFromDrawable(owm.wm, { drawable: ap, width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
+        this._activeSurface = owm.engine.createSurfaceFromDrawable(owm.wm, { drawable: ap, width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
 
         this._text = owm.engine.createText(bar.ctx);
         owm.engine.textSetFont(this._text, wsConfig.font || "Sans Bold 10");
 
-        this._updatePixmaps(owm);
+        this._updateSurfaces(owm);
     }
 
     paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
@@ -86,7 +86,7 @@ export class Workspace extends EventEmitter implements BarModule
                 // active
                 engine.save(ctx);
                 engine.translate(ctx, x, 0);
-                engine.setSourceSurface(ctx, this._activePixmap);
+                engine.setSourceSurface(ctx, this._activeSurface);
                 engine.pathRectangle(ctx, 0, 0, Workspace.SizePerWorkspace, Workspace.SizePerWorkspace);
                 engine.fill(ctx);
 
@@ -100,7 +100,7 @@ export class Workspace extends EventEmitter implements BarModule
                 // inactive
                 engine.save(ctx);
                 engine.translate(ctx, x, 0);
-                engine.setSourceSurface(ctx, this._inactivePixmap);
+                engine.setSourceSurface(ctx, this._inactiveSurface);
                 engine.pathRectangle(ctx, 0, 0, Workspace.SizePerWorkspace, Workspace.SizePerWorkspace);
                 engine.fill(ctx);
 
@@ -122,13 +122,13 @@ export class Workspace extends EventEmitter implements BarModule
         return new Geometry({ x: 0, y: 0, width: this._width, height: 18 });
     }
 
-    private _updatePixmaps(owm: OWMLib) {
+    private _updateSurfaces(owm: OWMLib) {
         const engine = owm.engine;
         const border = this._border;
         const size = Workspace.SizePerWorkspace;
 
-        const activeCtx = engine.createFromSurface(this._activePixmap);
-        const inactiveCtx = engine.createFromSurface(this._inactivePixmap);
+        const activeCtx = engine.createFromSurface(this._activeSurface);
+        const inactiveCtx = engine.createFromSurface(this._inactiveSurface);
 
         const { red: bred, blue: bblue, green: bgreen } = this._borderColor;
 
