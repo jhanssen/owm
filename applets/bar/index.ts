@@ -260,7 +260,7 @@ export class Bar
             let x = this._width - Bar.Pad.x;
             for (const e of rights) {
                 const ng = e.module.geometry(fullGeom);
-                x -= e.geometry.width;
+                x -= ng.width;
                 e.geometry = new Geometry(ng);
                 e.geometry.x = x;
                 e.geometry.y += Bar.Pad.y;
