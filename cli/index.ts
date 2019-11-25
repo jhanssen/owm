@@ -17,11 +17,18 @@ function stringOption(key: string): string | undefined
 
 const knownCommands = [
     "exit",
-    "restart"
+    "restart",
+    "message"
 ];
 
 const cmd = stringOption("cmd");
+const payload = stringOption("payload");
 const sock = stringOption("sock");
+let payloadType = stringOption("payload-type") || "auto";
+if (payloadType !== "auto" && payloadType !== "json" && payloadType !== "string") {
+    console.error("Invalid payload-type", payloadType);
+    process.exit(1);
+}
 
 let display = stringOption("display");
 if (display === undefined) {
@@ -60,7 +67,29 @@ if (cmd !== undefined && knownCommands.includes(cmd)) {
         process.exit();
     });
     ws.on("open", () => {
-        ws.send(cmd);
+        let message: {
+            type: string;
+            payload: any;
+        } = {
+            type: cmd,
+            payload: undefined
+        };
+        if (payload) {
+            if (payloadType !== "string") {
+                try {
+                    message.payload = JSON.parse(payload);
+                } catch (err) {
+                    if (payloadType === "json") {
+                        console.error("Invalid json", err);
+                        process.exit();
+                    }
+                    message.payload = payload;
+                }
+            } else {
+                message.payload = payload;
+            }
+        }
+        ws.send(JSON.stringify(message));
     });
 } else {
     console.log("unknown command", cmd);

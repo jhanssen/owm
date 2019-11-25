@@ -124,7 +124,7 @@ export class OWMLib {
         this._log = new ConsoleLogger(options.level);
         this._root = 0;
         this._events = new EventEmitter();
-        this._ipc = new IPC("owm", options.display);
+        this._ipc = new IPC(this, "owm", options.display);
 
         this._policy = new Policy(this);
 
@@ -214,7 +214,7 @@ export class OWMLib {
         });
 
         this._ipc.events.on("message", (msg: IPCMessage) => {
-            switch (msg.message) {
+            switch (msg.type) {
             case "exit":
                 msg.close();
                 this._events.emit("exit");
@@ -223,8 +223,8 @@ export class OWMLib {
                 msg.close();
                 this._events.emit("restart");
                 break;
-            default:
-                msg.reply("unknown message");
+            case "message":
+                this._events.emit("message", msg);
                 break;
             }
         });
