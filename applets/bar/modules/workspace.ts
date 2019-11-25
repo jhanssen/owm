@@ -92,9 +92,12 @@ export class Workspace extends EventEmitter implements BarModule
                 engine.fill(ctx);
 
                 const { red: tr, green: tg, blue: tb, alpha: ta } = this._activeTextColor;
-                engine.translate(ctx, Workspace.Pad, 1);
                 engine.setSourceRGBA(ctx, tr, tg, tb, ta);
                 engine.textSetText(this._text, this._mapName(`${ws.id}`));
+                const m = engine.textMetrics(this._text);
+                // center metrics width in ws rectangle width
+                const c = (Workspace.SizePerWorkspace / 2) - (m.width / 2);
+                engine.translate(ctx, c, 1);
                 engine.drawText(ctx, this._text);
                 engine.restore(ctx);
             } else {
@@ -106,9 +109,12 @@ export class Workspace extends EventEmitter implements BarModule
                 engine.fill(ctx);
 
                 const { red: tr, green: tg, blue: tb, alpha: ta } = this._inactiveTextColor;
-                engine.translate(ctx, Workspace.Pad, 1);
                 engine.setSourceRGBA(ctx, tr, tg, tb, ta);
                 engine.textSetText(this._text, this._mapName(`${ws.id}`));
+                const m = engine.textMetrics(this._text);
+                // center metrics width in ws rectangle width
+                const c = (Workspace.SizePerWorkspace / 2) - (m.width / 2);
+                engine.translate(ctx, c, 1);
                 engine.drawText(ctx, this._text);
                 engine.restore(ctx);
             }
