@@ -12,11 +12,15 @@ function init(owmlib) {
             height: 25,
             modules: {
                 clock: {
-                    position: owmlib.Bar.Position.Middle,
+                    position: owmlib.Bar.Position.Right,
                     config: {
                         textColor: "#888",
-                        prefix: "🕒 "
+                        format: "🕒 hh:MM"
                     }
+                },
+                title: {
+                    position: owmlib.Bar.Position.Middle,
+                    config: {}
                 },
                 workspace: {
                     position: owmlib.Bar.Position.Left,
