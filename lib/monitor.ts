@@ -1,8 +1,9 @@
 import { Workspace, Workspaces } from "./workspace";
 import { OWMLib } from "./owm";
 import { ContainerItem, ContainerItemType } from "./container";
-import { Strut } from "./utils";
+import { Strut, Geometry } from "./utils";
 import { XCB, OWM } from "native";
+
 
 export class Monitor
 {
@@ -11,12 +12,14 @@ export class Monitor
     private _workspace: Workspace | undefined;
     private _monitors: Monitors;
     private _items: ContainerItem[];
+    private _geometry: Geometry;
 
     constructor(monitors: Monitors, screen: XCB.Screen) {
         this._screen = screen;
         this._monitors = monitors;
         this._workspaces = new Workspaces(monitors.owm, this);
         this._items = [];
+        this._geometry = new Geometry(screen);
     }
 
     get monitors() {
@@ -27,8 +30,13 @@ export class Monitor
         return this._screen;
     }
 
+    get geometry() {
+        return this._geometry;
+    }
+
     set screen(screen: XCB.Screen) {
         this._screen = screen;
+        this._geometry = new Geometry(screen);
         this._workspaces.updateScreen();
     }
 

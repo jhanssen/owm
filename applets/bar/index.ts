@@ -80,8 +80,8 @@ export class Bar
         const xcb = owm.xcb;
         const win = xcb.create_window(owm.wm, {
             parent: owm.root,
-            x: 0,
-            y: 0,
+            x: monitor.geometry.x,
+            y: monitor.geometry.y,
             width: this._width,
             height: this._height
         });
@@ -152,7 +152,7 @@ export class Bar
         const barMatchClassCondition = new owm.Match.MatchWMClass({ class: "OwmBar" });
         const barMatch = new owm.Match((client) => {
             if (client.window.window !== this._win) {
-                throw new Error("bar and client window mismatch");
+                return;
             }
             this._ready = true;
 
