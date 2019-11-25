@@ -1000,6 +1000,7 @@ export class OWMLib {
 
         if (detached)
             subprocess.unref();
+        return subprocess;
     }
 
     createMoveGrab() {
