@@ -150,7 +150,11 @@ export class Workspaces
         return this._monitor;
     }
 
-    workspaces(output: string) {
+    get size() {
+        return this._workspaces.size;
+    }
+
+    get workspaces() {
         return this._workspaces;
     }
 
@@ -197,6 +201,9 @@ export class Workspaces
 
         this._owm.ewmh.updateWorkspaces();
         this._owm.ewmh.updateWorkarea();
+
+        // ### this is kinda hacky, emitting with the monitor instead of this
+        this._owm.events.emit("workspaceAdded", this._monitor);
     }
 
     removeById(id: number) {
@@ -208,6 +215,8 @@ export class Workspaces
 
             this._owm.ewmh.updateWorkspaces();
             this._owm.ewmh.updateWorkarea();
+
+            this._owm.events.emit("workspaceRemoved", this._monitor);
         }
     }
 
@@ -220,6 +229,8 @@ export class Workspaces
 
             this._owm.ewmh.updateWorkspaces();
             this._owm.ewmh.updateWorkarea();
+
+            this._owm.events.emit("workspaceRemoved", this._monitor);
         }
     }
 

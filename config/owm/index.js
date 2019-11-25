@@ -9,12 +9,18 @@ function init(owmlib) {
 
         bar = new owmlib.Bar(owmlib, "default", {
             backgroundColor: "#333",
+            height: 25,
             modules: {
                 clock: {
                     position: owmlib.Bar.Position.Middle,
                     config: {
                         textColor: "#888",
                         prefix: "🕒 "
+                    }
+                },
+                workspace: {
+                    position: owmlib.Bar.Position.Left,
+                    config: {
                     }
                 }
             }

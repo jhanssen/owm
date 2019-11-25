@@ -61,8 +61,8 @@ struct Cairo
 
 struct Surface
 {
-    Surface(cairo_surface_t* s, const std::shared_ptr<Cairo>& parent)
-        : surface(s)
+    Surface(cairo_surface_t* s, uint32_t w, uint32_t h)
+        : surface(s), width(w), height(h)
     {
     }
     ~Surface()
@@ -79,6 +79,7 @@ struct Surface
     };
 
     cairo_surface_t* surface;
+    uint32_t width, height;
 };
 
 struct Pango
@@ -197,6 +198,25 @@ Napi::Object make(napi_env env)
         return Wrap<std::shared_ptr<Cairo> >::wrap(env, nc);
     }));
 
+    graphics.Set("createFromSurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.createFromSurface takes one argument");
+        }
+
+        auto s = Wrap<std::shared_ptr<Surface> >::unwrap(info[0]);
+
+        if (!s->surface) {
+            throw Napi::TypeError::New(env, "cairo.createFromSurface invalid cairo");
+        }
+
+        auto cairo = cairo_create(s->surface);
+        auto c = std::make_shared<Cairo>(cairo_surface_reference(s->surface), cairo, s->width, s->height);
+
+        return Wrap<std::shared_ptr<Cairo> >::wrap(env, c);
+    }));
+
     graphics.Set("destroy", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
@@ -296,17 +316,71 @@ Napi::Object make(napi_env env)
         return env.Undefined();
     }));
 
-    graphics.Set("createPNGSurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+    graphics.Set("createSurfaceFromContext", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromContext takes two arguments");
+        }
+
+        auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
+
+        if (!c->cairo || !c->surface) {
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromContext invalid cairo");
+        }
+
+        auto s = std::make_shared<Surface>(cairo_surface_reference(c->surface), c->width, c->height);
+
+        return Wrap<std::shared_ptr<Surface> >::wrap(env, s);
+    }));
+
+    graphics.Set("createSurfaceFromDrawable", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromDrawable requires two arguments");
+        }
+
+        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+        auto arg = info[1].As<Napi::Object>();
+
+        if (!arg.Has("drawable")) {
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromDrawable requires a drawable");
+        }
+        const auto drawable = arg.Get("drawable").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("width")) {
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromDrawable requires a width");
+        }
+        const auto width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+        if (!arg.Has("height")) {
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromDrawable requires a height");
+        }
+        const auto height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+        auto visual = find_visual(wm->conn, wm->defaultScreen->root_visual);
+        if (!visual) {
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromDrawable couldn't find root visual from id");
+        }
+
+        auto surface = cairo_xcb_surface_create(wm->conn, drawable, visual, width, height);
+        auto s = std::make_shared<Surface>(surface, width, height);
+
+        return Wrap<std::shared_ptr<Surface> >::wrap(env, s);
+    }));
+
+    graphics.Set("createSurfaceFromPNG", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
         auto env = info.Env();
 
         if (info.Length() < 2 || !info[0].IsObject() || (!info[1].IsArrayBuffer() && !info[1].IsTypedArray())) {
-            throw Napi::TypeError::New(env, "cairo.createPNGSurface takes two arguments");
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromPNG takes two arguments");
         }
 
         auto c = Wrap<std::shared_ptr<Cairo> >::unwrap(info[0]);
 
         if (!c->cairo) {
-            throw Napi::TypeError::New(env, "cairo.createPNGSurface invalid cairo");
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromPNG invalid cairo");
         }
 
         size_t size;
@@ -324,7 +398,7 @@ Napi::Object make(napi_env env)
             offset = tdata.ByteOffset();
             data = tdata.ArrayBuffer();
         } else {
-            throw Napi::TypeError::New(env, "cairo.createPNGSurface data must be an arraybuffer or typedarray");
+            throw Napi::TypeError::New(env, "cairo.createSurfaceFromPNG data must be an arraybuffer or typedarray");
         }
 
         Surface::Data surfaceData { reinterpret_cast<uint8_t*>(data.Data()) + offset, 0, size };
@@ -339,7 +413,10 @@ Napi::Object make(napi_env env)
             return CAIRO_STATUS_SUCCESS;
         }, &surfaceData);
 
-        auto s = std::make_shared<Surface>(pngs, c);
+        const uint32_t w = cairo_image_surface_get_width(pngs);
+        const uint32_t h = cairo_image_surface_get_height(pngs);
+
+        auto s = std::make_shared<Surface>(pngs, w, h);
 
         return Wrap<std::shared_ptr<Surface> >::wrap(env, s);
     }));
@@ -371,13 +448,31 @@ Napi::Object make(napi_env env)
         auto s = Wrap<std::shared_ptr<Surface> >::unwrap(info[0]);
 
         if (!s->surface) {
-            throw Napi::TypeError::New(env, "cairo.destroy no cairo?");
+            throw Napi::TypeError::New(env, "cairo.surfaceSize no cairo?");
         }
 
         auto ret = Napi::Object::New(env);
-        ret.Set("width", Napi::Number::New(env, cairo_image_surface_get_width(s->surface)));
-        ret.Set("height", Napi::Number::New(env, cairo_image_surface_get_height(s->surface)));
+        ret.Set("width", Napi::Number::New(env, s->width));
+        ret.Set("height", Napi::Number::New(env, s->height));
         return ret;
+    }));
+
+    graphics.Set("surfaceFlush", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 1 || !info[0].IsObject()) {
+            throw Napi::TypeError::New(env, "cairo.surfaceFlush takes one argument");
+        }
+
+        auto s = Wrap<std::shared_ptr<Surface> >::unwrap(info[0]);
+
+        if (!s->surface) {
+            throw Napi::TypeError::New(env, "cairo.surfaceFlush no cairo?");
+        }
+
+        cairo_surface_flush(s->surface);
+
+        return env.Undefined();
     }));
 
     graphics.Set("setSourceSurface", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {

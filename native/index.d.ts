@@ -632,6 +632,7 @@ export namespace Graphics {
     export interface Text {}
     export interface Engine {
         createFromDrawable(wm: OWM.WM, args: CreateFromDrawableArgs): Context;
+        createFromSurface(surface: Surface): Context;
         createFromContext(ctx: Context): Context;
         // destroy(ctx: Context): void;
         save(ctx: Context): void;
@@ -647,9 +648,12 @@ export namespace Graphics {
         paint(ctx: Context): void;
         size(ctx: Context): Size;
 
-        createPNGSurface(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
+        createSurfaceFromDrawable(wm: OWM.WM, args: CreateFromDrawableArgs): Surface;
+        createSurfaceFromPNG(ctx: Context, data: ArrayBuffer | XCB_TypedArray | Buffer): Surface;
+        createSurfaceFromContext(ctx: Context): Surface;
         // destroySurface(surface: Surface): void;
         surfaceSize(surface: Surface): Size;
+        surfaceFlush(surface: Surface): void;
 
         translate(ctx: Context, tx: number, ty: number): void;
         scale(ctx: Context, sx: number, sy: number): void;
@@ -705,6 +709,7 @@ export namespace OWM {
         change_window_attributes(wm: OWM.WM, args: ChangeWindowAttributesArgs): void;
         create_window(wm: OWM.WM, args: CreateWindowArgs): number;
         create_pixmap(wm: OWM.WM, args: CreatePixmapArgs): number;
+        free_pixmap(wm: OWM.WM, window: number): void;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
         get_property(wm: OWM.WM, args: GetPropertyArgs): GetPropertyReply | undefined;
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
@@ -715,6 +720,7 @@ export namespace OWM {
         send_configure_notify(wm: OWM.WM, args: SendConfigureNotifyArgs): void;
         create_gc(wm: OWM.WM, args: CreateGCArgs): number;
         change_gc(wm: OWM.WM, args: ChangeGCArgs): void;
+        free_gc(wm: OWM.WM, gc: number): void;
         allow_events(wm: OWM.WM, args: AllowEventsArgs): void;
         change_save_set(wm: OWM.WM, args: ChangeSaveSetArgs): void;
         copy_area(wm: OWM.WM, args: CopyAreaArgs): void;
@@ -736,7 +742,6 @@ export namespace OWM {
         destroy_window(wm: OWM.WM, window: number): void;
         request_window_information(wm: OWM.WM, window: number): XCB.Window;
         kill_client(wm: OWM.WM, window: number): void;
-        free_gc(wm: OWM.WM, gc: number): void;
         grab_server(wm: OWM.WM): void;
         ungrab_server(wm: OWM.WM): void;
         flush(wm: OWM.WM): void;

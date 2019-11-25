@@ -1,6 +1,6 @@
-import { OWMLib, Geometry } from "../../lib";
+import { OWMLib, Geometry, Monitor } from "../../lib";
 import { Graphics } from "../../native";
-import { Clock, ClockConfig } from "./modules";
+import { Clock, ClockConfig, Workspace, WorkspaceConfig } from "./modules";
 import { EventEmitter } from "events";
 import { default as hexRgb } from "hex-rgb";
 
@@ -54,6 +54,7 @@ export class Bar
     private _modules: Map<Bar.Position, Module[]>;
     private _backgroundColor: { red: number, green: number, blue: number, alpha: number };
     private _availableModules: {[key: string]: BarModuleConstructor };
+    private _monitor: Monitor;
 
     constructor(owm: OWMLib, output: string, config: BarConfig, extraModules?: {[key: string]: BarModuleConstructor }) {
         this._owm = owm;
@@ -61,13 +62,15 @@ export class Bar
         this._ready = false;
 
         this._availableModules = {
-            clock: Clock
+            clock: Clock,
+            workspace: Workspace
         };
 
         const monitor = owm.monitors.monitorByOutput(output);
         if (!monitor) {
             throw new Error(`No monitor called ${output}`);
         }
+        this._monitor = monitor;
         const width = monitor.screen.width;
 
         // console.log("bar width", width);
@@ -165,7 +168,7 @@ export class Bar
                 xcb.eventMask.FOCUS_CHANGE;
 
             xcb.change_window_attributes(owm.wm, { window: client.window.window, event_mask: winMask });
-            this.update();
+            this._update();
         });
         barMatch.addCondition(barMatchClassCondition);
         owm.addMatch(barMatch);
@@ -202,7 +205,8 @@ export class Bar
             } else {
                 this._modules.set(m.position, [m]);
             }
-            c.on("updated", () => { this.update(); });
+            c.on("updated", () => { this._update(); });
+            c.on("geometryChanged", () => { this._relayout(); });
         };
 
         for (const [name, module] of Object.entries(config.modules)) {
@@ -215,12 +219,35 @@ export class Bar
             }
         }
 
+        this._relayout();
+    }
+
+    get ctx() {
+        return this._ctx;
+    }
+
+    get monitor() {
+        return this._monitor;
+    }
+
+    private _update() {
+        if (!this._ready)
+            return;
+
+        this._redraw();
+        const owm = this._owm;
+        owm.xcb.send_expose(owm.wm, { window: this._win, width: this._width, height: this._height });
+    }
+
+    private _relayout() {
         // calculate positions
+        const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
+
         const lefts = this._modules.get(Bar.Position.Left);
         if (lefts !== undefined) {
             let x = Bar.Pad.x;
             for (const e of lefts) {
-                const ng = e.module.geometry(e.geometry);
+                const ng = e.module.geometry(fullGeom);
                 e.geometry = new Geometry(ng);
                 e.geometry.x = x;
                 e.geometry.y += Bar.Pad.y;
@@ -230,9 +257,9 @@ export class Bar
         }
         const rights = this._modules.get(Bar.Position.Right);
         if (rights !== undefined) {
-            let x = width - Bar.Pad.x;
+            let x = this._width - Bar.Pad.x;
             for (const e of rights) {
-                const ng = e.module.geometry(e.geometry);
+                const ng = e.module.geometry(fullGeom);
                 x -= e.geometry.width;
                 e.geometry = new Geometry(ng);
                 e.geometry.x = x;
@@ -246,7 +273,7 @@ export class Bar
             let x = 0;
             const last = mids.length;
             for (const [idx, e] of mids.entries()) {
-                const ng = e.module.geometry(e.geometry);
+                const ng = e.module.geometry(fullGeom);
                 e.geometry = new Geometry(ng);
                 e.geometry.x = x;
                 e.geometry.y += Bar.Pad.y;
@@ -256,24 +283,13 @@ export class Bar
                     x += Bar.Pad.x;
             }
 
-            const off = (width / 2) - (x / 2);
+            const off = (this._width / 2) - (x / 2);
             for (const e of mids) {
                 e.geometry.x += off;
             }
         }
-    }
 
-    get ctx() {
-        return this._ctx;
-    }
-
-    update() {
-        if (!this._ready)
-            return;
-
-        this._redraw();
-        const owm = this._owm;
-        owm.xcb.send_expose(owm.wm, { window: this._win, width: this._width, height: this._height });
+        this._update();
     }
 
     private _onExpose() {
