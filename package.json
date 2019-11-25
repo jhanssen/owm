@@ -13,6 +13,7 @@
    "author": "",
    "license": "MIT",
    "devDependencies": {
+      "@types/dateformat": "^3.0.1",
       "@types/node": "^12.11.7",
       "@types/shell-quote": "^1.6.1",
       "@types/ws": "^6.0.3",
@@ -23,6 +24,7 @@
    },
    "dependencies": {
       "@jhanssen/options": "^1.0.26",
+      "dateformat": "^3.0.3",
       "hex-rgb": "^4.1.0",
       "shell-quote": "^1.7.2",
       "ws": "^7.2.0",
