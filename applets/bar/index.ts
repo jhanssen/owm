@@ -1,6 +1,8 @@
 import { OWMLib, Geometry, Monitor } from "../../lib";
 import { Graphics } from "../../native";
-import { Clock, ClockConfig, Workspace, WorkspaceConfig } from "./modules";
+import { Clock, ClockConfig,
+         Title, TitleConfig,
+         Workspace, WorkspaceConfig } from "./modules";
 import { EventEmitter } from "events";
 import { default as hexRgb } from "hex-rgb";
 
@@ -63,6 +65,7 @@ export class Bar
 
         this._availableModules = {
             clock: Clock,
+            title: Title,
             workspace: Workspace
         };
 
