@@ -637,9 +637,9 @@ export class Client implements ContainerItem
         }
     }
 
-    updateProperty(property: number, isDelete: boolean) {
+    updateProperty(property: number, isNew: boolean) {
         let propdata: OWM.GetProperty | undefined;
-        if (!isDelete) {
+        if (isNew) {
             propdata = this._owm.xcb.get_property(this._owm.wm, { window: this._window.window, property: property });
             if (!propdata) {
                 const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
