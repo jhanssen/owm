@@ -1,6 +1,7 @@
 import { OWMLib, Geometry, Monitor } from "../../lib";
 import { Graphics } from "../../native";
 import { Clock, ClockConfig,
+         Message, MessageConfig,
          Title, TitleConfig,
          Workspace, WorkspaceConfig } from "./modules";
 import { EventEmitter } from "events";
@@ -66,6 +67,7 @@ export class Bar
         this._availableModules = {
             clock: Clock,
             title: Title,
+            message: Message,
             workspace: Workspace
         };
 
@@ -200,7 +202,7 @@ export class Bar
         const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
 
         const createModule = (module: { position: Bar.Position, config: BarModuleConfig }, ctor: BarModuleConstructor) => {
-            const c = new ctor(owm, this, module.config);
+            const c = new ctor(owm, this, module.config || {});
             const m = { position: module.position, geometry: fullGeom, module: c };
             const a = this._modules.get(m.position);
             if (a !== undefined) {
@@ -231,6 +233,10 @@ export class Bar
 
     get monitor() {
         return this._monitor;
+    }
+
+    modules(position: Bar.Position) {
+        return this._modules.get(position);
     }
 
     private _update() {

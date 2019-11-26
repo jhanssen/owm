@@ -1,3 +1,4 @@
 export { Clock, ClockConfig } from "./clock";
-export { Workspace, WorkspaceConfig } from "./workspace";
+export { Message, MessageConfig } from "./message";
 export { Title, TitleConfig } from "./title";
+export { Workspace, WorkspaceConfig } from "./workspace";
