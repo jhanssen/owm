@@ -686,7 +686,7 @@ export class Client implements ContainerItem
             break;
         default:
             const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
-            this._log.error(`unhandled property notify ${name}`);
+            this._log.warn(`unhandled property notify ${name}`);
             break;
         }
     }
