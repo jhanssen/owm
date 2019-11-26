@@ -346,6 +346,11 @@ export class Container implements ContainerItem
             return;
         }
 
+        // if we're already the top item, bail out
+        if (idx === items.length - 1) {
+            return;
+        }
+
         // take the item out
         items.splice(idx, 1);
 
@@ -379,9 +384,7 @@ export class Container implements ContainerItem
                 }
             }
 
-            if (allItems.length > 1) {
-                this.circulateToTop(full);
-            }
+            this.circulateToTop(full);
         }
     }
 
@@ -398,6 +401,11 @@ export class Container implements ContainerItem
         const allItems = this.items;
         if (allItems.length === 1 || item === this._fullscreenItem) {
             // nothing to do
+            return;
+        }
+
+        // if we're already the bottom-most item, bail out
+        if (idx === 0) {
             return;
         }
 
