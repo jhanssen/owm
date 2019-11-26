@@ -33,6 +33,7 @@ export class Container implements ContainerItem
     private _owm: OWMLib;
     private _regularItems: ContainerItem[];
     private _ontopItems: ContainerItem[];
+    private _layoutItems: ContainerItem[];
     private _layout: LayoutPolicy;
     private _monitor: Monitor | undefined;
     private _geometry: Geometry;
@@ -52,6 +53,7 @@ export class Container implements ContainerItem
         this._owm = owm;
         this._regularItems = [];
         this._ontopItems = [];
+        this._layoutItems = [];
         this._layout = owm.policy.layout.clone();
         this._monitor = monitor;
         if (monitor) {
@@ -81,10 +83,13 @@ export class Container implements ContainerItem
         this._layout.events.on("needsLayout", this._layoutCallback);
     }
 
-    get items() {
-        if (this._ontopItems.length > 0)
-            return this._regularItems.concat(this._ontopItems);
-        return this._regularItems;
+    get stackItems() {
+        // we depend on the array returned from this being a copy (in bringToTop)
+        return this._regularItems.concat(this._ontopItems);
+    }
+
+    get layoutItems() {
+        return this._layoutItems;
     }
 
     get monitor() {
@@ -123,7 +128,7 @@ export class Container implements ContainerItem
 
     get strut() {
         const strut = new Strut();
-        for (let item of this.items) {
+        for (let item of this._layoutItems) {
             strut.unite(item.strut);
         }
         if (this._monitor) {
@@ -195,7 +200,7 @@ export class Container implements ContainerItem
     set visible(v: boolean) {
         this._visible = v;
 
-        for (let item of this.items) {
+        for (let item of this._layoutItems) {
             if (!item.ignoreWorkspace) {
                 item.visible = v;
             }
@@ -231,13 +236,13 @@ export class Container implements ContainerItem
     }
 
     raise(sibling?: ContainerItem) {
-        for (const item of this.items) {
+        for (const item of this._layoutItems) {
             item.raise(sibling);
         }
     }
 
     lower(sibling?: ContainerItem) {
-        for (const item of this.items) {
+        for (const item of this._layoutItems) {
             item.lower(sibling);
         }
     }
@@ -246,7 +251,7 @@ export class Container implements ContainerItem
         const dx = x - this._geometry.x;
         const dy = y - this._geometry.y;
 
-        for (const item of this.items) {
+        for (const item of this._layoutItems) {
             item.move(item.geometry.x + dx, item.geometry.y + dy);
         }
 
@@ -265,7 +270,7 @@ export class Container implements ContainerItem
         if (item.ignoreWorkspace) {
             throw new Error("item ignores workspaces");
         }
-        if (this.items.indexOf(item) !== -1) {
+        if (this._layoutItems.indexOf(item) !== -1) {
             throw new Error("item already exists");
         }
         if (item.container) {
@@ -284,6 +289,7 @@ export class Container implements ContainerItem
         } else {
             this._regularItems.push(item);
         }
+        this._layoutItems.push(item);
         this.circulateToTop(item);
         this.relayout();
 
@@ -298,15 +304,20 @@ export class Container implements ContainerItem
         if (item.container !== this) {
             throw new Error("item not in this container");
         }
-        const items = this._findItems(item);
-        if (items === undefined) {
-            throw new Error("container doesn't contain this item");
+        const stackList = this._stackListForItem(item);
+        if (stackList === undefined) {
+            throw new Error("container doesn't contain this item (_stackListForItem)");
         }
-        const idx = items.indexOf(item);
-        if (idx === -1) {
-            throw new Error("container doesn't contain this item");
+        const iidx = stackList.indexOf(item);
+        if (iidx === -1) {
+            throw new Error("container doesn't contain this item (stackList)");
         }
-        items.splice(idx, 1);
+        const lidx = this._layoutItems.indexOf(item);
+        if (lidx === -1) {
+            throw new Error("container doesn't contain this item (_layoutItems)");
+        }
+        stackList.splice(iidx, 1);
+        this._layoutItems.splice(lidx, 1);
 
         if (item === this._fullscreenItem) {
             this._fullscreenItem = undefined;
@@ -321,15 +332,15 @@ export class Container implements ContainerItem
 
     circulateToTop(item: ContainerItem) {
         this._log.info("circulating to top", item);
-        const items = this._findItems(item);
-        if (items === undefined) {
+        const stackList = this._stackListForItem(item);
+        if (stackList === undefined) {
             throw new Error("container doesn't contain this item");
         }
-        const idx = items.indexOf(item);
+        const idx = stackList.indexOf(item);
         if (idx === -1) {
             throw new Error("container doesn't contain this item");
         }
-        const allItems = this.items;
+        const allItems = this.stackItems;
         if (allItems.length === 1) {
             // make sure we respect our global items
             const item = allItems[0];
@@ -347,25 +358,25 @@ export class Container implements ContainerItem
         }
 
         // if we're already the top item, bail out
-        if (idx === items.length - 1) {
+        if (idx === stackList.length - 1) {
             return;
         }
 
         // take the item out
-        items.splice(idx, 1);
+        stackList.splice(idx, 1);
 
         // and put it back in
-        items.push(item);
+        stackList.push(item);
 
-        if (items.length === 1) {
+        if (stackList.length === 1) {
             // we know there's another item in the other array
-            if (items === this._regularItems) {
+            if (stackList === this._regularItems) {
                 item.lower(this._ontopItems[0]);
             } else {
                 item.raise(this._regularItems[this._regularItems.length - 1]);
             }
         } else {
-            item.raise(items[items.length - 2]);
+            item.raise(stackList[stackList.length - 2]);
         }
 
         // if we have a fullscreen item, make sure it stays on top
@@ -390,15 +401,15 @@ export class Container implements ContainerItem
 
     circulateToBottom(item: ContainerItem) {
         this._log.info("circulating to bottom", item);
-        const items = this._findItems(item);
-        if (items === undefined) {
+        const stackList = this._stackListForItem(item);
+        if (stackList === undefined) {
             throw new Error("container doesn't contain this item");
         }
-        const idx = items.indexOf(item);
+        const idx = stackList.indexOf(item);
         if (idx === -1) {
             throw new Error("container doesn't contain this item");
         }
-        const allItems = this.items;
+        const allItems = this.stackItems;
         if (allItems.length === 1 || item === this._fullscreenItem) {
             // nothing to do
             return;
@@ -410,20 +421,20 @@ export class Container implements ContainerItem
         }
 
         // take the item out
-        items.splice(idx, 1);
+        stackList.splice(idx, 1);
 
         // put it back in
-        items.unshift(item);
+        stackList.unshift(item);
 
-        if (items.length === 1) {
+        if (stackList.length === 1) {
             // we know there's another item in the other array
-            if (items === this._regularItems) {
+            if (stackList === this._regularItems) {
                 item.lower(this._ontopItems[0]);
             } else {
                 item.raise(this._regularItems[this._regularItems.length - 1]);
             }
         } else {
-            item.lower(items[1]);
+            item.lower(stackList[1]);
         }
     }
 
@@ -434,13 +445,13 @@ export class Container implements ContainerItem
             // _geometry is the non-strutted geometry
             this._layout.layout([this._fullscreenItem], this._geometry);
         } else {
-            this._layout.layout(this.items, this.geometry);
+            this._layout.layout(this._layoutItems, this.geometry);
         }
     }
 
     findItemByPosition(x: number, y: number, itemType: ContainerItemType): ContainerItem | undefined {
         // walk items from the top-most item to the bottom-most one
-        const allItems = this.items;
+        const allItems = this.stackItems;
         const len = allItems.length;
         if (len === 0)
             return itemType === ContainerItemType.Container ? this : undefined;
@@ -463,11 +474,20 @@ export class Container implements ContainerItem
         return itemType === ContainerItemType.Container ? this : undefined;
     }
 
+    bringToTop(predicate: (client: ContainerItem) => boolean) {
+        const items = this.stackItems;
+        for (const item of items) {
+            if (predicate(item)) {
+                this.circulateToTop(item);
+            }
+        }
+    }
+
     private _policyNeedsLayout() {
         this.relayout();
     }
 
-    private _findItems(item: ContainerItem) {
+    private _stackListForItem(item: ContainerItem) {
         if (this._regularItems.includes(item))
             return this._regularItems;
         if (this._ontopItems.includes(item))
