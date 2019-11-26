@@ -314,6 +314,11 @@ export class OWMLib {
         return this._monitors;
     }
 
+    get pointerPosition() {
+        const ptr = this._xcb.query_pointer(this._wm);
+        return { x: ptr.root_x, y: ptr.root_y };
+    }
+
     get moveModifier() {
         return this._moveModifier;
     }
