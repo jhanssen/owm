@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { default as Options } from "@jhanssen/options";
 //import * as WebSocket from "ws";
 // I have no idea why the above statement doesn't work but this one does
