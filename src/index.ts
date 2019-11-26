@@ -1,3 +1,11 @@
+#!/usr/bin/env node
+
+if (process.env.PATH) {
+    process.env.PATH = process.env.PATH.split(":").filter(p => {
+        return !/\/owm\//.exec(p) && !/\/npm-lifecycle\//.exec(p);
+    }).join(":");
+}
+
 import * as xdgBaseDir from "xdg-basedir";
 import { default as Options } from "@jhanssen/options";
 import { default as native, OWM, XCB } from "native";
