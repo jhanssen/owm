@@ -78,7 +78,7 @@ function event(e: OWM.Event) {
 const data = native.start(event, display);
 console.log("owm started");
 
-let level = Logger.Level.Warning;
+let level = Logger.Level.Error;
 const logLevel = stringOption("log");
 if (logLevel !== undefined) {
     switch (logLevel.toLowerCase()) {
