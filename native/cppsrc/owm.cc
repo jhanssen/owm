@@ -409,6 +409,9 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::FunctionReference& fn,
         // we don't care about these
         log = false;
         break;
+    case 0:
+        log = false;
+        break;
     }
     free(xcb);
 
