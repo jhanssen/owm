@@ -474,13 +474,69 @@ export class Container implements ContainerItem
         return itemType === ContainerItemType.Container ? this : undefined;
     }
 
-    bringToTop(predicate: (client: ContainerItem) => boolean) {
+    bringToTop(predicate: (item: ContainerItem) => boolean) {
         const items = this.stackItems;
         for (const item of items) {
             if (predicate(item)) {
                 this.circulateToTop(item);
             }
         }
+    }
+
+    changeLayoutOrder(item: ContainerItem, position: Container.LayoutPosition, other?: ContainerItem) {
+        if ((position === Container.LayoutPosition.Forward || position === Container.LayoutPosition.Backward)
+            && other !== undefined) {
+            throw new Error("can't have a relative container item with Forward/Backward position");
+        }
+        if (item === other) {
+            throw new Error("item and other can't be the same item");
+        }
+        let idx = this._layoutItems.indexOf(item);
+        if (idx === -1) {
+            throw new Error("can't find item for changeLayoutOrder");
+        }
+        let otherIdx = -1;
+        if (other !== undefined) {
+            otherIdx = this._layoutItems.indexOf(item);
+            if (otherIdx === -1) {
+                throw new Error("can't find other for changeLayoutOrder");
+            }
+        }
+        // take it out
+        this._layoutItems.splice(idx, 1);
+        if (otherIdx !== -1 && otherIdx > idx) {
+            --otherIdx;
+        }
+        switch (position) {
+        case Container.LayoutPosition.Front:
+            // all the way to the front
+            this._layoutItems.unshift(item);
+            break;
+        case Container.LayoutPosition.Back:
+            // all the way to the back
+            this._layoutItems.push(item);
+            break;
+        case Container.LayoutPosition.Forward:
+            if (otherIdx !== -1) {
+                // in front of otherIdx
+                this._layoutItems.splice(otherIdx, 0, item);
+            } else {
+                // one step forward from current
+                if (idx > 0)
+                    --idx;
+                this._layoutItems.splice(idx, 0, item);
+            }
+            break;
+        case Container.LayoutPosition.Backward:
+            if (otherIdx !== -1) {
+                // in back of otherIdx
+                this._layoutItems.splice(otherIdx + 1, 0, item);
+            } else {
+                this._layoutItems.splice(idx + 1, 0, item);
+            }
+        }
+
+        this.relayout();
     }
 
     private _policyNeedsLayout() {
@@ -500,6 +556,12 @@ export namespace Container {
     export enum Type {
         TopLevel,
         Item
+    }
+    export enum LayoutPosition {
+        Front,
+        Back,
+        Forward,
+        Backward
     }
 }
 
