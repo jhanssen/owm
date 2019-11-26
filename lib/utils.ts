@@ -26,6 +26,11 @@ export class Geometry
         this.height = height;
         this.width = width;
     }
+
+    contains(x: number, y: number) {
+        return (x >= this.x && x < this.x + this.width
+                && y >= this.y && y < this.y + this.height);
+    }
 }
 
 interface StrutData
