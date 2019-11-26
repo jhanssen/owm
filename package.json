@@ -6,7 +6,7 @@
    "scripts": {
       "start:dev": "nodemon",
       "start": "npm run build && NODE_PATH=. node build/src/index.js",
-      "build": "rimraf ./build && tsc",
+      "build": "rimraf ./build && tsc && chmod +x build/cli/index.js && chmod +x build/src/index.js",
       "test": "echo \"Error: no test specified\" && exit 1"
    },
    "keywords": [],
