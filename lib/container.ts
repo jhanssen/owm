@@ -31,7 +31,8 @@ export enum ContainerItemType
 export class Container implements ContainerItem
 {
     private _owm: OWMLib;
-    private _items: ContainerItem[];
+    private _regularItems: ContainerItem[];
+    private _ontopItems: ContainerItem[];
     private _layout: LayoutPolicy;
     private _monitor: Monitor | undefined;
     private _geometry: Geometry;
@@ -49,7 +50,8 @@ export class Container implements ContainerItem
 
     constructor(owm: OWMLib, containerType: Container.Type, monitor?: Monitor) {
         this._owm = owm;
-        this._items = [];
+        this._regularItems = [];
+        this._ontopItems = [];
         this._layout = owm.policy.layout.clone();
         this._monitor = monitor;
         if (monitor) {
@@ -77,6 +79,12 @@ export class Container implements ContainerItem
         this._layout.events.removeListener("needsLayout", this._layoutCallback);
         this._layout = policy;
         this._layout.events.on("needsLayout", this._layoutCallback);
+    }
+
+    get items() {
+        if (this._ontopItems.length > 0)
+            return this._regularItems.concat(this._ontopItems);
+        return this._regularItems;
     }
 
     get monitor() {
@@ -115,7 +123,7 @@ export class Container implements ContainerItem
 
     get strut() {
         const strut = new Strut();
-        for (let item of this._items) {
+        for (let item of this.items) {
             strut.unite(item.strut);
         }
         if (this._monitor) {
@@ -187,7 +195,7 @@ export class Container implements ContainerItem
     set visible(v: boolean) {
         this._visible = v;
 
-        for (let item of this._items) {
+        for (let item of this.items) {
             if (!item.ignoreWorkspace) {
                 item.visible = v;
             }
@@ -223,13 +231,13 @@ export class Container implements ContainerItem
     }
 
     raise(sibling?: ContainerItem) {
-        for (const item of this._items) {
+        for (const item of this.items) {
             item.raise(sibling);
         }
     }
 
     lower(sibling?: ContainerItem) {
-        for (const item of this._items) {
+        for (const item of this.items) {
             item.lower(sibling);
         }
     }
@@ -238,7 +246,7 @@ export class Container implements ContainerItem
         const dx = x - this._geometry.x;
         const dy = y - this._geometry.y;
 
-        for (const item of this._items) {
+        for (const item of this.items) {
             item.move(item.geometry.x + dx, item.geometry.y + dy);
         }
 
@@ -257,7 +265,7 @@ export class Container implements ContainerItem
         if (item.ignoreWorkspace) {
             throw new Error("item ignores workspaces");
         }
-        if (this._items.indexOf(item) !== -1) {
+        if (this.items.indexOf(item) !== -1) {
             throw new Error("item already exists");
         }
         if (item.container) {
@@ -271,7 +279,11 @@ export class Container implements ContainerItem
         }
 
         this._log.info("got new item");
-        this._items.push(item);
+        if (item.staysOnTop) {
+            this._ontopItems.push(item);
+        } else {
+            this._regularItems.push(item);
+        }
         this.circulateToTop(item);
         this.relayout();
 
@@ -286,19 +298,20 @@ export class Container implements ContainerItem
         if (item.container !== this) {
             throw new Error("item not in this container");
         }
-        const idx = this._items.indexOf(item);
+        const items = this._findItems(item);
+        if (items === undefined) {
+            throw new Error("container doesn't contain this item");
+        }
+        const idx = items.indexOf(item);
         if (idx === -1) {
             throw new Error("container doesn't contain this item");
         }
+        items.splice(idx, 1);
 
         if (item === this._fullscreenItem) {
             this._fullscreenItem = undefined;
         }
 
-        this._items.splice(idx, 1);
-        if (this._items.length > 0) {
-            this.circulateToTop(this._items[this._items.length - 1]);
-        }
         this.relayout();
 
         if (Strut.hasStrut(item.strut)) {
@@ -307,13 +320,19 @@ export class Container implements ContainerItem
     }
 
     circulateToTop(item: ContainerItem) {
-        const idx = this._items.indexOf(item);
+        this._log.info("circulating to top", item);
+        const items = this._findItems(item);
+        if (items === undefined) {
+            throw new Error("container doesn't contain this item");
+        }
+        const idx = items.indexOf(item);
         if (idx === -1) {
             throw new Error("container doesn't contain this item");
         }
-        if (this._items.length === 1) {
+        const allItems = this.items;
+        if (allItems.length === 1) {
             // make sure we respect our global items
-            const item = this._items[0];
+            const item = allItems[0];
             if (this._monitor) {
                 const globalItems = this._monitor.items;
                 if (globalItems.length > 0) {
@@ -328,37 +347,20 @@ export class Container implements ContainerItem
         }
 
         // take the item out
-        this._items.splice(idx, 1);
+        items.splice(idx, 1);
 
-        // ### there's a bug here, this code won't work if we find a container as the item
-        // we're supposed to be above or below. The reason for this is that client.lower / client.raise()
-        // expects that the sibling is a client, but in this case it would be a container.
+        // and put it back in
+        items.push(item);
 
-        if (item.staysOnTop) {
-            // move to top of list
-            this._items.push(item);
-            item.raise(this._items[this._items.length - 2]);
-        } else {
-            // find the last of the non-staysontop items
-            let found = -1;
-            for (let i = 0; i < this._items.length; ++i) {
-                if (this._items[i].staysOnTop) {
-                    found = i;
-                    break;
-                }
-            }
-            if (found === -1) {
-                this._items.push(item);
-                item.raise(this._items[this._items.length - 2]);
+        if (items.length === 1) {
+            // we know there's another item in the other array
+            if (items === this._regularItems) {
+                item.lower(this._ontopItems[0]);
             } else {
-                this._items.splice(found, 0, item);
-                if (found > 0) {
-                    item.raise(this._items[found - 1]);
-                } else {
-                    // is this right?
-                    item.lower(this._items[found + 1]);
-                }
+                item.raise(this._regularItems[this._regularItems.length - 1]);
             }
+        } else {
+            item.raise(items[items.length - 2]);
         }
 
         // if we have a fullscreen item, make sure it stays on top
@@ -377,52 +379,41 @@ export class Container implements ContainerItem
                 }
             }
 
-            let idx = this._items.length;
-            while (idx > 0 && this._items[idx - 1] === full)
-                --idx;
-
-            if (this._items[idx - 1] === full) {
-                throw new Error("couldn't raise fullscreen item");
-            }
-
-            full.raise(this._items[idx - 1]);
+            this.circulateToTop(full);
         }
     }
 
     circulateToBottom(item: ContainerItem) {
-        const idx = this._items.indexOf(item);
+        this._log.info("circulating to bottom", item);
+        const items = this._findItems(item);
+        if (items === undefined) {
+            throw new Error("container doesn't contain this item");
+        }
+        const idx = items.indexOf(item);
         if (idx === -1) {
             throw new Error("container doesn't contain this item");
         }
-        if (this._items.length === 1) {
+        const allItems = this.items;
+        if (allItems.length === 1 || item === this._fullscreenItem) {
             // nothing to do
             return;
         }
 
         // take the item out
-        this._items.splice(idx, 1);
+        items.splice(idx, 1);
 
-        if (!item.staysOnTop) {
-            // move to bottom of list
-            this._items.unshift(item);
-            item.lower(this._items[1]);
-        } else {
-            // find the first of the staysontop items
-            let found = -1;
-            for (let i = 0; i < this._items.length; ++i) {
-                if (this._items[i].staysOnTop) {
-                    found = i;
-                    break;
-                }
-            }
-            if (found === -1) {
-                // we're the only staysontop item so we're still at the very top
-                this._items.push(item);
-                item.raise(this._items[this._items.length - 2]);
+        // put it back in
+        items.unshift(item);
+
+        if (items.length === 1) {
+            // we know there's another item in the other array
+            if (items === this._regularItems) {
+                item.lower(this._ontopItems[0]);
             } else {
-                this._items.splice(found, 0, item);
-                item.lower(this._items[found + 1]);
+                item.raise(this._regularItems[this._regularItems.length - 1]);
             }
+        } else {
+            item.lower(items[1]);
         }
     }
 
@@ -433,17 +424,18 @@ export class Container implements ContainerItem
             // _geometry is the non-strutted geometry
             this._layout.layout([this._fullscreenItem], this._geometry);
         } else {
-            this._layout.layout(this._items, this.geometry);
+            this._layout.layout(this.items, this.geometry);
         }
     }
 
     findItemByPosition(x: number, y: number, itemType: ContainerItemType): ContainerItem | undefined {
         // walk items from the top-most item to the bottom-most one
-        const len = this._items.length;
+        const allItems = this.items;
+        const len = allItems.length;
         if (len === 0)
             return itemType === ContainerItemType.Container ? this : undefined;
         for (let i = len - 1; i >= 0; --i) {
-            const item = this._items[i];
+            const item = allItems[i];
             const geom = item.geometry;
             if (x >= geom.x
                 && x <= geom.x + geom.width
@@ -463,6 +455,14 @@ export class Container implements ContainerItem
 
     private _policyNeedsLayout() {
         this.relayout();
+    }
+
+    private _findItems(item: ContainerItem) {
+        if (this._regularItems.includes(item))
+            return this._regularItems;
+        if (this._ontopItems.includes(item))
+            return this._ontopItems;
+        return undefined;
     }
 }
 
