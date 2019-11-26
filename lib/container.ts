@@ -379,7 +379,9 @@ export class Container implements ContainerItem
                 }
             }
 
-            this.circulateToTop(full);
+            if (allItems.length > 1) {
+                this.circulateToTop(full);
+            }
         }
     }
 
