@@ -22,6 +22,25 @@ function init(owmlib) {
                     position: owmlib.Bar.Position.Middle,
                     config: {}
                 },
+                load: {
+                    position: owmlib.Bar.Position.Right,
+                    config: {
+                        prefix: "🔥 ",
+                        color: "#3c3",
+                        colors: [
+                            [0.8, "#cc3"],
+                            [1.5, "#c33"]
+                        ]
+                    }
+                },
+                ipaddress: {
+                    position: owmlib.Bar.Position.Right,
+                    config: {
+                        prefix: "📶 ",
+                        color: "#888",
+                        align: owmlib.Bar.Position.Right
+                    }
+                },
                 workspace: {
                     position: owmlib.Bar.Position.Left,
                     config: {

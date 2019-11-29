@@ -1,6 +1,8 @@
 import { OWMLib, Geometry, Monitor } from "../../lib";
 import { Graphics } from "../../native";
 import { Clock, ClockConfig,
+         Load, LoadConfig,
+         IpAddress, IpAddressConfig,
          Message, MessageConfig,
          Title, TitleConfig,
          Workspace, WorkspaceConfig } from "./modules";
@@ -40,10 +42,23 @@ function makeColor(color: string) {
     return c;
 }
 
+function align(from: number, to: number, position: Bar.Position) {
+    switch (position) {
+    case Bar.Position.Left:
+        return 0;
+    case Bar.Position.Middle:
+        return (to / 2) - (from / 2);
+    case Bar.Position.Right:
+        return to - from;
+    }
+    throw new Error("can't happen");
+}
+
 export class Bar
 {
     public static readonly Pad = { x: 2, y: 2 };
     public static readonly makeColor = makeColor;
+    public static readonly align = align;
 
     private _width: number;
     private _height: number;
@@ -66,8 +81,10 @@ export class Bar
 
         this._availableModules = {
             clock: Clock,
-            title: Title,
+            load: Load,
+            ipaddress: IpAddress,
             message: Message,
+            title: Title,
             workspace: Workspace
         };
 
