@@ -56,7 +56,7 @@ function align(from: number, to: number, position: Bar.Position) {
 
 export class Bar
 {
-    public static readonly Pad = { x: 2, y: 2 };
+    public static readonly Pad = { x: 10, y: 2 };
     public static readonly makeColor = makeColor;
     public static readonly align = align;
 
