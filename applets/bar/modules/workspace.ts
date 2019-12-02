@@ -30,7 +30,6 @@ export class Workspace extends EventEmitter implements BarModule
     private _text: Graphics.Text;
     private _border: number;
     private _monitor: Monitor;
-    private _width: number;
 
     private static readonly Pad = 4;
     private static readonly SizePerWorkspace = 18;
@@ -64,8 +63,6 @@ export class Workspace extends EventEmitter implements BarModule
                 this.emit("geometryChanged", this);
             }
         });
-
-        this._width = (Workspace.SizePerWorkspace * this._monitor.workspaces.size) + ((this._monitor.workspaces.size - 1) * Workspace.Pad);
 
         const ip = owm.xcb.create_pixmap(owm.wm, { width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
         this._inactiveSurface = owm.engine.createSurfaceFromDrawable(owm.wm, { drawable: ip, width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
@@ -124,9 +121,8 @@ export class Workspace extends EventEmitter implements BarModule
     }
 
     geometry(geometry: Geometry) {
-        this._width = (Workspace.SizePerWorkspace + Workspace.Pad) * this._monitor.workspaces.size;
-
-        return new Geometry({ x: 0, y: 0, width: this._width, height: 18 });
+        const width = (Workspace.SizePerWorkspace + Workspace.Pad) * this._monitor.workspaces.size;
+        return new Geometry({ x: 0, y: 0, width: width, height: 18 });
     }
 
     private _updateSurfaces(owm: OWMLib) {

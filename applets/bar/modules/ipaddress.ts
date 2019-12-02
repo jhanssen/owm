@@ -22,7 +22,7 @@ export class IpAddress extends EventEmitter implements BarModule
     private _ip: Graphics.Text;
     private _color: { red: number, green: number, blue: number, alpha: number };
     private _iface: string;
-    private _width: number;
+    private _geometry: { width: number, height: number };
     private _prefix: string;
     private _align: Bar.Position;
 
@@ -45,20 +45,30 @@ export class IpAddress extends EventEmitter implements BarModule
         this._prefix = ipConfig.prefix || "";
         this._color = Bar.makeColor(ipConfig.color || "#fff");
         this._align = ipConfig.align || Bar.Position.Middle;
+        this._geometry = { width: 0, height: 0 };
 
         this._ip = owm.engine.createText(bar.ctx);
         owm.engine.textSetFont(this._ip, ipConfig.font || "Sans Bold 10");
-        // guess we only care about IPv4?
-        owm.engine.textSetText(this._ip, this._prefix + "000.000.000.000");
-        const m = owm.engine.textMetrics(this._ip);
-        this._width = m.width;
 
+        this._queryInterface(owm.engine);
         setInterval(() => {
+            this._queryInterface(owm.engine);
+            this.emit("geometryChanged", this);
             this.emit("updated");
         }, ipConfig.interval || 60000);
     }
 
     paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+        const { red, green, blue } = this._color;
+        engine.setSourceRGB(ctx, red, green, blue);
+        engine.drawText(ctx, this._ip);
+    }
+
+    geometry(geometry: Geometry) {
+        return new Geometry({ x: 0, y: 0, width: this._geometry.width, height: this._geometry.height });
+    }
+
+    private _queryInterface(engine: Graphics.Engine) {
         let address: string | undefined;
         const ifaces = networkInterfaces();
         if (this._iface in ifaces) {
@@ -75,18 +85,8 @@ export class IpAddress extends EventEmitter implements BarModule
             throw new Error(`Couldn't find address for iface ${this._iface}`);
         }
 
-        const { red, green, blue } = this._color;
-        engine.setSourceRGB(ctx, red, green, blue);
-
         engine.textSetText(this._ip, this._prefix + address);
-        const m = engine.textMetrics(this._ip);
-
-        engine.translate(ctx, Bar.align(m.width, this._width, this._align), 0);
-        engine.drawText(ctx, this._ip);
-    }
-
-    geometry(geometry: Geometry) {
-        return new Geometry({ x: 0, y: 0, width: this._width, height: 20 });
+        this._geometry = engine.textMetrics(this._ip);
     }
 
     private _guessInterface() {

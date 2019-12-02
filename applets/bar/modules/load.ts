@@ -19,8 +19,10 @@ export class Load extends EventEmitter implements BarModule
 {
     private _config: LoadConfig;
     private _load: Graphics.Text;
+    private _loadValue: number;
     private _colors: [number, { red: number, green: number, blue: number, alpha: number }][];
-    private _width: number;
+    private _geometry: { width: number, height: number };
+    private _geometryChanged: boolean;
     private _prefix: string;
 
     constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
@@ -41,35 +43,41 @@ export class Load extends EventEmitter implements BarModule
             }
         }
 
+        this._geometryChanged = false;
+        this._geometry = { width: 0, height: 0 };
+        this._loadValue = 0;
         this._load = owm.engine.createText(bar.ctx);
         owm.engine.textSetFont(this._load, loadConfig.font || "Sans Bold 10");
-        owm.engine.textSetText(this._load, this._prefix + "000.00");
-        const m = owm.engine.textMetrics(this._load);
-        this._width = m.width;
 
+        this._queryLoad(owm.engine);
         setInterval(() => {
+            this._queryLoad(owm.engine);
+            if (this._geometryChanged) {
+                this.emit("geometryChanged", this);
+                this._geometryChanged = false;
+            }
             this.emit("updated");
         }, loadConfig.interval || 5000);
     }
 
     paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
-        const load = loadavg()[0];
-
-        const { red, green, blue } = this._findColor(load);
+        const { red, green, blue } = this._findColor(this._loadValue);
         engine.setSourceRGB(ctx, red, green, blue);
-
-        engine.textSetText(this._load, this._prefix + load.toFixed(2));
-        const m = engine.textMetrics(this._load);
-
-        let middle = this._width / 2;
-        middle -= m.width / 2;
-        engine.translate(ctx, middle, 0);
-
         engine.drawText(ctx, this._load);
     }
 
     geometry(geometry: Geometry) {
-        return new Geometry({ x: 0, y: 0, width: this._width, height: 20 });
+        return new Geometry({ x: 0, y: 0, width: this._geometry.width, height: this._geometry.height });
+    }
+
+    private _queryLoad(engine: Graphics.Engine) {
+        this._loadValue = loadavg()[0];
+        engine.textSetText(this._load, this._prefix + this._loadValue.toFixed(2));
+        const geom = engine.textMetrics(this._load);
+        if (geom.width !== this._geometry.width || geom.height !== this._geometry.height) {
+            this._geometryChanged = true;
+            this._geometry = geom;
+        }
     }
 
     private _findColor(load: number) {

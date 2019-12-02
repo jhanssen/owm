@@ -53,7 +53,6 @@ export class Message extends EventEmitter implements BarModule
 
     private _setCurrentMessage(msg: MessageData) {
         this._currentMessage = msg;
-        console.log("shit", typeof this._message, typeof this._currentMessage.message);
         this._owm.engine.textSetText(this._message, this._currentMessage.message);
         this._metrics = this._owm.engine.textMetrics(this._message);
         this.emit("geometryChanged", this);
