@@ -18,7 +18,7 @@ type BarModuleConstructor = { new(owm: OWMLib, bar: Bar, config: BarModuleConfig
 interface BarConfig
 {
     backgroundColor: string;
-    modules: {[key: string]: { position: Bar.Position, config: BarModuleConfig }};
+    modules: {[key: string]: { position: Bar.Position, config?: BarModuleConfig }};
     height?: number;
 }
 
@@ -213,7 +213,7 @@ export class Bar
         // initialize modules
         const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
 
-        const createModule = (module: { position: Bar.Position, config: BarModuleConfig }, ctor: BarModuleConstructor) => {
+        const createModule = (module: { position: Bar.Position, config?: BarModuleConfig }, ctor: BarModuleConstructor) => {
             const c = new ctor(owm, this, module.config || {});
             const m = { position: module.position, geometry: fullGeom, module: c };
             const a = this._modules.get(m.position);
