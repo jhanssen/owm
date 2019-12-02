@@ -49,6 +49,8 @@ export class Container implements ContainerItem
     private _containerType: Container.Type;
     private _layoutCallback: () => void;
 
+    public readonly LayoutPosition = Container.LayoutPosition;
+
     constructor(owm: OWMLib, containerType: Container.Type, monitor?: Monitor) {
         this._owm = owm;
         this._regularItems = [];
