@@ -56,12 +56,12 @@ export class Workspace extends EventEmitter implements BarModule
         });
         owm.events.on("workspaceAdded", (monitor: Monitor) => {
             if (monitor === this._monitor) {
-                this.emit("geometryChanged");
+                this.emit("geometryChanged", this);
             }
         });
         owm.events.on("workspaceRemoved", (monitor: Monitor) => {
             if (monitor === this._monitor) {
-                this.emit("geometryChanged");
+                this.emit("geometryChanged", this);
             }
         });
 

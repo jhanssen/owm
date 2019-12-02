@@ -228,7 +228,7 @@ export class Bar
                 this._modules.set(m.position, [m]);
             }
             c.on("updated", () => { this._update(); });
-            c.on("geometryChanged", () => { this._relayout(); });
+            c.on("geometryChanged", (module: BarModule) => { this._relayout(module); });
         };
 
         for (const [name, module] of Object.entries(config.modules)) {
@@ -265,12 +265,20 @@ export class Bar
         owm.xcb.send_expose(owm.wm, { window: this._win, width: this._width, height: this._height });
     }
 
-    private _relayout() {
+    private _relayout(module?: BarModule) {
         // calculate positions
         const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
 
+        const contains = (modules: Module[], module: BarModule) => {
+            for (const m of modules) {
+                if (m.module === module)
+                    return true;
+            }
+            return false;
+        };
+
         const lefts = this._modules.get(Bar.Position.Left);
-        if (lefts !== undefined) {
+        if (lefts !== undefined && (module === undefined || contains(lefts, module))) {
             let x = Bar.Pad.x;
             for (const e of lefts) {
                 const ng = e.module.geometry(fullGeom);
@@ -282,7 +290,7 @@ export class Bar
             }
         }
         const rights = this._modules.get(Bar.Position.Right);
-        if (rights !== undefined) {
+        if (rights !== undefined && (module === undefined || contains(rights, module))) {
             let x = this._width - Bar.Pad.x;
             for (const e of rights) {
                 const ng = e.module.geometry(fullGeom);
@@ -295,7 +303,7 @@ export class Bar
             }
         }
         const mids = this._modules.get(Bar.Position.Middle);
-        if (mids !== undefined) {
+        if (mids !== undefined && (module === undefined || contains(mids, module))) {
             let x = 0;
             const last = mids.length;
             for (const [idx, e] of mids.entries()) {
