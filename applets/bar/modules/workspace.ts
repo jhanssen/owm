@@ -3,10 +3,8 @@ import { OWMLib, Geometry, Monitor } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 
-export class WorkspaceConfig implements BarModuleConfig
+interface WorkspaceConfig extends BarModuleConfig
 {
-    constructor() { }
-
     border?: number;
     borderColor?: string;
     inactiveBackgroundColor?: string;

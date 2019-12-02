@@ -4,10 +4,8 @@ import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 import { networkInterfaces } from "os";
 
-export class IpAddressConfig implements BarModuleConfig
+interface IpAddressConfig extends BarModuleConfig
 {
-    constructor() { }
-
     prefix?: string;
     iface?: string;
     color?: string;

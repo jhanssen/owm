@@ -1,11 +1,6 @@
 import { OWMLib, Geometry, Monitor } from "../../lib";
 import { Graphics } from "../../native";
-import { Clock, ClockConfig,
-         Load, LoadConfig,
-         IpAddress, IpAddressConfig,
-         Message, MessageConfig,
-         Title, TitleConfig,
-         Workspace, WorkspaceConfig } from "./modules";
+import { Clock, Load, IpAddress, Message, Title, Workspace } from "./modules";
 import { EventEmitter } from "events";
 import { default as hexRgb } from "hex-rgb";
 

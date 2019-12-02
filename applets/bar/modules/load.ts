@@ -4,10 +4,8 @@ import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 import { loadavg } from "os";
 
-export class LoadConfig implements BarModuleConfig
+interface LoadConfig extends BarModuleConfig
 {
-    constructor() { }
-
     prefix?: string;
     color?: string;
     colors?: [number, string][];

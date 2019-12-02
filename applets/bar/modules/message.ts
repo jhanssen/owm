@@ -3,10 +3,8 @@ import { OWMLib, Geometry } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 
-export class MessageConfig implements BarModuleConfig
+interface MessageConfig extends BarModuleConfig
 {
-    constructor() { }
-
     textColor?: string;
     font?: string;
     margin?: number;

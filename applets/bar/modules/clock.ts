@@ -4,10 +4,8 @@ import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 import { default as dateFormat } from "dateformat";
 
-export class ClockConfig implements BarModuleConfig
+interface ClockConfig extends BarModuleConfig
 {
-    constructor() { }
-
     textColor?: string;
     font?: string;
     format?: string;

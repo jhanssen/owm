@@ -3,10 +3,8 @@ import { OWMLib, Geometry, Client } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 
-export class TitleConfig implements BarModuleConfig
+interface TitleConfig extends BarModuleConfig
 {
-    constructor() { }
-
     textColor?: string;
     font?: string;
 }
