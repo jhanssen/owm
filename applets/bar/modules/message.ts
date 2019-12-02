@@ -38,7 +38,7 @@ export class Message extends EventEmitter implements BarModule
 
         this._message = owm.engine.createText(bar.ctx);
         this._metrics = { width: 0, height: 0 };
-        owm.engine.textSetFont(this._message, messageConfig.font || "Sans Bold 10");
+        owm.engine.textSetFont(this._message, messageConfig.font || bar.font);
     }
 
     display(msg: MessageData) {

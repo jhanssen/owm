@@ -30,7 +30,7 @@ export class Clock extends EventEmitter implements BarModule
         const str = dateFormat(new Date(), this._config.format || "HH:MM");
 
         this._clock = owm.engine.createText(bar.ctx);
-        owm.engine.textSetFont(this._clock, clockConfig.font || "Sans Bold 10");
+        owm.engine.textSetFont(this._clock, clockConfig.font || bar.font);
         owm.engine.textSetText(this._clock, str);
         this._metrics = owm.engine.textMetrics(this._clock);
 

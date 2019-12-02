@@ -46,7 +46,7 @@ export class IpAddress extends EventEmitter implements BarModule
         this._geometry = { width: 0, height: 0 };
 
         this._ip = owm.engine.createText(bar.ctx);
-        owm.engine.textSetFont(this._ip, ipConfig.font || "Sans Bold 10");
+        owm.engine.textSetFont(this._ip, ipConfig.font || bar.font);
 
         this._queryInterface(owm.engine);
         setInterval(() => {

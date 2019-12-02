@@ -19,6 +19,7 @@ interface BarConfig
 {
     backgroundColor: string;
     modules: {[key: string]: { position: Bar.Position, config?: BarModuleConfig }};
+    font?: string;
     height?: number;
 }
 
@@ -61,6 +62,7 @@ export class Bar
     private _pixmap: number;
     private _gc: number;
     private _ready: boolean;
+    private _font: string;
     private _owm: OWMLib;
     private _ctx: Graphics.Context;
     private _copyArgs: { src_d: number, dst_d: number, gc: number, width: number, height: number };
@@ -73,6 +75,7 @@ export class Bar
         this._owm = owm;
         this._modules = new Map<Bar.Position, Module[]>();
         this._ready = false;
+        this._font = config.font || "Sans Bold 10";
 
         this._availableModules = {
             clock: Clock,
@@ -245,6 +248,10 @@ export class Bar
 
     get monitor() {
         return this._monitor;
+    }
+
+    get font() {
+        return this._font;
     }
 
     modules(position: Bar.Position) {

@@ -28,7 +28,7 @@ export class Title extends EventEmitter implements BarModule
         this._titleGeometry = { width: 0, height: 0 };
         this._title = owm.engine.createText(bar.ctx);
         this._width = 300;
-        owm.engine.textSetFont(this._title, titleConfig.font || "Sans Bold 10");
+        owm.engine.textSetFont(this._title, titleConfig.font || bar.font);
 
         this._updateFocus(owm.engine, owm.focused);
         owm.events.on("clientFocusIn", client => {

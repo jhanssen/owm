@@ -45,7 +45,7 @@ export class Load extends EventEmitter implements BarModule
         this._geometry = { width: 0, height: 0 };
         this._loadValue = 0;
         this._load = owm.engine.createText(bar.ctx);
-        owm.engine.textSetFont(this._load, loadConfig.font || "Sans Bold 10");
+        owm.engine.textSetFont(this._load, loadConfig.font || bar.font);
 
         this._queryLoad(owm.engine);
         setInterval(() => {

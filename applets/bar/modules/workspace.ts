@@ -69,7 +69,7 @@ export class Workspace extends EventEmitter implements BarModule
         this._activeSurface = owm.engine.createSurfaceFromDrawable(owm.wm, { drawable: ap, width: Workspace.SizePerWorkspace, height: Workspace.SizePerWorkspace });
 
         this._text = owm.engine.createText(bar.ctx);
-        owm.engine.textSetFont(this._text, wsConfig.font || "Sans Bold 10");
+        owm.engine.textSetFont(this._text, wsConfig.font || bar.font);
 
         this._updateSurfaces(owm);
     }
