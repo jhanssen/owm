@@ -117,6 +117,14 @@ struct Pango
         return true;
     }
 
+    bool setMarkup(const std::string& text)
+    {
+        if (!layout)
+            return false;
+        pango_layout_set_markup(layout, text.c_str(), text.size());
+        return true;
+    }
+
     PangoLayout* layout;
     uint32_t cairoId;
     std::shared_ptr<Cairo> cairo;
@@ -1079,6 +1087,23 @@ Napi::Object make(napi_env env)
 
         if (!p->setText(t)) {
             throw Napi::TypeError::New(env, "cairo.textSetText couldn't update text");
+        }
+
+        return env.Undefined();
+    }));
+
+    graphics.Set("textSetMarkup", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
+        auto env = info.Env();
+
+        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsString()) {
+            throw Napi::TypeError::New(env, "cairo.textSetMarkup takes two arguments");
+        }
+
+        auto p = Wrap<std::shared_ptr<Pango> >::unwrap(info[0]);
+        const std::string t = info[1].As<Napi::String>();
+
+        if (!p->setMarkup(t)) {
+            throw Napi::TypeError::New(env, "cairo.textSetMarkup couldn't update text");
         }
 
         return env.Undefined();

@@ -1,6 +1,6 @@
 import { OWMLib, Geometry, Monitor } from "../../lib";
 import { Graphics } from "../../native";
-import { Clock, Load, IpAddress, Message, Title, Workspace } from "./modules";
+import { Clock, Load, IpAddress, Message, Title, Weather, Workspace } from "./modules";
 import { EventEmitter } from "events";
 import { default as hexRgb } from "hex-rgb";
 
@@ -83,6 +83,7 @@ export class Bar
             ipaddress: IpAddress,
             message: Message,
             title: Title,
+            weather: Weather,
             workspace: Workspace
         };
 

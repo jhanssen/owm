@@ -675,6 +675,7 @@ export namespace Graphics {
         // destroyText(txt: Text): void;
         textSetFont(txt: Text, font: string): void;
         textSetText(txt: Text, text: string): void;
+        textSetMarkup(txt: Text, text: string): void;
         textMetrics(txt: Text): Size;
     }
 }

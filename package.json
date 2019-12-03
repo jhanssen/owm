@@ -15,6 +15,7 @@
    "devDependencies": {
       "@types/dateformat": "^3.0.1",
       "@types/node": "^12.11.7",
+      "@types/request-promise-native": "^1.0.17",
       "@types/shell-quote": "^1.6.1",
       "@types/ws": "^6.0.3",
       "nodemon": "^1.19.4",
@@ -26,6 +27,8 @@
       "@jhanssen/options": "^1.0.26",
       "dateformat": "^3.0.3",
       "hex-rgb": "^4.1.0",
+      "request": "^2.88.0",
+      "request-promise-native": "^1.0.8",
       "shell-quote": "^1.7.2",
       "ws": "^7.2.0",
       "xdg-basedir": "^4.0.0"

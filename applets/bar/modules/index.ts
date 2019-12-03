@@ -4,3 +4,4 @@ export { Title } from "./title";
 export { Workspace } from "./workspace";
 export { Load } from "./load";
 export { IpAddress } from "./ipaddress";
+export { Weather } from "./weather";
