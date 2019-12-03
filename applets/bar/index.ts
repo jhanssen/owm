@@ -226,7 +226,7 @@ export class Bar
                 this._modules.set(m.position, [m]);
             }
             c.on("updated", () => { this._update(); });
-            c.on("geometryChanged", (module: BarModule) => { this._relayout(module); });
+            c.on("geometryChanged", (module: BarModule) => { this._relayout(c); });
         };
 
         for (const [name, module] of Object.entries(config.modules)) {
@@ -252,6 +252,20 @@ export class Bar
 
     get font() {
         return this._font;
+    }
+
+    addModule(module: BarModule, position: Bar.Position) {
+        const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
+        const m = { position: position, geometry: fullGeom, module: module };
+        const a = this._modules.get(m.position);
+        if (a !== undefined) {
+            a.push(m);
+        } else {
+            this._modules.set(m.position, [m]);
+        }
+        module.on("updated", () => { this._update(); });
+        module.on("geometryChanged", (module: BarModule) => { this._relayout(module); });
+        this._relayout(module);
     }
 
     modules(position: Bar.Position) {
