@@ -9,7 +9,6 @@ interface IpAddressConfig extends BarModuleConfig
     prefix?: string;
     iface?: string;
     color?: string;
-    align?: Bar.Position;
     font?: string;
     interval?: number;
 }
@@ -22,7 +21,6 @@ export class IpAddress extends EventEmitter implements BarModule
     private _iface: string;
     private _geometry: { width: number, height: number };
     private _prefix: string;
-    private _align: Bar.Position;
 
     constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
         super();
@@ -42,7 +40,6 @@ export class IpAddress extends EventEmitter implements BarModule
         }
         this._prefix = ipConfig.prefix || "";
         this._color = Bar.makeColor(ipConfig.color || "#fff");
-        this._align = ipConfig.align || Bar.Position.Middle;
         this._geometry = { width: 0, height: 0 };
 
         this._ip = owm.engine.createText(bar.ctx);

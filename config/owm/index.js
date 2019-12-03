@@ -38,7 +38,6 @@ function init(owmlib) {
                     config: {
                         prefix: "📶 ",
                         color: "#888",
-                        align: owmlib.Bar.Position.Right
                     }
                 },
                 workspace: {
