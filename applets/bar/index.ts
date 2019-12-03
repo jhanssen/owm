@@ -268,6 +268,22 @@ export class Bar
         this._relayout(module);
     }
 
+    removeModule(module: BarModule, position: Bar.Position) {
+        const a = this._modules.get(position);
+        if (a === undefined)
+            return;
+        const idx = a.findIndex(elem => elem.module === module);
+        if (idx === -1)
+            return;
+        a.splice(idx, 1);
+        this._relayout();
+    }
+
+    clear(position: Bar.Position) {
+        this._modules.delete(position);
+        this._relayout();
+    }
+
     modules(position: Bar.Position) {
         return this._modules.get(position);
     }
