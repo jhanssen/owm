@@ -254,12 +254,12 @@ export class Bar
         return this._font;
     }
 
-    addModule(module: BarModule, position: Bar.Position) {
+    addModule(module: BarModule, position: Bar.Position, offset?: number) {
         const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
         const m = { position: position, geometry: fullGeom, module: module };
         const a = this._modules.get(m.position);
         if (a !== undefined) {
-            a.push(m);
+            a.splice((offset === undefined || offset < 0) ? a.length : offset, 0, m);
         } else {
             this._modules.set(m.position, [m]);
         }
