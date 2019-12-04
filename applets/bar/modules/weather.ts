@@ -51,22 +51,22 @@ export class Weather extends EventEmitter implements BarModule
         this._icons = {
             "01d": "☀",
             "01n": "☀",
-            "02d": "\uD83C\uDF24",
-            "02n": "\uD83C\uDF24",
+            "02d": "🌤",
+            "02n": "🌤",
             "03d": "☁",
             "03n": "☁",
-            "04d": "\uD83C\uDF25",
-            "04n": "\uD83C\uDF25",
-            "09d": "\uD83C\uDF27",
-            "09n": "\uD83C\uDF27",
-            "10d": "\uD83C\uDF26",
-            "10n": "\uD83C\uDF26",
+            "04d": "🌥",
+            "04n": "🌥",
+            "09d": "🌧",
+            "09n": "🌧",
+            "10d": "🌦",
+            "10n": "🌦",
             "11d": "⛈",
             "11n": "⛈",
-            "13d": "\uD83C\uDF28",
-            "13n": "\uD83C\uDF28",
-            "50d": "\uD83C\uDF2B",
-            "50n": "\uD83C\uDF2B"
+            "13d": "🌨",
+            "13n": "🌨",
+            "50d": "🌫",
+            "50n": "🌫"
         };
         if (weatherConfig.icons) {
             for (const k in weatherConfig.icons) {
