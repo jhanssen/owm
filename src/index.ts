@@ -28,7 +28,7 @@ function loadConfig(dir: string, lib: OWMLib)
 {
     return new Promise<void>((resolve, reject) => {
         import(path.join(dir, "owm")).then(cfg => {
-            cfg.default(lib);
+            cfg.default(lib, options);
             resolve();
         }).catch(err => {
             if (err.code !== "MODULE_NOT_FOUND") {
