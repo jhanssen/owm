@@ -485,6 +485,15 @@ export class Container implements ContainerItem
         }
     }
 
+    bringToBottom(predicate: (item: ContainerItem) => boolean) {
+        const items = this.stackItems;
+        for (const item of items) {
+            if (predicate(item)) {
+                this.circulateToBottom(item);
+            }
+        }
+    }
+
     changeLayoutOrder(item: ContainerItem, position: Container.LayoutPosition, other?: ContainerItem) {
         if ((position === Container.LayoutPosition.Forward || position === Container.LayoutPosition.Backward)
             && other !== undefined) {
