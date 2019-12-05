@@ -67,12 +67,13 @@ export class Bar
     private _ctx: Graphics.Context;
     private _copyArgs: { src_d: number, dst_d: number, gc: number, width: number, height: number };
     private _modules: Map<Bar.Position, Module[]>;
-    private _backgroundColor: { red: number, green: number, blue: number, alpha: number };
     private _availableModules: {[key: string]: BarModuleConstructor };
     private _monitor: Monitor;
+    private _config: BarConfig;
 
     constructor(owm: OWMLib, output: string, config: BarConfig, extraModules?: {[key: string]: BarModuleConstructor }) {
         this._owm = owm;
+        this._config = config;
         this._modules = new Map<Bar.Position, Module[]>();
         this._ready = false;
         this._font = config.font || "Sans Bold 10";
@@ -189,7 +190,7 @@ export class Bar
                 xcb.eventMask.FOCUS_CHANGE;
 
             xcb.change_window_attributes(owm.wm, { window: client.window.window, event_mask: winMask });
-            this._update();
+            this.update();
         });
         barMatch.addCondition(barMatchClassCondition);
         owm.addMatch(barMatch);
@@ -212,8 +213,6 @@ export class Bar
             height: this._height
         };
 
-        this._backgroundColor = makeColor(config.backgroundColor);
-
         // initialize modules
         const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
 
@@ -226,7 +225,7 @@ export class Bar
             } else {
                 this._modules.set(m.position, [m]);
             }
-            c.on("updated", () => { this._update(); });
+            c.on("updated", () => { this.update(); });
             c.on("geometryChanged", (module: BarModule) => { this._relayout(c); });
         };
 
@@ -255,6 +254,15 @@ export class Bar
         return this._font;
     }
 
+    update() {
+        if (!this._ready)
+            return;
+
+        this._redraw();
+        const owm = this._owm;
+        owm.xcb.send_expose(owm.wm, { window: this._win, width: this._width, height: this._height });
+    }
+
     addModule(module: BarModule, position: Bar.Position, offset?: number) {
         const fullGeom = new Geometry({ x: 0, y: 0, width: this._width, height: this._height });
         const m = { position: position, geometry: fullGeom, module: module };
@@ -264,7 +272,7 @@ export class Bar
         } else {
             this._modules.set(m.position, [m]);
         }
-        module.on("updated", () => { this._update(); });
+        module.on("updated", () => { this.update(); });
         module.on("geometryChanged", (module: BarModule) => { this._relayout(module); });
         this._relayout(module);
     }
@@ -287,15 +295,6 @@ export class Bar
 
     modules(position: Bar.Position) {
         return this._modules.get(position);
-    }
-
-    private _update() {
-        if (!this._ready)
-            return;
-
-        this._redraw();
-        const owm = this._owm;
-        owm.xcb.send_expose(owm.wm, { window: this._win, width: this._width, height: this._height });
     }
 
     private _relayout(module?: BarModule) {
@@ -356,7 +355,7 @@ export class Bar
             }
         }
 
-        this._update();
+        this.update();
     }
 
     private _onExpose() {
@@ -367,7 +366,7 @@ export class Bar
     private _redraw() {
         const engine = this._owm.engine;
 
-        const { red, green, blue } = this._backgroundColor;
+        const { red, green, blue } = makeColor(this._config.backgroundColor);
         engine.setSourceRGB(this._ctx, red, green, blue);
         engine.paint(this._ctx);
 
