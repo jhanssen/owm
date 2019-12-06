@@ -501,6 +501,7 @@ export class Container implements ContainerItem
         for (let idx = this._ontopItems.length - 1; idx >= 0; --idx) {
             if (this._ontopItems[idx] !== this._fullscreenItem) {
                 topItem = this._ontopItems[idx];
+                break;
             }
         }
         if (topItem === undefined) {
@@ -511,6 +512,7 @@ export class Container implements ContainerItem
             for (let idx = this._regularItems.length - 1; idx >= 0; --idx) {
                 if (this._regularItems[idx] !== this._fullscreenItem) {
                     topItem = this._regularItems[idx];
+                    break;
                 }
             }
             if (topItem === undefined) {
@@ -673,6 +675,7 @@ export class Container implements ContainerItem
         for (let idx = this._ontopItems.length - 1; idx >= 0; --idx) {
             if (this._ontopItems[idx] !== this._fullscreenItem) {
                 topItem = this._ontopItems[idx];
+                break;
             }
         }
         if (topItem === undefined) {
@@ -683,6 +686,7 @@ export class Container implements ContainerItem
             for (let idx = this._regularItems.length - 1; idx >= 0; --idx) {
                 if (this._regularItems[idx] !== this._fullscreenItem) {
                     topItem = this._regularItems[idx];
+                    break;
                 }
             }
             if (topItem === undefined) {
