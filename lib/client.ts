@@ -468,7 +468,7 @@ export class Client implements ContainerItem
     lower(sibling?: Client) {
         if (!sibling) {
             if (this._container) {
-                this._container.circulateToTop(this);
+                this._container.circulateToBottom(this);
             }
         } else {
             if (this === sibling) {
