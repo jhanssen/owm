@@ -384,6 +384,8 @@ export class Container implements ContainerItem
             // make sure we respect our global items
             const item = allItems[0];
             if (this._monitor) {
+                // ### we should use the parent items here instead
+                // of the global items if we're a child container
                 const globalItems = this._monitor.items;
                 if (globalItems.length > 0) {
                     if (item === this._fullscreenItem) {
