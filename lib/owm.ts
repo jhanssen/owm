@@ -899,8 +899,8 @@ export class OWMLib {
         }
 
         const ws = client.workspace;
-        if (ws === undefined) {
-            throw new Error("tried to focus client with no workspace");
+        if (ws === undefined && !client.ignoreWorkspace) {
+            throw new Error(`tried to focus client with no workspace: ${client.window.window}:${client.window.wmRole}`);
         }
 
         let gc;
@@ -922,7 +922,9 @@ export class OWMLib {
 
         this._events.emit("clientFocusIn", this._focused);
 
-        this._ewmh.updateCurrentWorkspace(ws.id);
+        if (ws) {
+            this._ewmh.updateCurrentWorkspace(ws.id);
+        }
     }
 
     revertFocus(fromDestroy?: boolean) {
