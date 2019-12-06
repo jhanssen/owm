@@ -181,9 +181,11 @@ export class Container implements ContainerItem
     }
 
     set staysOnTop(s: boolean) {
+        if (this._staysOnTop === s)
+            return;
         this._staysOnTop = s;
         if (this._container) {
-            this._container.circulateToTop(this);
+            this._container.reinsert(this);
         }
     }
 
@@ -301,6 +303,40 @@ export class Container implements ContainerItem
         if (Strut.hasStrut(item.strut)) {
             this._owm.ewmh.updateWorkarea();
         }
+    }
+
+    reinsert(item: ContainerItem) {
+        if (item.ignoreWorkspace) {
+            throw new Error("item ignores workspaces");
+        }
+        if (this._layoutItems.indexOf(item) === -1) {
+            throw new Error("item doesn't exist");
+        }
+        const stackList = this._stackListForItem(item);
+        if (stackList === undefined) {
+            throw new Error("item is not in a stack list");
+        }
+        const idx = stackList.indexOf(item);
+        if (idx === -1) {
+            throw new Error("item is really not in the stack list");
+        }
+
+        if (item.fullscreen
+            && this._containerType === Container.Type.TopLevel
+            && this._fullscreenItem === undefined) {
+            this._fullscreenItem = item;
+        }
+
+        stackList.splice(idx, 1);
+
+        if (item.staysOnTop) {
+            this._ontopItems.push(item);
+        } else {
+            this._regularItems.push(item);
+        }
+
+        this.circulateToTop(item);
+        this.relayout();
     }
 
     remove(item: ContainerItem) {

@@ -308,7 +308,7 @@ export class Client implements ContainerItem
             return;
         this._staysOnTop = s;
         if (this._container) {
-            this._container.circulateToTop(this);
+            this._container.reinsert(this);
         }
     }
 
