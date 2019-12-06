@@ -495,12 +495,22 @@ export class Client implements ContainerItem
         this._configure({ x: x + this._border, y: y + this._border });
     }
 
+    moveBy(x: number, y: number) {
+        const geom = this._geometry;
+        this._configure({ x: geom.x + x, y: geom.y + y });
+    }
+
     moveByKeyboard() {
         this._owm.moveByKeyboard(this);
     }
 
     resize(width: number, height: number, keepHeight?: boolean) {
         this._configure({ width: width - (this._border * 2), height: height - (this._border * 2) }, keepHeight);
+    }
+
+    resizeBy(width: number, height: number) {
+        const geom = this._geometry;
+        this._configure({ width: geom.width + width, height: geom.height + height });
     }
 
     resizeByKeyboard() {
