@@ -11,6 +11,7 @@ export interface ContainerItem
     resize(width: number, height: number): void;
     raise(sibling?: ContainerItem): void;
     lower(sibling?: ContainerItem): void;
+    isRelated(other: ContainerItem): boolean;
     readonly geometry: Geometry;
     readonly strut: Strut;
     readonly workspace: Workspace | undefined;
@@ -359,45 +360,143 @@ export class Container implements ContainerItem
             return;
         }
 
-        // if we're already the top item, bail out
-        if (idx === stackList.length - 1) {
-            return;
-        }
+        const regularItems = this._regularItems.slice(0);
+        const ontopItems = this._ontopItems.slice(0);
 
-        // take the item out
-        stackList.splice(idx, 1);
-
-        // and put it back in
-        stackList.push(item);
-
-        if (stackList.length === 1) {
-            // we know there's another item in the other array
-            if (stackList === this._regularItems) {
-                item.lower(this._ontopItems[0]);
-            } else {
-                item.raise(this._regularItems[this._regularItems.length - 1]);
-            }
-        } else {
-            item.raise(stackList[stackList.length - 2]);
-        }
-
-        // if we have a fullscreen item, make sure it stays on top
-        if (this._fullscreenItem) {
-            const full = this._fullscreenItem;
-
-            if (this._monitor) {
-                const globalItems = this._monitor.items;
-                if (globalItems.length > 0) {
-                    const sibling = globalItems[globalItems.length - 1];
-                    if (full === sibling) {
-                        throw new Error("full screen item is a global item?");
-                    }
-                    full.raise(sibling);
-                    return;
+        // first, restack all items that are not related to our item
+        let lastRegularNonRelated = -1;
+        for (let nidx = 0; nidx < regularItems.length; ++nidx) {
+            if (!item.isRelated(regularItems[nidx])) {
+                if (lastRegularNonRelated === -1) {
+                    lastRegularNonRelated = nidx;
+                } else {
+                    regularItems[nidx].raise(regularItems[lastRegularNonRelated]);
+                    lastRegularNonRelated = nidx;
                 }
             }
+        }
+        let firstOnTopNonRelated = -1, lastOnTopNonRelated = -1;
+        for (let nidx = 0; nidx < ontopItems.length; ++nidx) {
+            if (!item.isRelated(ontopItems[nidx])) {
+                if (lastOnTopNonRelated === -1) {
+                    firstOnTopNonRelated = nidx;
+                    lastOnTopNonRelated = nidx;
+                    if (lastRegularNonRelated !== -1) {
+                        ontopItems[nidx].raise(regularItems[lastRegularNonRelated]);
+                    }
+                } else {
+                    ontopItems[nidx].raise(ontopItems[lastOnTopNonRelated]);
+                    lastOnTopNonRelated = nidx;
+                }
+            }
+        }
 
-            this.circulateToTop(full);
+        // now go through our related items that are not us and restack those
+        let lastRegularRelated = -1;
+        for (let nidx = 0; nidx < regularItems.length; ++nidx) {
+            if (item.isRelated(regularItems[nidx]) && item !== regularItems[nidx]) {
+                if (lastRegularRelated === -1) {
+                    lastRegularRelated = nidx;
+                    if (lastRegularNonRelated !== -1) {
+                        regularItems[nidx].raise(regularItems[lastRegularNonRelated]);
+                    }
+                } else {
+                    regularItems[nidx].raise(regularItems[lastRegularRelated]);
+                    lastRegularRelated = nidx;
+                }
+            }
+        }
+        let firstOnTopRelated = -1, lastOnTopRelated = -1;
+        for (let nidx = 0; nidx < ontopItems.length; ++nidx) {
+            if (item.isRelated(regularItems[nidx]) && item !== regularItems[nidx]) {
+                if (lastOnTopRelated === -1) {
+                    firstOnTopRelated = nidx;
+                    lastOnTopRelated = nidx;
+                    if (lastOnTopNonRelated !== -1) {
+                        ontopItems[nidx].raise(ontopItems[lastOnTopNonRelated]);
+                    } else if (lastRegularRelated !== -1) {
+                        ontopItems[nidx].raise(regularItems[lastRegularRelated]);
+                    } else if (lastRegularNonRelated !== -1) {
+                        ontopItems[nidx].raise(regularItems[lastRegularNonRelated]);
+                    }
+                } else {
+                    ontopItems[nidx].raise(ontopItems[lastOnTopRelated]);
+                    lastOnTopRelated = nidx;
+                }
+            }
+        }
+
+        // raise our item
+        if (stackList === this._regularItems) {
+            if (lastRegularRelated !== -1) {
+                item.raise(regularItems[lastRegularRelated]);
+            } else if (lastRegularNonRelated !== -1) {
+                item.raise(regularItems[lastRegularNonRelated]);
+            } else if (firstOnTopRelated !== -1 && firstOnTopNonRelated !== -1) {
+                item.lower(ontopItems[Math.min(firstOnTopRelated, firstOnTopNonRelated)]);
+            } else if (firstOnTopRelated !== -1) {
+                item.lower(ontopItems[firstOnTopRelated]);
+            } else if (firstOnTopNonRelated !== -1) {
+                item.lower(ontopItems[firstOnTopNonRelated]);
+            } else {
+                // this shouldn't happen, we should have bailed out earlier if it could
+                throw new Error("Can't restack item, no related or non-related item exist");
+            }
+        } else if (stackList === this._ontopItems) {
+            if (lastOnTopRelated !== -1) {
+                item.raise(ontopItems[lastOnTopRelated]);
+            } else if (lastOnTopNonRelated !== -1) {
+                item.raise(ontopItems[lastOnTopNonRelated]);
+            } else if (lastRegularRelated !== -1 || lastRegularNonRelated !== -1) {
+                item.raise(regularItems[Math.max(lastRegularRelated, lastRegularNonRelated)]);
+            } else {
+                // this shouldn't happen, we should have bailed out earlier if it could
+                throw new Error("Can't restack item, no related or non-related item exist");
+            }
+        }
+
+        // find the highest-most item that is not the fullscreen item
+        let topItem: ContainerItem | undefined = undefined;
+        for (let idx = this._ontopItems.length - 1; idx >= 0; --idx) {
+            if (this._ontopItems[idx] !== this._fullscreenItem) {
+                topItem = this._ontopItems[idx];
+            }
+        }
+        if (topItem === undefined) {
+            if (this._regularItems.length === 0) {
+                // can't happen
+                throw new Error("no top item and regular item list is empty");
+            }
+            for (let idx = this._regularItems.length - 1; idx >= 0; --idx) {
+                if (this._regularItems[idx] !== this._fullscreenItem) {
+                    topItem = this._regularItems[idx];
+                }
+            }
+            if (topItem === undefined) {
+                // can't happen either
+                throw new Error("no top item to be found");
+            }
+        }
+
+        // raise our full screen item if we have one
+        if (this._fullscreenItem) {
+            this._fullscreenItem.raise(topItem);
+            topItem = this._fullscreenItem;
+        }
+
+        // raise our global items, unless the top item is the full screen client in which case we'll lower them
+        if (this._monitor) {
+            const globalItems = this._monitor.items;
+            if (globalItems.length > 0) {
+                if (topItem === this._fullscreenItem) {
+                    globalItems[0].lower(topItem);
+                } else {
+                    globalItems[0].raise(topItem);
+                }
+                for (let i = 1; i < globalItems.length; ++i) {
+                    globalItems[i].raise(globalItems[i - 1]);
+                }
+            }
         }
     }
 
@@ -417,26 +516,183 @@ export class Container implements ContainerItem
             return;
         }
 
-        // if we're already the bottom-most item, bail out
-        if (idx === 0) {
-            return;
+        const regularItems = this._regularItems.slice(0);
+        const ontopItems = this._ontopItems.slice(0);
+
+        // first, restack all items that are related to our item
+        let firstRegularRelated = -1, lastRegularRelated = -1;
+        for (let nidx = 0; nidx < regularItems.length; ++nidx) {
+            if (item.isRelated(regularItems[nidx]) && item !== regularItems[nidx]) {
+                if (lastRegularRelated === -1) {
+                    firstRegularRelated = nidx;
+                    lastRegularRelated = nidx;
+                } else {
+                    regularItems[nidx].raise(regularItems[lastRegularRelated]);
+                    lastRegularRelated = nidx;
+                }
+            }
+        }
+        let firstOnTopRelated = -1, lastOnTopRelated = -1;
+        for (let nidx = 0; nidx < ontopItems.length; ++nidx) {
+            if (item.isRelated(regularItems[nidx]) && item !== regularItems[nidx]) {
+                if (lastOnTopRelated === -1) {
+                    firstOnTopRelated = nidx;
+                    lastOnTopRelated = nidx;
+                    if (lastRegularRelated !== -1) {
+                        ontopItems[nidx].raise(regularItems[lastRegularRelated]);
+                    }
+                } else {
+                    ontopItems[nidx].raise(ontopItems[lastOnTopRelated]);
+                    lastOnTopRelated = nidx;
+                }
+            }
         }
 
-        // take the item out
-        stackList.splice(idx, 1);
-
-        // put it back in
-        stackList.unshift(item);
-
-        if (stackList.length === 1) {
-            // we know there's another item in the other array
-            if (stackList === this._regularItems) {
-                item.lower(this._ontopItems[0]);
-            } else {
-                item.raise(this._regularItems[this._regularItems.length - 1]);
+        // now go through our non-related items that are not us and restack those
+        let firstRegularNonRelated = -1, lastRegularNonRelated = -1;
+        for (let nidx = 0; nidx < regularItems.length; ++nidx) {
+            if (!item.isRelated(regularItems[nidx])) {
+                if (lastRegularNonRelated === -1) {
+                    firstRegularNonRelated = nidx;
+                    lastRegularNonRelated = nidx;
+                    if (lastRegularRelated !== -1) {
+                        regularItems[nidx].raise(regularItems[lastRegularRelated]);
+                    }
+                } else {
+                    regularItems[nidx].raise(regularItems[lastRegularNonRelated]);
+                    lastRegularNonRelated = nidx;
+                }
             }
-        } else {
-            item.lower(stackList[1]);
+        }
+        let firstOnTopNonRelated = -1, lastOnTopNonRelated = -1;
+        for (let nidx = 0; nidx < ontopItems.length; ++nidx) {
+            if (!item.isRelated(ontopItems[nidx])) {
+                if (lastOnTopNonRelated === -1) {
+                    firstOnTopNonRelated = nidx;
+                    lastOnTopNonRelated = nidx;
+                    if (lastOnTopRelated !== -1) {
+                        ontopItems[nidx].raise(ontopItems[lastOnTopRelated]);
+                    } else if (lastRegularNonRelated !== -1) {
+                        ontopItems[nidx].raise(regularItems[lastRegularNonRelated]);
+                    } else if (lastRegularRelated !== -1) {
+                        ontopItems[nidx].raise(regularItems[lastRegularRelated]);
+                    }
+                } else {
+                    ontopItems[nidx].raise(ontopItems[lastOnTopNonRelated]);
+                    lastOnTopNonRelated = nidx;
+                }
+            }
+        }
+
+        // lower our item
+        if (stackList === this._regularItems) {
+            if (firstRegularRelated !== -1) {
+                item.lower(regularItems[firstRegularRelated]);
+            } else if (firstRegularNonRelated !== -1) {
+                item.lower(regularItems[firstRegularNonRelated]);
+            } else if (firstOnTopRelated !== -1 && firstOnTopNonRelated !== -1) {
+                item.lower(ontopItems[Math.min(firstOnTopRelated, firstOnTopNonRelated)]);
+            } else if (firstOnTopRelated !== -1) {
+                item.lower(ontopItems[firstOnTopRelated]);
+            } else if (firstOnTopNonRelated !== -1) {
+                item.lower(ontopItems[firstOnTopNonRelated]);
+            } else {
+                // this shouldn't happen, we should have bailed out earlier if it could
+                throw new Error("Can't restack item, no related or non-related item exist");
+            }
+        } else if (stackList === this._ontopItems) {
+            if (firstOnTopRelated !== -1) {
+                item.lower(ontopItems[firstOnTopRelated]);
+            } else if (firstOnTopNonRelated !== -1) {
+                item.lower(ontopItems[firstOnTopNonRelated]);
+            } else if (lastRegularRelated !== -1 || lastRegularNonRelated !== -1) {
+                item.raise(regularItems[Math.max(lastRegularRelated, lastRegularNonRelated)]);
+            } else {
+                // this shouldn't happen, we should have bailed out earlier if it could
+                throw new Error("Can't restack item, no related or non-related item exist");
+            }
+        }
+
+        // find the highest-most item that is not the fullscreen item
+        let topItem: ContainerItem | undefined = undefined;
+        for (let idx = this._ontopItems.length - 1; idx >= 0; --idx) {
+            if (this._ontopItems[idx] !== this._fullscreenItem) {
+                topItem = this._ontopItems[idx];
+            }
+        }
+        if (topItem === undefined) {
+            if (this._regularItems.length === 0) {
+                // can't happen
+                throw new Error("no top item and regular item list is empty");
+            }
+            for (let idx = this._regularItems.length - 1; idx >= 0; --idx) {
+                if (this._regularItems[idx] !== this._fullscreenItem) {
+                    topItem = this._regularItems[idx];
+                }
+            }
+            if (topItem === undefined) {
+                // can't happen either
+                throw new Error("no top item to be found");
+            }
+        }
+
+        // raise our full screen item if we have one
+        if (this._fullscreenItem) {
+            this._fullscreenItem.raise(topItem);
+            topItem = this._fullscreenItem;
+        }
+
+        // raise our global items, unless the top item is the full screen client in which case we'll lower them
+        if (this._monitor) {
+            const globalItems = this._monitor.items;
+            if (globalItems.length > 0) {
+                if (topItem === this._fullscreenItem) {
+                    globalItems[0].lower(topItem);
+                } else {
+                    globalItems[0].raise(topItem);
+                }
+                for (let i = 1; i < globalItems.length; ++i) {
+                    globalItems[i].raise(globalItems[i - 1]);
+                }
+            }
+        }
+    }
+
+    notifyRaised(item: ContainerItem, sibling: ContainerItem) {
+        const itemStackList = this._stackListForItem(item);
+        const siblingStackList = this._stackListForItem(sibling);
+        if (itemStackList === siblingStackList && itemStackList !== undefined) {
+            let idx = itemStackList.indexOf(item);
+            itemStackList.splice(idx, 1);
+            idx = itemStackList.indexOf(sibling);
+            itemStackList.splice(idx + 1, 0, item);
+        } else if (itemStackList === this._regularItems) {
+            const idx = itemStackList.indexOf(item);
+            itemStackList.splice(idx, 1);
+            itemStackList.push(item);
+        } else if (itemStackList === this._ontopItems) {
+            const idx = itemStackList.indexOf(item);
+            itemStackList.splice(idx, 1);
+            itemStackList.unshift(item);
+        }
+    }
+
+    notifyLowered(item: ContainerItem, sibling: ContainerItem) {
+        const itemStackList = this._stackListForItem(item);
+        const siblingStackList = this._stackListForItem(sibling);
+        if (itemStackList === siblingStackList && itemStackList !== undefined) {
+            let idx = itemStackList.indexOf(item);
+            itemStackList.splice(idx, 1);
+            idx = itemStackList.indexOf(sibling);
+            itemStackList.splice(idx, 0, item);
+        } else if (itemStackList === this._regularItems) {
+            const idx = itemStackList.indexOf(item);
+            itemStackList.splice(idx, 1);
+            itemStackList.push(item);
+        } else if (itemStackList === this._ontopItems) {
+            const idx = itemStackList.indexOf(item);
+            itemStackList.splice(idx, 1);
+            itemStackList.unshift(item);
         }
     }
 
@@ -548,6 +804,10 @@ export class Container implements ContainerItem
         }
 
         this.relayout();
+    }
+
+    isRelated(other: ContainerItem): boolean {
+        return this === other;
     }
 
     private _policyNeedsLayout() {

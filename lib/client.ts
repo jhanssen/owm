@@ -460,105 +460,23 @@ export class Client implements ContainerItem
                 return;
             }
 
-            // stacking order after this should be
-
-            // if self is floating, transients for self
-            // if self is floatng, self
-            // transients for floating group member 1
-            // floating group member 1
-            // transients for floating group member 2
-            // floating group member 2
-            // (etc...)
-            // if self is not floating, transients for self
-            // if self is not floating, self
-            // transients for non-floating group member 1
-            // non-floating group member 1
-            // transients for non-floating group member 2
-            // non-floating group member 2
-            // (etc...)
-            // sibling (if not a group member)
-
-            const owm = this._owm;
-            const xcb = owm.xcb;
-            // first raise all group non-floating non-transients that
-            // are not this and not sibling
-            const nt = this.group.nonTransients;
-            for (const c of nt) {
-                if (c !== this && c !== sibling && !c.floating) {
-                    this._raiseClientAndTransients(c, sibling);
-                }
-            }
-            // raise this if not floating and not transient
-            if (!this.floating && !this.transient) {
-                this._raiseClientAndTransients(this, sibling);
-            }
-            // raise all group floating non-transients that are not this
-            // and not sibling
-            for (const c of nt) {
-                if (c !== this && c !== sibling && c.floating) {
-                    this._raiseClientAndTransients(c, sibling);
-                }
-            }
-            // raise this if floating and not transient
-            if (this.floating && !this.transient) {
-                this._raiseClientAndTransients(this, sibling);
-            }
+            // raise client and all transients
+            this._raiseClientAndTransients(this, sibling);
         }
     }
 
     lower(sibling?: Client) {
         if (!sibling) {
             if (this._container) {
-                this._container.circulateToBottom(this);
+                this._container.circulateToTop(this);
             }
         } else {
             if (this === sibling) {
                 return;
             }
 
-            // stacking order after this should be
-
-            // sibling (if not a group member)
-            // if self is floating, transients for self
-            // if self is floatng, self
-            // transients for floating group member 1
-            // floating group member 1
-            // transients for floating group member 2
-            // floating group member 2
-            // (etc...)
-            // if self is not floating, transients for self
-            // if self is not floating, self
-            // transients for non-floating group member 1
-            // non-floating group member 1
-            // transients for non-floating group member 2
-            // non-floating group member 2
-            // (etc...)
-
-            const owm = this._owm;
-            const xcb = owm.xcb;
-            // first lower all group non-floating non-transients that
-            // are not this and not sibling
-            const nt = this.group.nonTransients;
-            for (const c of nt) {
-                if (c !== this && c !== sibling && !c.floating) {
-                    this._lowerClientAndTransients(c, sibling);
-                }
-            }
-            // lower this if not floating and not transient
-            if (!this.floating && !this.transient) {
-                this._lowerClientAndTransients(this, sibling);
-            }
-            // lower all group floating non-transients that are not this
-            // and not sibling
-            for (const c of nt) {
-                if (c !== this && c !== sibling && c.floating) {
-                    this._lowerClientAndTransients(c, sibling);
-                }
-            }
-            // lower this if floating and not transient
-            if (this.floating && !this.transient) {
-                this._lowerClientAndTransients(this, sibling);
-            }
+            // raise client and all transients
+            this._lowerClientAndTransients(this, sibling);
         }
     }
 
@@ -767,6 +685,13 @@ export class Client implements ContainerItem
             this._log.info("killing client");
             this._owm.xcb.kill_client(this._owm.wm, this._window.window);
         }
+    }
+
+    isRelated(other: ContainerItem) {
+        if (!isClient(other))
+            return false;
+        const client = other as Client;
+        return client.group === this.group;
     }
 
     private _setState(state: Client.State) {
@@ -1372,6 +1297,9 @@ export class Client implements ContainerItem
             sibling: sibling._parent,
             stack_mode: xcb.stackMode.ABOVE
         });
+        if (this._container) {
+            this._container.notifyRaised(client, sibling);
+        }
         // raise the clients transients
         const tr = this.group.transientsForClient(client);
         for (const t of tr) {
@@ -1381,6 +1309,9 @@ export class Client implements ContainerItem
                     sibling: client._parent,
                     stack_mode: xcb.stackMode.ABOVE
                 });
+                if (this._container) {
+                    this._container.notifyRaised(t, client);
+                }
             }
         }
     }
@@ -1395,6 +1326,9 @@ export class Client implements ContainerItem
             sibling: sibling._parent,
             stack_mode: xcb.stackMode.BELOW
         });
+        if (this._container) {
+            this._container.notifyLowered(client, sibling);
+        }
         // raise the clients transients just above self
         const tr = this.group.transientsForClient(client);
         for (const t of tr) {
@@ -1404,6 +1338,9 @@ export class Client implements ContainerItem
                     sibling: client._parent,
                     stack_mode: xcb.stackMode.ABOVE
                 });
+                if (this._container) {
+                    this._container.notifyRaised(t, client);
+                }
             }
         }
     }
