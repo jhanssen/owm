@@ -386,10 +386,13 @@ export class Container implements ContainerItem
             if (this._monitor) {
                 const globalItems = this._monitor.items;
                 if (globalItems.length > 0) {
-                    if (this._fullscreenItem === item) {
-                        item.raise(globalItems[globalItems.length - 1]);
+                    if (item === this._fullscreenItem) {
+                        globalItems[0].lower(item);
                     } else {
-                        item.lower(globalItems[0]);
+                        globalItems[0].raise(item);
+                    }
+                    for (let i = 1; i < globalItems.length; ++i) {
+                        globalItems[i].raise(globalItems[i - 1]);
                     }
                 }
             }
@@ -547,8 +550,22 @@ export class Container implements ContainerItem
             throw new Error("container doesn't contain this item");
         }
         const allItems = this.stackItems;
-        if (allItems.length === 1 || item === this._fullscreenItem) {
-            // nothing to do
+        if (allItems.length === 1) {
+            // make sure we respect our global items
+            const item = allItems[0];
+            if (this._monitor) {
+                const globalItems = this._monitor.items;
+                if (globalItems.length > 0) {
+                    if (item === this._fullscreenItem) {
+                        globalItems[0].lower(item);
+                    } else {
+                        globalItems[0].raise(item);
+                    }
+                    for (let i = 1; i < globalItems.length; ++i) {
+                        globalItems[i].raise(globalItems[i - 1]);
+                    }
+                }
+            }
             return;
         }
 
