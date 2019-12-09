@@ -155,14 +155,6 @@ lib.events.on("exit", (exitCode?: number) => {
     });
 });
 
-lib.events.on("restart", () => {
-    process.nextTick(() => {
-        lib.cleanup();
-        native.stop();
-        process.exit(1);
-    });
-});
-
 process.on("SIGINT", () => {
     if (lib)
         lib.cleanup();

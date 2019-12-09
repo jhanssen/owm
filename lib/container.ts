@@ -911,7 +911,11 @@ export namespace Container {
         Front,
         Back,
         Forward,
-        Backward
+        Backward,
+        Top = Back,
+        Bottom = Front,
+        Up = Backward,
+        Down = Forward
     }
 }
 

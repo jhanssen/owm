@@ -219,10 +219,6 @@ export class OWMLib {
                 msg.close();
                 this._events.emit("exit");
                 break;
-            case "restart":
-                msg.close();
-                this._events.emit("restart");
-                break;
             case "message":
                 this._events.emit("message", msg);
                 break;
@@ -339,10 +335,6 @@ export class OWMLib {
         this._events.emit("exit", exitCode);
     }
 
-    restart() {
-        this._events.emit("restart");
-    }
-
     findClient(window: number): Client | undefined {
         let client = this._clientsByWindow.get(window);
         if (!client) {
@@ -424,9 +416,14 @@ export class OWMLib {
         return undefined;
     }
 
-    findClientUnderCursor() : Client | undefined {
+    findClientUnderCursor(): Client | undefined {
         const ptr = this._xcb.query_pointer(this._wm);
         return this.findClientByPosition(ptr.root_x, ptr.root_y);
+    }
+
+    findContainerForWorkspace(id: number): Container | undefined {
+        const ws = this._monitors.workspaceById(id);
+        return ws ? ws.container : undefined;
     }
 
     findContainerByPosition(x: number, y: number): Container | undefined {
@@ -438,7 +435,7 @@ export class OWMLib {
         return undefined;
     }
 
-    findContainerUnderCursor() : Container | undefined {
+    findContainerUnderCursor(): Container | undefined {
         const ptr = this._xcb.query_pointer(this._wm);
         return this.findContainerByPosition(ptr.root_x, ptr.root_y);
     }
@@ -900,7 +897,7 @@ export class OWMLib {
 
         const ws = client.workspace;
         if (ws === undefined && !client.ignoreWorkspace) {
-            throw new Error(`tried to focus client with no workspace: ${client.window.window}:${client.window.wmRole}`);
+            throw new Error(`tried to focus client with no workspace: ${client.window.window}:${client.window.wmRole}:${client.window.wmClass.class_name}:${client.window.wmClass.instance_name}`);
         }
 
         let gc;
