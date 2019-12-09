@@ -4,12 +4,10 @@ import { Logger } from "../../logger";
 import { Client } from "../../client";
 import { LayoutPolicy, LayoutConfig } from ".";
 import { Policy } from "..";
-import { EventEmitter } from "events";
 
 export class TilingLayoutConfig implements LayoutConfig
 {
     private _type: string;
-    private _events: EventEmitter;
 
     private _rows: number | undefined;
     private _columns: number | undefined;
@@ -18,8 +16,7 @@ export class TilingLayoutConfig implements LayoutConfig
     private _columnRatios: Map<number, number>;
 
     constructor() {
-        this._type = "TilingLayoutConfig";
-        this._events = new EventEmitter();
+        this._type = "tiling";
         this._columns = undefined;
         this._rows = 1;
 
@@ -27,8 +24,8 @@ export class TilingLayoutConfig implements LayoutConfig
         this._columnRatios = new Map<number, number>();
     }
 
-    get events() {
-        return this._events;
+    get type() {
+        return this._type;
     }
 
     get rows() {
@@ -37,7 +34,6 @@ export class TilingLayoutConfig implements LayoutConfig
 
     set rows(r: number | undefined) {
         this._rows = r;
-        this._events.emit("changed");
     }
 
     get columns() {
@@ -46,12 +42,10 @@ export class TilingLayoutConfig implements LayoutConfig
 
     set columns(c: number | undefined) {
         this._columns = c;
-        this._events.emit("changed");
     }
 
     setColumRatio(c: number, ratio: number) {
         this._columnRatios.set(c, ratio);
-        this._events.emit("changed");
     }
 
     columnRatio(c: number): number {
@@ -63,7 +57,6 @@ export class TilingLayoutConfig implements LayoutConfig
 
     setRowRatio(c: number, ratio: number) {
         this._rowRatios.set(c, ratio);
-        this._events.emit("changed");
     }
 
     rowRatio(c: number): number {
@@ -72,19 +65,10 @@ export class TilingLayoutConfig implements LayoutConfig
             return 1;
         return r;
     }
-
-    clone() {
-        const c = new TilingLayoutConfig();
-        c._rows = this._rows;
-        c._columns = this._columns;
-        c._rowRatios = new Map<number, number>(this._rowRatios);
-        c._columnRatios = new Map<number, number>(this._columnRatios);
-        return c;
-    }
 }
 
 function isTilingLayoutConfig(o: any): o is TilingLayoutConfig {
-    return o._type === "TilingLayoutConfig";
+    return o._type === "tiling";
 }
 
 export class TilingLayoutPolicy implements LayoutPolicy
@@ -95,17 +79,20 @@ export class TilingLayoutPolicy implements LayoutPolicy
     private _log: Logger;
     private _type: string;
     private _cfg: TilingLayoutConfig;
-    private _events: EventEmitter;
-    private _changedCallback: () => void;
 
-    constructor(policy: Policy) {
-        this._type = "TilingLayout";
+    constructor(policy: Policy, cfg: LayoutConfig) {
+        if (!isTilingLayoutConfig(cfg)) {
+            throw new Error("Config needs to be a TilingLayoutConfig");
+        }
+
+        this._type = "tiling";
         this._policy = policy;
         this._log = policy.owm.logger.prefixed("TilingLayout");
-        this._cfg = new TilingLayoutConfig();
-        this._events = new EventEmitter();
-        this._changedCallback = this._configChanged.bind(this);
-        this._cfg.events.on("changed", this._changedCallback);
+        this._cfg = cfg as TilingLayoutConfig;
+    }
+
+    get type() {
+        return this._type;
     }
 
     get config() {
@@ -116,14 +103,7 @@ export class TilingLayoutPolicy implements LayoutPolicy
         if (!isTilingLayoutConfig(cfg)) {
             throw new Error("Config needs to be a TilingLayoutConfig");
         }
-        // not sure about this
-        this._cfg.events.removeListener("changed", this._changedCallback);
         this._cfg = cfg as TilingLayoutConfig;
-        this._cfg.events.on("changed", this._changedCallback);
-    }
-
-    get events() {
-        return this._events;
     }
 
     layout(items: ContainerItem[], geometry: Geometry) {
@@ -190,18 +170,8 @@ export class TilingLayoutPolicy implements LayoutPolicy
             y += h * this._cfg.rowRatio(row);
         }
     }
-
-    clone() {
-        const c = new TilingLayoutPolicy(this._policy);
-        c.config = this._cfg.clone();
-        return c;
-    }
-
-    private _configChanged() {
-        this._events.emit("needsLayout");
-    }
 }
 
 export function isTilingLayout(o: any): o is TilingLayoutPolicy {
-    return o._type === "TilingLayout";
+    return o._type === "tiling";
 }

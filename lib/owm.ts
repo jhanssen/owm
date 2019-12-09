@@ -952,6 +952,10 @@ export class OWMLib {
                                             format: 32, data: activeData });
     }
 
+    updateLayout() {
+        this._events.emit("needsLayout");
+    }
+
     relayout() {
         this._monitors.relayout();
     }

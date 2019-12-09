@@ -57,7 +57,7 @@ export class Container implements ContainerItem
         this._regularItems = [];
         this._ontopItems = [];
         this._layoutItems = [];
-        this._layout = owm.policy.layout.clone();
+        this._layout = owm.policy.createLayout();
         this._monitor = monitor;
         if (monitor) {
             this._geometry = new Geometry(monitor.screen);
@@ -73,17 +73,11 @@ export class Container implements ContainerItem
         this._containerType = containerType;
 
         this._layoutCallback = this._policyNeedsLayout.bind(this);
-        this._layout.events.on("needsLayout", this._layoutCallback);
+        this._owm.events.on("needsLayout", this._layoutCallback);
     }
 
     get layoutPolicy() {
         return this._layout;
-    }
-
-    set layout(policy: LayoutPolicy) {
-        this._layout.events.removeListener("needsLayout", this._layoutCallback);
-        this._layout = policy;
-        this._layout.events.on("needsLayout", this._layoutCallback);
     }
 
     get stackItems() {

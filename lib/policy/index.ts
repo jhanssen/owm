@@ -1,21 +1,27 @@
 import { FocusPolicy } from "./focus";
 import { FocusFollowsMousePolicy } from "./focus/follows-mouse";
-import { LayoutPolicy } from "./layout";
-import { TilingLayoutPolicy } from "./layout/tiling";
+import { LayoutPolicy, LayoutConfig } from "./layout";
+import { TilingLayoutPolicy, TilingLayoutConfig } from "./layout/tiling";
 import { OWMLib } from "../owm";
 import { Client } from "../client";
 import { XCB } from "native";
+import { serialize, deserialize } from "v8";
+
+type LayoutPolicyConstructor = { new(policy: Policy, cfg: LayoutConfig): LayoutPolicy };
+type LayoutConfigConstructor = { new(): LayoutConfig };
 
 export class Policy
 {
     private _focus: FocusPolicy;
-    private _layout: LayoutPolicy;
+    private _layoutConstructor: LayoutPolicyConstructor;
+    private _layoutConfig: LayoutConfig;
     private _owm: OWMLib;
 
     constructor(owm: OWMLib) {
         this._owm = owm;
         this._focus = new FocusFollowsMousePolicy(this);
-        this._layout = new TilingLayoutPolicy(this);
+        this._layoutConstructor = TilingLayoutPolicy;
+        this._layoutConfig = new TilingLayoutConfig();
     }
 
     get owm() {
@@ -30,27 +36,26 @@ export class Policy
         this._focus = arg;
     }
 
-    get layout() {
-        return this._layout;
+    get layoutConfig() {
+        return this._layoutConfig;
     }
 
-    set layout(arg: LayoutPolicy) {
-        this._layout = arg;
+    setLayoutPolicy(ctor: LayoutPolicyConstructor, cfg: LayoutConfigConstructor) {
+        this._layoutConstructor = ctor;
+        this._layoutConfig = new cfg();
     }
 
-    createLayout(name: string): LayoutPolicy | undefined {
-        switch (name) {
-            case "tiling":
-                return new TilingLayoutPolicy(this);
-        }
-        return undefined;
+    createLayout(): LayoutPolicy {
+        const newcfg = deserialize(serialize(this._layoutConfig));
+        Object.setPrototypeOf(newcfg, Object.getPrototypeOf(this._layoutConfig));
+        return new this._layoutConstructor(this, newcfg);
     }
 
     createFocus(name: string): FocusPolicy | undefined {
         switch (name) {
-            case "follows-mouse":
-            case "followsmouse":
-                return new FocusFollowsMousePolicy(this);
+        case "follows-mouse":
+        case "followsmouse":
+            return new FocusFollowsMousePolicy(this);
         }
         return undefined;
     }
