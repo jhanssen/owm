@@ -170,6 +170,12 @@ export class TilingLayoutPolicy implements LayoutPolicy
             y += h * this._cfg.rowRatio(row);
         }
     }
+
+    initialize() {
+    }
+
+    deinitialize() {
+    }
 }
 
 export function isTilingLayout(o: any): o is TilingLayoutPolicy {

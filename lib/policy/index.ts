@@ -1,14 +1,12 @@
 import { FocusPolicy } from "./focus";
 import { FocusFollowsMousePolicy } from "./focus/follows-mouse";
-import { LayoutPolicy, LayoutConfig } from "./layout";
+import { LayoutPolicy, LayoutConfig, LayoutPolicyConstructor, LayoutConfigConstructor } from "./layout";
 import { TilingLayoutPolicy, TilingLayoutConfig } from "./layout/tiling";
+import { StackingLayoutPolicy, StackingLayoutConfig } from "./layout/stacking";
 import { OWMLib } from "../owm";
 import { Client } from "../client";
 import { XCB } from "native";
 import { serialize, deserialize } from "v8";
-
-type LayoutPolicyConstructor = { new(policy: Policy, cfg: LayoutConfig): LayoutPolicy };
-type LayoutConfigConstructor = { new(): LayoutConfig };
 
 export class Policy
 {
@@ -40,15 +38,34 @@ export class Policy
         return this._layoutConfig;
     }
 
-    setLayoutPolicy(ctor: LayoutPolicyConstructor, cfg: LayoutConfigConstructor) {
-        this._layoutConstructor = ctor;
-        this._layoutConfig = new cfg();
+    setLayoutPolicy(type: string) {
+        switch (type) {
+        case "tiling":
+            this._layoutConstructor = TilingLayoutPolicy;
+            this._layoutConfig = new TilingLayoutConfig();
+            break;
+        case "stacking":
+            this._layoutConstructor = StackingLayoutPolicy;
+            this._layoutConfig = new StackingLayoutConfig();
+            break;
+        default:
+            throw new Error(`Unknown layout type ${type}`);
+        }
     }
 
-    createLayout(): LayoutPolicy {
-        const newcfg = deserialize(serialize(this._layoutConfig));
-        Object.setPrototypeOf(newcfg, Object.getPrototypeOf(this._layoutConfig));
-        return new this._layoutConstructor(this, newcfg);
+    createLayout(type?: string): LayoutPolicy {
+        if (type === undefined) {
+            const newcfg = deserialize(serialize(this._layoutConfig));
+            Object.setPrototypeOf(newcfg, Object.getPrototypeOf(this._layoutConfig));
+            return new this._layoutConstructor(this, newcfg);
+        }
+        switch (type) {
+        case "tiling":
+            return new TilingLayoutPolicy(this, new TilingLayoutConfig());
+        case "stacking":
+            return new StackingLayoutPolicy(this, new StackingLayoutConfig());
+        }
+        throw new Error(`Unknown layout type ${type}`);
     }
 
     createFocus(name: string): FocusPolicy | undefined {

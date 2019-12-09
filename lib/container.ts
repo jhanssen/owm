@@ -1,6 +1,6 @@
-import { OWMLib } from "./owm";
+import { OWMLib, } from "./owm";
 import { Logger } from "./logger";
-import { LayoutPolicy } from "./policy/layout";
+import { LayoutPolicy, LayoutPolicyConstructor, LayoutConfigConstructor } from "./policy/layout";
 import { Geometry, Strut } from "./utils";
 import { Workspace } from "./workspace";
 import { Monitor } from "./monitor";
@@ -9,12 +9,14 @@ export interface ContainerItem
 {
     move(x: number, y: number): void;
     resize(width: number, height: number): void;
+    raiseWithFloating(): void;
     raise(sibling?: ContainerItem): void;
     lower(sibling?: ContainerItem): void;
     isRelated(other: ContainerItem): boolean;
     readonly geometry: Geometry;
     readonly strut: Strut;
     readonly workspace: Workspace | undefined;
+    readonly name: string;
     container: Container | undefined;
     visible: boolean;
     floating: boolean;
@@ -58,6 +60,7 @@ export class Container implements ContainerItem
         this._ontopItems = [];
         this._layoutItems = [];
         this._layout = owm.policy.createLayout();
+        this._layout.initialize();
         this._monitor = monitor;
         if (monitor) {
             this._geometry = new Geometry(monitor.screen);
@@ -76,10 +79,6 @@ export class Container implements ContainerItem
         this._owm.events.on("needsLayout", this._layoutCallback);
     }
 
-    get layoutPolicy() {
-        return this._layout;
-    }
-
     get stackItems() {
         // we depend on the array returned from this being a copy (in bringToTop)
         return this._regularItems.concat(this._ontopItems);
@@ -87,6 +86,20 @@ export class Container implements ContainerItem
 
     get layoutItems() {
         return this._layoutItems;
+    }
+
+    get name() {
+        return "Container";
+    }
+
+    get layoutPolicy() {
+        return this._layout;
+    }
+
+    set layoutPolicy(policy: LayoutPolicy) {
+        this._layout.deinitialize();
+        this._layout = policy;
+        this._layout.initialize();
     }
 
     get monitor() {
@@ -232,6 +245,10 @@ export class Container implements ContainerItem
         }
 
         this.relayout();
+    }
+
+    raiseWithFloating() {
+        this.raise();
     }
 
     raise(sibling?: ContainerItem) {
@@ -844,6 +861,8 @@ export class Container implements ContainerItem
                 // one step forward from current
                 if (idx > 0)
                     --idx;
+                while (idx > 0 && this._layoutItems[idx].floating)
+                    --idx;
                 this._layoutItems.splice(idx, 0, item);
             }
             break;
@@ -852,6 +871,9 @@ export class Container implements ContainerItem
                 // in back of otherIdx
                 this._layoutItems.splice(otherIdx + 1, 0, item);
             } else {
+                ++idx;
+                while (idx < this._layoutItems.length - 1 && this._layoutItems[idx].floating)
+                    ++idx;
                 this._layoutItems.splice(idx + 1, 0, item);
             }
         }

@@ -406,6 +406,10 @@ export class Client implements ContainerItem
         return this._group;
     }
 
+    get name() {
+        return this._window.ewmhName || this._window.wmName || this._window.wmClass.instance_name || "Unnamed";
+    }
+
     finalizeCreation(focus?: boolean) {
         // is this client in a visible workspace?
         const owm = this._owm;
@@ -447,6 +451,18 @@ export class Client implements ContainerItem
         // don't map our client if our explicit state is iconic or withdrawn
         if (this._explicitState === Client.State.Normal) {
             this._setState(this._explicitState);
+        }
+    }
+
+    raiseWithFloating() {
+        if (this._container) {
+            this._container.circulateToTop(this);
+            // raise all floating in this group
+            for (const c of this._group.followerClients) {
+                if (c !== this && !c.transient && c.floating) {
+                    this._container.circulateToTop(c);
+                }
+            }
         }
     }
 
