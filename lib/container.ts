@@ -92,6 +92,10 @@ export class Container implements ContainerItem
         return "Container";
     }
 
+    get layoutConfig() {
+        return this._layout.config;
+    }
+
     get layoutPolicy() {
         return this._layout;
     }
