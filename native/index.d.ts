@@ -712,7 +712,7 @@ export namespace OWM {
         create_pixmap(wm: OWM.WM, args: CreatePixmapArgs): number;
         free_pixmap(wm: OWM.WM, window: number): void;
         reparent_window(wm: OWM.WM, args: ReparentWindowArgs): void;
-        get_property(wm: OWM.WM, args: GetPropertyArgs): GetPropertyReply | undefined;
+        get_property(wm: OWM.WM, args: GetPropertyArgs): GetPropertyReply;
         change_property(wm: OWM.WM, args: ChangePropertyArgs): void;
         delete_property(wm: OWM.WM, args: DeletePropertyArgs): void;
         set_input_focus(wm: OWM.WM, args: SetInputFocusArgs): void;

@@ -1602,17 +1602,16 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         const int rlength = xcb_get_property_value_length(reply);
 
         void* rdata = rlength > 0 ? xcb_get_property_value(reply) : nullptr;
+        auto ret = Napi::Object::New(env);
+        ret.Set("format", reply->format);
+        ret.Set("type", reply->type);
         if (rdata && rlength) {
-            auto ret = Napi::Object::New(env);
-            ret.Set("format", reply->format);
-            ret.Set("type", reply->type);
             ret.Set("buffer", Napi::ArrayBuffer::New(env, rdata, rlength, [reply](napi_env, void*) { free(reply); }));
-            return ret;
+        } else {
+            free(reply);
+            ret.Set("buffer", Napi::ArrayBuffer::New(env, 0));
         }
-
-        free(reply);
-
-        return env.Undefined();
+        return ret;
     }));
 
     xcb.Set("change_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {

@@ -585,10 +585,6 @@ export class Client implements ContainerItem
         let propdata: OWM.GetProperty | undefined;
         if (isNew) {
             propdata = this._owm.xcb.get_property(this._owm.wm, { window: this._window.window, property: property });
-            if (!propdata) {
-                const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
-                throw new Error(`couldn't get property for update ${name}`);
-            }
         }
 
         // this._log.error("prop", this._owm.xcb.get_atom_name(this._owm.wm, property));
@@ -600,6 +596,8 @@ export class Client implements ContainerItem
             break;
         case atom.WM_NAME:
             this._updateWmName(propdata);
+            break;
+        case atom._NET_WM_OPAQUE_REGION:
             break;
         case atom.WM_NORMAL_HINTS:
             this._updateWmNormalHints(propdata);

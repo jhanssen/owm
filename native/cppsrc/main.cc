@@ -205,6 +205,7 @@ static inline void initAtoms(std::shared_ptr<owm::WM>& wm)
         { 28, "_NET_SYSTEM_TRAY_ORIENTATION" },
         { 22, "_NET_WM_WINDOW_OPACITY" },
         { 21, "_NET_WM_STATE_FOCUSED" },
+        { 21, "_NET_WM_OPAQUE_REGION" },
         { 16, "_XKB_RULES_NAMES" }
     };
     const size_t extraCount = sizeof(extraAtoms) / sizeof(extraAtoms[0]);
