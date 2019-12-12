@@ -392,7 +392,6 @@ export class StackingLayoutPolicy implements LayoutPolicy
             } else {
                 xcb.configure_window(owm.wm, { window: this._win, x: geometry.x, y: geometry.y, width: newWidth, height: newHeight });
             }
-            xcb.flush(owm.wm);
 
             this._recreatePixmap();
         } else {
@@ -401,7 +400,6 @@ export class StackingLayoutPolicy implements LayoutPolicy
             }
 
             xcb.configure_window(owm.wm, { window: this._win, x: geometry.x, y: geometry.y });
-            xcb.flush(owm.wm);
         }
 
         this._repaint(items);
