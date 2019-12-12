@@ -619,6 +619,8 @@ export class OWMLib {
             client = this._clientsByWindow.get(event.window);
             if (client) {
                 this._events.emit("clientExpose", client);
+            } else {
+                this._events.emit("windowExpose", event.window);
             }
             return;
         }

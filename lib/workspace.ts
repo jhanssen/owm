@@ -22,8 +22,7 @@ export class Workspace
         this._id = id;
         this._name = name;
         this._owm = owm;
-        this._container = new Container(owm, Container.Type.TopLevel);
-        this._container.workspace = this;
+        this._container = new Container(owm, this, Container.Type.TopLevel);
     }
 
     get id() {
@@ -38,6 +37,10 @@ export class Workspace
         if (this._workspaces && name)
             this._workspaces.removeByName(name);
         this._name = name;
+    }
+
+    get active() {
+        return this._monitor !== undefined && this._monitor.workspace === this;
     }
 
     get workspaces() {

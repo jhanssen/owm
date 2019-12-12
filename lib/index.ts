@@ -1,6 +1,6 @@
 export { OWMLib } from "./owm";
 export { Client } from "./client";
-export { Container } from "./container";
+export { Container, ContainerItem } from "./container";
 export { Keybindings } from "./keybindings";
 export { Logger } from "./logger";
 export { Match, MatchCondition, MatchWMClass, MatchWMName } from "./match";

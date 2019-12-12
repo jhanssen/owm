@@ -2,6 +2,7 @@ import { ContainerItem } from "../../container";
 import { Geometry } from "../../utils";
 import { Logger } from "../../logger";
 import { Client } from "../../client";
+import { Workspace } from "../../workspace";
 import { LayoutPolicy, LayoutConfig } from ".";
 import { Policy } from "..";
 
@@ -80,7 +81,7 @@ export class TilingLayoutPolicy implements LayoutPolicy
     private _type: string;
     private _cfg: TilingLayoutConfig;
 
-    constructor(policy: Policy, cfg: LayoutConfig) {
+    constructor(policy: Policy, ws: Workspace, cfg: LayoutConfig) {
         if (!isTilingLayoutConfig(cfg)) {
             throw new Error("Config needs to be a TilingLayoutConfig");
         }
@@ -175,6 +176,9 @@ export class TilingLayoutPolicy implements LayoutPolicy
     }
 
     deinitialize() {
+    }
+
+    update() {
     }
 }
 

@@ -42,7 +42,7 @@ export class Container implements ContainerItem
     private _geometry: Geometry;
     private _log: Logger;
     private _type: string;
-    private _workspace: Workspace | undefined;
+    private _workspace: Workspace;
     private _container: Container | undefined;
     private _fullscreenItem: ContainerItem | undefined;
     private _visible: boolean;
@@ -54,12 +54,13 @@ export class Container implements ContainerItem
 
     public readonly LayoutPosition = Container.LayoutPosition;
 
-    constructor(owm: OWMLib, containerType: Container.Type, monitor?: Monitor) {
+    constructor(owm: OWMLib, workspace: Workspace, containerType: Container.Type, monitor?: Monitor) {
         this._owm = owm;
+        this._workspace = workspace;
         this._regularItems = [];
         this._ontopItems = [];
         this._layoutItems = [];
-        this._layout = owm.policy.createLayout();
+        this._layout = owm.policy.createLayout(workspace);
         this._layout.initialize();
         this._monitor = monitor;
         if (monitor) {
@@ -154,17 +155,7 @@ export class Container implements ContainerItem
     }
 
     get workspace() {
-        if (this._container) {
-            return this._container.workspace;
-        }
         return this._workspace;
-    }
-
-    set workspace(ws: Workspace | undefined) {
-        if (this._containerType !== Container.Type.TopLevel) {
-            throw new Error("Can only set workspace on top-level containers");
-        }
-        this._workspace = ws;
     }
 
     get container() {
@@ -890,6 +881,7 @@ export class Container implements ContainerItem
     }
 
     private _policyNeedsLayout() {
+        this._layout.update();
         this.relayout();
     }
 

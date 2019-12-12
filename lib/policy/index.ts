@@ -3,8 +3,7 @@ import { FocusFollowsMousePolicy } from "./focus/follows-mouse";
 import { LayoutPolicy, LayoutConfig, LayoutPolicyConstructor, LayoutConfigConstructor } from "./layout";
 import { TilingLayoutPolicy, TilingLayoutConfig } from "./layout/tiling";
 import { StackingLayoutPolicy, StackingLayoutConfig } from "./layout/stacking";
-import { OWMLib } from "../owm";
-import { Client } from "../client";
+import { OWMLib, Client, Workspace } from "..";
 import { XCB } from "native";
 import { serialize, deserialize } from "v8";
 
@@ -53,17 +52,17 @@ export class Policy
         }
     }
 
-    createLayout(type?: string): LayoutPolicy {
+    createLayout(workspace: Workspace, type?: string): LayoutPolicy {
         if (type === undefined) {
             const newcfg = deserialize(serialize(this._layoutConfig));
             Object.setPrototypeOf(newcfg, Object.getPrototypeOf(this._layoutConfig));
-            return new this._layoutConstructor(this, newcfg);
+            return new this._layoutConstructor(this, workspace, newcfg);
         }
         switch (type) {
         case "tiling":
-            return new TilingLayoutPolicy(this, new TilingLayoutConfig());
+            return new TilingLayoutPolicy(this, workspace, new TilingLayoutConfig());
         case "stacking":
-            return new StackingLayoutPolicy(this, new StackingLayoutConfig());
+            return new StackingLayoutPolicy(this, workspace, new StackingLayoutConfig());
         }
         throw new Error(`Unknown layout type ${type}`);
     }
