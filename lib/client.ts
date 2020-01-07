@@ -363,6 +363,11 @@ export class Client implements ContainerItem
         return undefined;
     }
 
+    get monitor() {
+        const ws = this.workspace;
+        return ws ? ws.monitor : undefined;
+    }
+
     set workspace(ws: Workspace | undefined) {
         if (this._ignoreWorkspace) {
             return;
