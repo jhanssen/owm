@@ -1,5 +1,5 @@
 import { Graphics } from "../../../native";
-import { OWMLib, Geometry, Client } from "../../../lib";
+import { OWMLib, Geometry, Client, Monitor } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
 
@@ -16,6 +16,7 @@ export class Title extends EventEmitter implements BarModule
     private _color: { red: number, green: number, blue: number, alpha: number };
     private _width: number;
     private _titleGeometry: { width: number, height: number };
+    private _monitor: Monitor;
 
     constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
         super();
@@ -24,18 +25,22 @@ export class Title extends EventEmitter implements BarModule
 
         this._config = titleConfig;
         this._color = Bar.makeColor(titleConfig.textColor || "#fff");
+        this._monitor = bar.monitor;
 
         this._titleGeometry = { width: 0, height: 0 };
         this._title = owm.engine.createText(bar.ctx);
         this._width = 300;
         owm.engine.textSetFont(this._title, titleConfig.font || bar.font);
 
-        this._updateFocus(owm.engine, owm.focused);
-        owm.events.on("clientFocusIn", client => {
-            this._updateFocus(owm.engine, client);
+        if (!owm.focused || owm.focused.monitor == this._monitor)
+            this._updateFocus(owm.engine, owm.focused);
 
-            this.emit("geometryChanged", this);
-            this.emit("updated");
+        owm.events.on("clientFocusIn", client => {
+            if (client.monitor === this._monitor) {
+                this._updateFocus(owm.engine, client);
+                this.emit("geometryChanged", this);
+                this.emit("updated");
+            }
         });
     }
 
