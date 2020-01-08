@@ -20,6 +20,12 @@ std::string latin1toutf8(const std::string& input)
     return output;
 }
 
+void printException(const char *func, const Napi::Error& e)
+{
+    fprintf(stderr, "%s: %s\n%s\n",
+            func, e.what(), e.Get("stack").As<Napi::String>().Utf8Value().c_str());
+}
+
 static Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event)
 {
     Napi::Object obj = Napi::Object::New(env);
@@ -429,7 +435,7 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::FunctionReference& fn,
         napi_value nvalue = obj;
         fn.Call({ nvalue });
     } catch (const Napi::Error& e) {
-        printf("handleXcb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
+        printException(__FUNCTION__, e);
     }
 }
 
@@ -465,7 +471,7 @@ void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::FunctionReference& fn, 
                 napi_value nvalue = obj;
                 fn.Call({ nvalue });
             } catch (const Napi::Error& e) {
-                printf("handleXkb: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
+                printException(__FUNCTION__, e);
             }
 
             break; }

@@ -699,7 +699,7 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                     napi_value nvalue = owm::makeScreens(env, wm);
                     data.callback.Call({ nvalue });
                 } catch (const Napi::Error& e) {
-                    printf("handleRandr: exception from js: %s\n%s\n", e.what(), e.Message().c_str());
+                    owm::printException(__FUNCTION__, e);
                 }
             } else {
                 owm::handleXcb(wm, data.callback, event);

@@ -36,6 +36,7 @@ typedef std::variant<double, std::string, const char*, bool, UndefinedType> Vari
 Variant toVariant(Napi::Value value);
 Napi::Value fromVariant(napi_env env, const Variant& variant);
 std::string latin1toutf8(const std::string& input);
+void printException(const char *func, const Napi::Error& e);
 
 struct Screen
 {
