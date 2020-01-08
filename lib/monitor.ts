@@ -161,6 +161,11 @@ export class Monitors
         return first;
     }
 
+    monitorByContainerItem(item: ContainerItem) {
+        const { x, y } = item.geometry.center;
+        return this.monitorByPosition(x, y);
+    }
+
     monitorByOutput(name: string) {
         return this._monitors.get(name);
     }

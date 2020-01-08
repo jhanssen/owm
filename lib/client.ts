@@ -52,6 +52,7 @@ export class Client implements ContainerItem
     private _explicitState: Client.State;
     private _hidden: boolean;
     private _container: Container | undefined;
+    private _monitor: Monitor;
     private _floating: boolean;
     private _explicitFloating: boolean | undefined;
     private _ignoreWorkspace: boolean;
@@ -79,20 +80,20 @@ export class Client implements ContainerItem
         this._group = this._makeGroup();
 
         const monitors = owm.monitors;
-        const monitor = monitors.monitorByPosition(window.geometry.x, window.geometry.y);
+        this._monitor = monitors.monitorByContainerItem(this);
 
         if (Strut.hasStrut(window.ewmhStrutPartial)) {
             this._strut = new Strut(window.ewmhStrutPartial);
         } else {
             this._strut = new Strut(window.ewmhStrut);
             if (Strut.hasStrut(window.ewmhStrut)) {
-                this._strut.fillPartial(monitor.screen);
+                this._strut.fillPartial(this._monitor.screen);
             }
         }
 
         if (window.ewmhDesktop === 0xffffffff) {
             this._ignoreWorkspace = true;
-            monitor.addItem(this);
+            this._monitor.addItem(this);
         }
 
         if (window.ewmhState.includes(owm.xcb.atom._NET_WM_STATE_ABOVE)) {
@@ -282,18 +283,17 @@ export class Client implements ContainerItem
 
         this._ignoreWorkspace = ignore;
 
-        const monitor = this._owm.monitors.monitorByPosition(this._geometry.x, this._geometry.y);
-        if (monitor.workspace === undefined) {
+        if (this._monitor.workspace === undefined) {
             throw new Error("monitor workspace is not defined");
         }
         if (ignore) {
             // remove from existing workspace, add to monitor global items
             this.workspace = undefined;
-            monitor.addItem(this);
+            this._monitor.addItem(this);
         } else {
             // remove from monitor global items, add to current monitor workspace
-            monitor.removeItem(this);
-            this.workspace = monitor.workspace;
+            this._monitor.removeItem(this);
+            this.workspace = this._monitor.workspace;
         }
 
         this._owm.ewmh.updateAllowed(this);
@@ -364,8 +364,7 @@ export class Client implements ContainerItem
     }
 
     get monitor() {
-        const ws = this.workspace;
-        return ws ? ws.monitor : undefined;
+        return this._monitor;
     }
 
     set workspace(ws: Workspace | undefined) {
@@ -1100,7 +1099,7 @@ export class Client implements ContainerItem
         let parentArgs = Object.assign({ window: this._parent }, args);
 
         if (args.x !== undefined && args.y !== undefined) {
-            const oldmonitor = this._owm.monitors.monitorByPosition(this._frameGeometry.x, this._frameGeometry.y);
+            const oldmonitor = this._monitor;
             const oldws = this.workspace;
 
             this._geometry.x = args.x;
@@ -1110,7 +1109,8 @@ export class Client implements ContainerItem
             parentArgs.y = this._frameGeometry.y = this._geometry.y - this._border;
 
             // change workspace/monitor if needed
-            const monitor = this._owm.monitors.monitorByPosition(parentArgs.x, parentArgs.y);
+            const monitor = this._owm.monitors.monitorByContainerItem(this);
+            this._monitor = monitor;
 
             if (this._ignoreWorkspace && oldmonitor !== monitor) {
                 oldmonitor.removeItem(this);
@@ -1330,6 +1330,7 @@ export class Client implements ContainerItem
             sibling: sibling._parent,
             stack_mode: xcb.stackMode.ABOVE
         });
+
         if (this._container) {
             this._container.notifyRaised(client, sibling);
         }
@@ -1359,6 +1360,7 @@ export class Client implements ContainerItem
             sibling: sibling._parent,
             stack_mode: xcb.stackMode.BELOW
         });
+
         if (this._container) {
             this._container.notifyLowered(client, sibling);
         }
