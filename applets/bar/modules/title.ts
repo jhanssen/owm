@@ -17,6 +17,7 @@ export class Title extends EventEmitter implements BarModule
     private _width: number;
     private _titleGeometry: { width: number, height: number };
     private _monitor: Monitor;
+    private _client: Client | undefined;
 
     constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
         super();
@@ -35,11 +36,26 @@ export class Title extends EventEmitter implements BarModule
         if (!owm.focused || owm.focused.monitor == this._monitor)
             this._updateFocus(owm.engine, owm.focused);
 
+        const _updateClient = () => {
+            this._updateFocus(owm.engine, this._client);
+            this.emit("geometryChanged", this);
+            this.emit("updated");
+        };
+
         owm.events.on("clientFocusIn", client => {
             if (client.monitor === this._monitor) {
-                this._updateFocus(owm.engine, client);
-                this.emit("geometryChanged", this);
-                this.emit("updated");
+                this._client = client;
+                _updateClient();
+            }
+        });
+        owm.events.on("clientWmNameUpdated", client => {
+            if (this._client === client) {
+                _updateClient();
+            }
+        });
+        owm.events.on("clientEwmhNameUpdated", client => {
+            if (this._client === client) {
+                _updateClient();
             }
         });
     }

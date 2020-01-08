@@ -826,6 +826,7 @@ export class Client implements ContainerItem
     private _updateWmName(property?: OWM.GetProperty) {
         if (!property || property.format !== 8) {
             (this._window as MutableWindow).wmName = "";
+            this._owm.events.emit("clientWmNameUpdated", this);
             return;
         }
 
@@ -836,6 +837,7 @@ export class Client implements ContainerItem
 
         const nbuf = Buffer.from(property.buffer);
         (this._window as MutableWindow).wmName = nbuf.toString(encoding, 0, property.buffer.byteLength);
+        this._owm.events.emit("clientWmNameUpdated", this);
     }
 
     private _updateWmNormalHints(property?: OWM.GetProperty) {
@@ -982,12 +984,14 @@ export class Client implements ContainerItem
     private _updateEwmhWmName(property?: OWM.GetProperty) {
         if (!property || property.format !== 8) {
             (this._window as MutableWindow).ewmhName = "";
+            this._owm.events.emit("clientEwmhNameUpdated", this);
             return;
         }
 
         // this property is defined to be utf8
         const nbuf = Buffer.from(property.buffer);
         (this._window as MutableWindow).ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
+        this._owm.events.emit("clientEwmhNameUpdated", this);
     }
 
     private _updateEwmhStrut(property?: OWM.GetProperty) {
