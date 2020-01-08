@@ -5,14 +5,6 @@
 #include <unistd.h>
 #include <sys/epoll.h>
 
-#define EINTRWRAP(x) ({                                                 \
-            decltype(x) eintr_wrapper_result;                           \
-            do {                                                        \
-                eintr_wrapper_result = (x);                             \
-            } while (eintr_wrapper_result == -1 && errno == EINTR);     \
-            eintr_wrapper_result;                                       \
-        })
-
 struct Data
 {
     bool started { false };
