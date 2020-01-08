@@ -6,6 +6,23 @@ interface GeometryData
     height?: number;
 }
 
+export class Point
+{
+    public x: number;
+    public y: number;
+
+    constructor(point: Point = {})
+    {
+        let {
+            x = 0,
+            y = 0,
+        } = point;
+
+        this.x = x;
+        this.y = y;
+    }
+};
+
 export class Geometry
 {
     public x: number;
@@ -30,6 +47,26 @@ export class Geometry
     contains(x: number, y: number) {
         return (x >= this.x && x < this.x + this.width
                 && y >= this.y && y < this.y + this.height);
+    }
+
+    get center() {
+        return new Point({ x: this.x + (this.width / 2), y: this.y + (this.height / 2) });
+    }
+
+    get topLeft() {
+        return new Point({ x: this.x, y: this.y });
+    }
+
+    get topRight() {
+        return new Point({ x: this.x + this.width, y: this.y });
+    }
+
+    get bottomLeft() {
+        return new Point({ x: this.x, y: this.y + this.height });
+    }
+
+    get bottomRight() {
+        return new Point({ x: this.x + this.width, y: this.y + this.height });
     }
 }
 
