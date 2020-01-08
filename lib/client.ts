@@ -2,6 +2,7 @@ import { OWMLib } from "./owm";
 import { Logger } from "./logger";
 import { ContainerItem } from "./container";
 import { Workspace } from "./workspace";
+import { Monitor } from "./monitor";
 import { Container } from "./container";
 import { Geometry, Strut } from "./utils";
 import { endianness } from "os";

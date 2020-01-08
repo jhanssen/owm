@@ -120,7 +120,7 @@ lib = new OWMLib(data.wm, data.xcb, data.xkb, data.graphics, {
     killTimeout: options.int("kill-timeout", 1000)
 });
 
-global.owm = lib;
+//global.owm = lib;
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 rl.setPrompt("owm> ");

@@ -11,7 +11,7 @@ export class Point
     public x: number;
     public y: number;
 
-    constructor(point: Point = {})
+    constructor(point: Point = {} as Point)
     {
         let {
             x = 0,
