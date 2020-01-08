@@ -468,33 +468,33 @@ Napi::Value Start(const Napi::CallbackInfo& info)
                     wins[i],
                     {
                         attrib->bit_gravity,
-                            attrib->win_gravity,
-                            attrib->map_state,
-                            attrib->override_redirect,
-                            attrib->all_event_masks,
-                            attrib->your_event_mask,
-                            attrib->do_not_propagate_mask
-                            }, {
+                        attrib->win_gravity,
+                        attrib->map_state,
+                        attrib->override_redirect,
+                        attrib->all_event_masks,
+                        attrib->your_event_mask,
+                        attrib->do_not_propagate_mask
+                    }, {
                         geom->root,
-                            geom->x,
-                            geom->y,
-                            geom->width,
-                            geom->height,
-                            geom->border_width
-                            },
-                                   owm::makeSizeHint(normalHints),
-                                       owm::makeWMHints(wmHints),
-                                       owm::makeWMClass(wmClass),
-                                       std::move(wmRole),
-                                       owm::makeString(wmName, wmName.encoding == utf8_string),
-                                       owm::makeString(ewmhName, true), // always UTF8
-                                       owm::makeAtoms(wmProtocols),
-                                       owm::makeAtoms(ewmhState),
-                                       owm::makeAtoms(ewmhWindowType),
-                                       owm::makeExtents(ewmhStrut),
-                                       owm::makeStrutPartial(ewmhStrutPartial),
-                                       pid, transientWin, leaderWin, desktop
-                                       });
+                        geom->x,
+                        geom->y,
+                        geom->width,
+                        geom->height,
+                        geom->border_width
+                    },
+                    owm::makeSizeHint(normalHints),
+                    owm::makeWMHints(wmHints),
+                    owm::makeWMClass(wmClass),
+                    std::move(wmRole),
+                    owm::makeString(wmName, wmName.encoding == utf8_string),
+                    owm::makeString(ewmhName, true), // always UTF8
+                    owm::makeAtoms(wmProtocols),
+                    owm::makeAtoms(ewmhState),
+                    owm::makeAtoms(ewmhWindowType),
+                    owm::makeExtents(ewmhStrut),
+                    owm::makeStrutPartial(ewmhStrutPartial),
+                    pid, transientWin, leaderWin, desktop
+                });
 
 
             if (wmName.name && wmName.name_len) {
