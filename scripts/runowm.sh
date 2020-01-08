@@ -10,6 +10,8 @@ while true; do
         cd native
         npm run build
         cd ..
+    fi
+    if [ "$BUILD" -lt 3 ]; then
         npm run build
     fi
 
@@ -24,6 +26,9 @@ while true; do
             ;;
         2)
             BUILD=2
+            ;;
+        3)
+            BUILD=3
             ;;
         *)
             echo "Bad exit copde $?"
