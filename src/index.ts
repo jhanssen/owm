@@ -12,6 +12,7 @@ import { default as native, OWM, XCB } from "native";
 import { OWMLib } from "../lib/owm";
 import { Logger } from "../lib/logger";
 import * as path from "path";
+import { createInterface } from "readline";
 
 const options = Options("owm");
 
@@ -53,7 +54,6 @@ process.on('uncaughtException', (err: any) => {
         process.exit();
 });
 
-let owm: { wm: OWM.WM, xcb: OWM.XCB, xkb: OWM.XKB };
 let lib: OWMLib;
 
 const configDir = stringOption("config") || xdgBaseDir.config;
@@ -119,6 +119,20 @@ lib = new OWMLib(data.wm, data.xcb, data.xkb, data.graphics, {
     level: level,
     killTimeout: options.int("kill-timeout", 1000)
 });
+
+global.owm = lib;
+
+const rl = createInterface({ input: process.stdin, output: process.stdout });
+rl.setPrompt("owm> ");
+rl.on('line', input => {
+    try {
+        console.log(eval(input));
+    } catch (err) {
+        console.error("Got exception", err);
+    }
+    rl.prompt();
+});
+rl.prompt();
 
 if (configDir !== undefined) {
     loadConfig(configDir, lib).then(() => {
