@@ -6,4 +6,4 @@ export { Logger } from "./logger";
 export { Match, MatchCondition, MatchWMClass, MatchWMName } from "./match";
 export { Monitor, Monitors } from "./monitor";
 export { Workspace, Workspaces } from "./workspace";
-export { Geometry, Strut } from "./utils";
+export { Geometry, Point, Strut } from "./utils";
