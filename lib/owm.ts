@@ -524,6 +524,13 @@ export class OWMLib {
         this._log.info("screens", screens);
         this._root = screens.root;
         this._monitors.update(screens.entries);
+
+        // grab the left click button for focus policies
+        const events = this._xcb.eventMask.BUTTON_PRESS | this._xcb.eventMask.BUTTON_RELEASE;
+        const asyncMode = this._xcb.grabMode.ASYNC;
+        this._xcb.grab_button(this._wm, { window: this._root, modifiers: 0,
+                                          button: 1, owner_events: 1, event_mask: events,
+                                          pointer_mode: asyncMode, keyboard_mode: asyncMode });
     }
 
     mapRequest(event: XCB.MapRequest) {

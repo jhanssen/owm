@@ -12,6 +12,7 @@ export class FocusFollowsMousePolicy implements FocusPolicy
     }
 
     buttonPress(event: XCB.ButtonPress) {
+        this._focus(event);
     }
 
     buttonRelease(event: XCB.ButtonPress) {
@@ -24,6 +25,13 @@ export class FocusFollowsMousePolicy implements FocusPolicy
     }
 
     enterNotify(event: XCB.EnterNotify) {
+        this._focus(event);
+    }
+
+    leaveNotify(event: XCB.EnterNotify) {
+    }
+
+    private _focus(event: XCB.EnterNotify | XCB.ButtonPress) {
         let client = this._policy.owm.findClient(event.child);
         if (!client) {
             client = this._policy.owm.findClient(event.event);
@@ -33,8 +41,5 @@ export class FocusFollowsMousePolicy implements FocusPolicy
         } else {
             // this._policy.owm.revertFocus();
         }
-    }
-
-    leaveNotify(event: XCB.EnterNotify) {
     }
 }
