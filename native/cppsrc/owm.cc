@@ -1364,8 +1364,6 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
 
         auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
 
-        uv_async_send(wm->asyncFlush);
-
         xcb_flush(wm->conn);
 
         return env.Undefined();
