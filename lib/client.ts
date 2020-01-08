@@ -58,6 +58,7 @@ export class Client implements ContainerItem
     private _group: ClientGroup;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
+        this._log = owm.logger.prefixed("Client");
         this._owm = owm;
         this._parent = parent;
         this._window = window;
@@ -106,7 +107,6 @@ export class Client implements ContainerItem
         this._noinput = this._floating = false;
         this._updateFloatingInput();
 
-        this._log = owm.logger.prefixed("Client");
         this._state = this._explicitState = Client.State.Withdrawn;
 
         const borderData = new Uint32Array(4);
