@@ -101,6 +101,18 @@ export class Container implements ContainerItem
         return this._layout;
     }
 
+    get topmostRegular() {
+        if (this._regularItems.length > 0)
+            return this._regularItems[this._regularItems.length - 1];
+        return undefined;
+    }
+
+    get topmostOnTop() {
+        if (this._ontopItems.length > 0)
+            return this._ontopItems[this._ontopItems.length - 1];
+        return undefined;
+    }
+
     set layoutPolicy(policy: LayoutPolicy) {
         this._layout.deinitialize();
         this._layout = policy;
@@ -795,6 +807,15 @@ export class Container implements ContainerItem
         // if we got to this point we're either out of luck (if itemType is Client)
         // or we want the current container (if itemType is Container)
         return itemType === ContainerItemType.Container ? this : undefined;
+    }
+
+    stackIndex(item: ContainerItem) {
+        const allItems = this.stackItems;
+        for (let i = 0; i < allItems.length; ++i) {
+            if (item === allItems[i])
+                return i;
+        }
+        return -1;
     }
 
     bringToTop(predicate: (item: ContainerItem) => boolean) {

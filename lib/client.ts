@@ -1335,6 +1335,41 @@ export class Client implements ContainerItem
         if (this._container) {
             this._container.notifyRaised(client, sibling);
         }
+
+        // raise all of the client groups floating clients on top of the topmost item in the container
+        if (!client.floating && this._container) {
+            const container = this._container;
+
+            let topmost: ContainerItem | undefined;
+            if (client.staysOnTop) {
+                topmost = this._container.topmostOnTop;
+                if (topmost === undefined)
+                    topmost = client;
+            } else {
+                topmost = this._container.topmostRegular;
+                if (topmost === undefined)
+                    topmost = client;
+            }
+            if (!isClient(topmost)) {
+                throw new Error("topmost is not a client");
+            }
+
+            const topmostClient = topmost as Client;
+
+            // raise all floating
+            const followers = this.group.followerClients;
+            for (const follower of followers) {
+                if (follower.floating && follower.container === container) {
+                    xcb.configure_window(owm.wm, {
+                        window: follower._parent,
+                        sibling: topmostClient._parent,
+                        stack_mode: xcb.stackMode.ABOVE
+                    });
+                    container.notifyRaised(follower, topmostClient);
+                }
+            }
+        }
+
         // raise the clients transients
         const tr = this.group.transientsForClient(client);
         for (const t of tr) {
@@ -1365,6 +1400,7 @@ export class Client implements ContainerItem
         if (this._container) {
             this._container.notifyLowered(client, sibling);
         }
+
         // raise the clients transients just above self
         const tr = this.group.transientsForClient(client);
         for (const t of tr) {
