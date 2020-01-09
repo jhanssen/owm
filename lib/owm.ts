@@ -527,10 +527,11 @@ export class OWMLib {
 
         // grab the left click button for focus policies
         const events = this._xcb.eventMask.BUTTON_PRESS | this._xcb.eventMask.BUTTON_RELEASE;
+        const syncMode = this._xcb.grabMode.SYNC;
         const asyncMode = this._xcb.grabMode.ASYNC;
         this._xcb.grab_button(this._wm, { window: this._root, modifiers: 0,
                                           button: 1, owner_events: 1, event_mask: events,
-                                          pointer_mode: asyncMode, keyboard_mode: asyncMode });
+                                          pointer_mode: syncMode, keyboard_mode: asyncMode });
     }
 
     mapRequest(event: XCB.MapRequest) {
@@ -802,6 +803,7 @@ export class OWMLib {
                 this._resizeClient(client, event);
             }
         } else {
+            this._xcb.allow_events(this._wm, { mode: this._xcb.allow.REPLAY_POINTER, time: event.time });
             this._policy.buttonPress(event);
         }
     }
@@ -840,6 +842,7 @@ export class OWMLib {
             this._xcb.ungrab_pointer(this._wm, event.time);
             this._moveResize.clear();
         } else {
+            this._xcb.allow_events(this._wm, { mode: this._xcb.allow.REPLAY_POINTER, time: event.time });
             this._policy.buttonRelease(event);
         }
     }
