@@ -13,6 +13,7 @@ export class FocusFollowsMousePolicy implements FocusPolicy
 
     buttonPress(event: XCB.ButtonPress) {
         this._focus(event);
+        this._raise(event);
     }
 
     buttonRelease(event: XCB.ButtonPress) {
@@ -40,6 +41,16 @@ export class FocusFollowsMousePolicy implements FocusPolicy
             client.focus();
         } else {
             // this._policy.owm.revertFocus();
+        }
+    }
+
+    private _raise(event: XCB.ButtonPress) {
+        let client = this._policy.owm.findClient(event.child);
+        if (!client) {
+            client = this._policy.owm.findClient(event.event);
+        }
+        if (client) {
+            client.raise();
         }
     }
 }

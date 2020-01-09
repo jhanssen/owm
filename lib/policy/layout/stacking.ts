@@ -209,7 +209,7 @@ export class StackingLayoutPolicy implements LayoutPolicy
 
         // top item gets it all
         const item = filtered[filtered.length - 1];
-        item.raiseWithFloating();
+        item.raise();
         item.move(newgeom.x, newgeom.y);
         item.resize(newgeom.width, newgeom.height);
     }

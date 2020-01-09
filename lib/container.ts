@@ -9,7 +9,6 @@ export interface ContainerItem
 {
     move(x: number, y: number): void;
     resize(width: number, height: number): void;
-    raiseWithFloating(): void;
     raise(sibling?: ContainerItem): void;
     lower(sibling?: ContainerItem): void;
     isRelated(other: ContainerItem): boolean;
@@ -252,10 +251,6 @@ export class Container implements ContainerItem
         }
 
         this.relayout();
-    }
-
-    raiseWithFloating() {
-        this.raise();
     }
 
     raise(sibling?: ContainerItem) {

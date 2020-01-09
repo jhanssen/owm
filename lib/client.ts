@@ -459,18 +459,6 @@ export class Client implements ContainerItem
         }
     }
 
-    raiseWithFloating() {
-        if (this._container) {
-            this._container.circulateToTop(this);
-            // raise all floating in this group
-            for (const c of this._group.followerClients) {
-                if (c !== this && !c.transient && c.floating) {
-                    this._container.circulateToTop(c);
-                }
-            }
-        }
-    }
-
     raise(sibling?: Client) {
         if (!sibling) {
             if (this._container) {
