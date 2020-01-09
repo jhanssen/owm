@@ -539,7 +539,7 @@ export class Client implements ContainerItem
     }
 
     configure(cfg: ConfigureArgs) {
-        if ((this._floating || this._ignoreWorkspace) && !this.dialog) {
+        if (this._floating || this._ignoreWorkspace) {
             const geom = new Geometry(this._geometry);
             // let's do it
             if (cfg.x !== undefined) {
