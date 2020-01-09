@@ -1324,6 +1324,7 @@ export class Client implements ContainerItem
             this._container.notifyRaised(client, sibling);
         }
 
+        let topmostClient = client;
         // raise all of the client groups floating clients on top of the topmost item in the container
         if (!client.floating && this._container) {
             const container = this._container;
@@ -1342,8 +1343,7 @@ export class Client implements ContainerItem
                 throw new Error("topmost is not a client");
             }
 
-            const topmostClient = topmost as Client;
-
+            topmostClient = topmost as Client;
             // raise all floating
             const followers = this.group.followerClients;
             for (const follower of followers) {
@@ -1354,6 +1354,7 @@ export class Client implements ContainerItem
                         stack_mode: xcb.stackMode.ABOVE
                     });
                     container.notifyRaised(follower, topmostClient);
+                    topmostClient = follower;
                 }
             }
         }
@@ -1364,12 +1365,13 @@ export class Client implements ContainerItem
             if (t !== sibling) {
                 xcb.configure_window(owm.wm, {
                     window: t._parent,
-                    sibling: client._parent,
+                    sibling: topmostClient._parent,
                     stack_mode: xcb.stackMode.ABOVE
                 });
                 if (this._container) {
-                    this._container.notifyRaised(t, client);
+                    this._container.notifyRaised(t, topmostClient);
                 }
+                topmostClient = t;
             }
         }
     }
