@@ -1328,14 +1328,13 @@ export class Client implements ContainerItem
         // raise all of the client groups floating clients on top of the topmost item in the container
         if (!client.floating && this._container) {
             const container = this._container;
-
             let topmost: ContainerItem | undefined;
             if (client.staysOnTop) {
-                topmost = this._container.topmostOnTop;
+                topmost = container.topmostOnTop;
                 if (topmost === undefined)
                     topmost = client;
             } else {
-                topmost = this._container.topmostRegular;
+                topmost = container.topmostRegular;
                 if (topmost === undefined)
                     topmost = client;
             }
@@ -1345,7 +1344,7 @@ export class Client implements ContainerItem
 
             topmostClient = topmost as Client;
             // raise all floating
-            const followers = this.group.followerClients;
+            const followers = container.sortItemsByStackIndex(this.group.followerClients) as Client[];
             for (const follower of followers) {
                 if (follower.floating && follower.container === container) {
                     xcb.configure_window(owm.wm, {
@@ -1360,7 +1359,10 @@ export class Client implements ContainerItem
         }
 
         // raise the clients transients
-        const tr = this.group.transientsForClient(client);
+        let tr = this.group.transientsForClient(client);
+        if (this._container) {
+            tr = this._container.sortItemsByStackIndex(tr) as Client[];
+        }
         for (const t of tr) {
             if (t !== sibling) {
                 xcb.configure_window(owm.wm, {

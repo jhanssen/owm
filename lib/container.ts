@@ -813,6 +813,13 @@ export class Container implements ContainerItem
         return -1;
     }
 
+    sortItemsByStackIndex(items: ContainerItem[]) {
+        const allItems = this.stackItems;
+        return items
+            .filter(i => allItems.includes(i))
+            .sort((i1, i2) => allItems.indexOf(i1) - allItems.indexOf(i2));
+    }
+
     bringToTop(predicate: (item: ContainerItem) => boolean) {
         const items = this.stackItems;
         for (const item of items) {
