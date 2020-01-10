@@ -1394,7 +1394,10 @@ export class Client implements ContainerItem
         }
 
         // raise the clients transients just above self
-        const tr = this.group.transientsForClient(client);
+        let tr = this.group.transientsForClient(client);
+        if (this._container) {
+            tr = this._container.sortItemsByStackIndex(tr) as Client[];
+        }
         for (const t of tr) {
             if (t !== sibling) {
                 xcb.configure_window(owm.wm, {
