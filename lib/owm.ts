@@ -777,8 +777,13 @@ export class OWMLib {
             if (client) {
                 border = calculateBorder(client.window, xcb);
             } else {
-                const win = xcb.request_window_information(this._wm, event.window);
-                border = calculateBorder(win, xcb);
+                try {
+                    const win = xcb.request_window_information(this._wm, event.window);
+                    border = calculateBorder(win, xcb);
+                } catch (e) {
+                    // no such window?
+                    return;
+                }
             }
 
             const borderData = new Uint32Array(4);
