@@ -1146,6 +1146,17 @@ export class Client implements ContainerItem
 
         this._owm.xcb.configure_window(this._owm.wm, thisArgs);
         this._owm.xcb.configure_window(this._owm.wm, parentArgs);
+
+        // fake an absolute configure notify
+        const fake = {
+            window: thisArgs.window,
+            x: this._frameGeometry.x,
+            y: this._frameGeometry.y,
+            width: this._geometry.width,
+            height: this._geometry.height,
+            border_width: 0
+        };
+        this._owm.xcb.send_configure_notify(this._owm.wm, fake);
     }
 
     private _enforceSize(width: number, height: number, keepHeight?: boolean) {
