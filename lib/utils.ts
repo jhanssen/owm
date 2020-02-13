@@ -44,9 +44,21 @@ export class Geometry
         this.width = width;
     }
 
-    contains(x: number, y: number) {
-        return (x >= this.x && x < this.x + this.width
-                && y >= this.y && y < this.y + this.height);
+    contains(geom: Geometry | { x: number, y: number }) {
+        if (isGeometrish(geom)) {
+            return (geom.x >= this.x && geom.x + geom.width <= this.x + this.width
+                    && geom.y >= this.y && geom.y + geom.height <= this.y + this.height);
+        } else {
+            return (geom.x >= this.x && geom.x < this.x + this.width
+                    && geom.y >= this.y && geom.y < this.y + this.height);
+        }
+    }
+
+    adjusted(dx: number, dy: number, dw: number, dh: number) {
+        return new Geometry({
+            x: this.x + dx, y: this.y + dy,
+            width: this.width - dw, height: this.height - dh
+        });
     }
 
     get center() {
@@ -68,6 +80,22 @@ export class Geometry
     get bottomRight() {
         return new Point({ x: this.x + this.width, y: this.y + this.height });
     }
+
+    get right() {
+        return this.x + this.width;
+    }
+
+    get bottom() {
+        return this.y + this.height;
+    }
+}
+
+export function isGeometrish(o: any): o is Geometry {
+    return typeof o === "object"
+        && typeof o.x === "number"
+        && typeof o.y === "number"
+        && typeof o.width === "number"
+        && typeof o.height === "number";
 }
 
 interface StrutData

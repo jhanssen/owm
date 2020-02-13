@@ -425,9 +425,30 @@ export class Client implements ContainerItem
     }
 
     finalizeCreation(focus?: boolean) {
-        // is this client in a visible workspace?
         const owm = this._owm;
         const ws = this.workspace;
+
+        // make sure that floating windows are fully inside the workspace
+        if (this.floating && ws && !ws.geometry.contains(this.frameGeometry)) {
+            // but only if the window is smaller than the workspace
+            const ng = new Geometry(this.frameGeometry);
+            ng.x = ws.geometry.x;
+            ng.y = ws.geometry.y;
+            if (ws.geometry.contains(ng)) {
+                // boundify the new geometry
+                if (this.frameGeometry.right > ws.geometry.right) {
+                    ng.x = ws.geometry.right - this.frameGeometry.width;
+                }
+                if (this.frameGeometry.bottom > ws.geometry.bottom) {
+                    ng.y = ws.geometry.bottom - this.frameGeometry.height;
+                }
+                const border = this._border;
+                const cfg = ng.adjusted(border, border, border * 2, border * 2);
+                this._configure(cfg);
+            }
+        }
+
+        // is this client in a visible workspace?
         if (this._ignoreWorkspace || (ws && ws.visible)) {
             this._setState(Client.State.Normal);
             if (focus === true || focus === undefined) {
