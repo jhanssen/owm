@@ -139,6 +139,7 @@ export class EWMH {
             atom._NET_SUPPORTED,
             atom._NET_SUPPORTING_WM_CHECK,
             atom._NET_FRAME_EXTENTS,
+            atom._NET_REQUEST_FRAME_EXTENTS,
             atom._NET_WM_ALLOWED_ACTIONS,
             atom._NET_WM_NAME,
             atom._NET_WM_MOVERESIZE,

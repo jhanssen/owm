@@ -79,6 +79,11 @@ class MoveResize {
     }
 }
 
+function calculateBorder(win: XCB.Window, xcb: OWM.XCB) {
+    const dock = win.ewmhWindowType.includes(xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
+    return dock ? 0 : 2;
+}
+
 export class OWMLib {
     private readonly _wm: OWM.WM;
     private readonly _xcb: OWM.XCB;
@@ -443,10 +448,8 @@ export class OWMLib {
     addClient(win: XCB.Window, focus?: boolean) {
         this._log.debug("client", win);
 
-        const dock = win.ewmhWindowType.includes(this._xcb.atom._NET_WM_WINDOW_TYPE_DOCK);
-
         // reparent to new window
-        const border = dock ? 0 : 2;
+        const border = calculateBorder(win, this._xcb);
         const parent = this._xcb.create_window(this._wm, { x: win.geometry.x, y: win.geometry.y,
                                                          width: win.geometry.width + (border * 2),
                                                          height: win.geometry.height + (border * 2),
@@ -765,6 +768,28 @@ export class OWMLib {
                     }
                 }
             }
+            break; }
+        case atom._NET_REQUEST_FRAME_EXTENTS: {
+            let border = 0;
+            const xcb = this._xcb;
+
+            const client = this._clientsByWindow.get(event.window);
+            if (client) {
+                border = calculateBorder(client.window, xcb);
+            } else {
+                const win = xcb.request_window_information(this._wm, event.window);
+                border = calculateBorder(win, xcb);
+            }
+
+            const borderData = new Uint32Array(4);
+            borderData[0] = border;
+            borderData[1] = border;
+            borderData[2] = border;
+            borderData[3] = border;
+
+            xcb.change_property(this._wm, { window: event.window, mode: xcb.propMode.REPLACE,
+                                            property: xcb.atom._NET_FRAME_EXTENTS, type: xcb.atom.CARDINAL,
+                                            format: 32, data: borderData });
             break; }
         }
     }
