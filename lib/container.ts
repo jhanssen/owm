@@ -1,6 +1,6 @@
 import { OWMLib, } from "./owm";
 import { Logger } from "./logger";
-import { LayoutPolicy, LayoutPolicyConstructor, LayoutConfigConstructor } from "./policy/layout";
+import { LayoutPolicy } from "./policy/layout";
 import { Geometry, Strut } from "./utils";
 import { Workspace } from "./workspace";
 import { Monitor } from "./monitor";
@@ -835,6 +835,31 @@ export class Container implements ContainerItem
             if (predicate(item)) {
                 this.circulateToBottom(item);
             }
+        }
+    }
+
+    sortRegular(sorter: (a: ContainerItem, b: ContainerItem) => number) {
+        this._regularItems = this._regularItems.sort(sorter);
+        const items = this.stackItems;
+        for (const item of items) {
+            this.circulateToTop(item);
+        }
+    }
+
+    sortOnTop(sorter: (a: ContainerItem, b: ContainerItem) => number) {
+        this._ontopItems = this._ontopItems.sort(sorter);
+        const items = this.stackItems;
+        for (const item of items) {
+            this.circulateToTop(item);
+        }
+    }
+
+    sortAll(sorter: (a: ContainerItem, b: ContainerItem) => number) {
+        this._regularItems = this._regularItems.sort(sorter);
+        this._ontopItems = this._ontopItems.sort(sorter);
+        const items = this.stackItems;
+        for (const item of items) {
+            this.circulateToTop(item);
         }
     }
 
