@@ -187,6 +187,15 @@ export class Client implements ContainerItem
         return this._geometry;
     }
 
+    get absoluteGeometry() {
+        return new Geometry({
+            x: this._frameGeometry.x + this._border,
+            y: this._frameGeometry.y + this._border,
+            width: this._geometry.width,
+            height: this._geometry.height
+        });
+    }
+
     get frameGeometry() {
         return this._frameGeometry;
     }
@@ -1148,14 +1157,7 @@ export class Client implements ContainerItem
         this._owm.xcb.configure_window(this._owm.wm, parentArgs);
 
         // fake an absolute configure notify
-        const fake = {
-            window: thisArgs.window,
-            x: this._frameGeometry.x,
-            y: this._frameGeometry.y,
-            width: this._geometry.width,
-            height: this._geometry.height,
-            border_width: 0
-        };
+        const fake = Object.assign({ window: thisArgs.window, border_width: 0 }, this.absoluteGeometry);
         this._owm.xcb.send_configure_notify(this._owm.wm, fake);
     }
 
