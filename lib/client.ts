@@ -452,7 +452,7 @@ export class Client implements ContainerItem
         if (this._ignoreWorkspace || (ws && ws.visible)) {
             this._setState(Client.State.Normal);
             if (focus === true || focus === undefined) {
-                process.nextTick(() => {
+                setImmediate(() => {
                     this.focus();
                 });
             }
