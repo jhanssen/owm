@@ -970,6 +970,15 @@ export class OWMLib {
         if (!this._focused)
             return;
 
+        const newfocus = this.findClientUnderCursor();
+        if (newfocus) {
+            setImmediate(() => {
+                newfocus.focus();
+            });
+            return;
+        }
+
+        // revert focus to root window
         this._focused.framePixel = this._inactiveColor;
         this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
 
