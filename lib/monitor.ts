@@ -170,6 +170,13 @@ export class Monitors
         return this._monitors.get(name);
     }
 
+    firstMonitor() {
+        if (this._monitors.size > 0) {
+            return this._monitors.entries().next().value[1];
+        }
+        return undefined;
+    }
+
     removeItem(item: ContainerItem) {
         for (const [key, monitor] of this._monitors) {
             monitor.workspaces.removeItem(item);

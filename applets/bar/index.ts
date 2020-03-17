@@ -71,7 +71,7 @@ export class Bar
     private _monitor: Monitor;
     private _config: BarConfig;
 
-    constructor(owm: OWMLib, output: string, config: BarConfig, extraModules?: {[key: string]: BarModuleConstructor }) {
+    constructor(owm: OWMLib, output: string | Monitor, config: BarConfig, extraModules?: {[key: string]: BarModuleConstructor }) {
         this._owm = owm;
         this._config = config;
         this._modules = new Map<Bar.Position, Module[]>();
@@ -88,7 +88,7 @@ export class Bar
             workspace: Workspace
         };
 
-        const monitor = owm.monitors.monitorByOutput(output);
+        const monitor = (typeof output === "string") ? owm.monitors.monitorByOutput(output) : output;
         if (!monitor) {
             throw new Error(`No monitor called ${output}`);
         }
