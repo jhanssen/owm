@@ -2,7 +2,7 @@
 
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
-BUILD=1
+BUILD=2
 while true; do
     cd $SCRIPTPATH/..
     if [ "$BUILD" = 1 ]; then
