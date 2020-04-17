@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+SCRIPTPATH="$( cd "$(dirname "$(readlink $0)")" ; pwd )"
 
 BUILD=2
 while true; do
