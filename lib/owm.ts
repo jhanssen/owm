@@ -1211,9 +1211,6 @@ export class OWMLib {
     private _destroyClient(client: Client, unmap: boolean) {
         // if this is our focused client, revert focus somewhere else
         const window = client.window.window;
-        if (client === this._focused) {
-            this.revertFocus(true);
-        }
         if (client.ignoreWorkspace) {
             const monitor = this._monitors.monitorByPosition(client.geometry.x, client.geometry.y);
             monitor.removeItem(client);
@@ -1243,6 +1240,10 @@ export class OWMLib {
         }
 
         this._events.emit("clientRemoved", client);
+
+        if (client === this._focused) {
+            this.revertFocus(true);
+        }
 
         this._xcb.change_window_attributes(this._wm, { window: window, event_mask: 0 });
         this._xcb.unmap_window(this._wm, client.frame);
