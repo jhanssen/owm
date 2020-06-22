@@ -942,7 +942,6 @@ export class OWMLib {
             throw new Error(`tried to focus client with no workspace: ${client.window.window}:${client.window.wmRole}:${client.window.wmClass.class_name}:${client.window.wmClass.instance_name}`);
         }
 
-        let gc;
         if (this._focused) {
             this._focused.framePixel = this._inactiveColor;
             this._xcb.send_expose(this._wm, { window: this._focused.frame, width: this._focused.frameWidth, height: this._focused.frameHeight });
