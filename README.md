@@ -29,3 +29,6 @@ called when owmlib has been fully initialized and is ready to go
 
 ## bar
 ![minibar](https://user-images.githubusercontent.com/381040/72105073-a970e500-32e1-11ea-930d-bc47701921b3.png)
+
+## install
+`apt install libpixman-1-dev libcairo2-dev libpango1.0-dev libxcb1-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-util-dev libxcb-keysyms1-dev libxkbcommon-dev libxkbcommon-x11-dev libxcb-randr0-dev`
