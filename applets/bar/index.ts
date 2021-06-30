@@ -255,6 +255,15 @@ export class Bar
         return this._font;
     }
 
+    get backgroundColor() {
+        return this._config.backgroundColor;
+    }
+
+    set backgroundColor(color: string) {
+        this._config.backgroundColor = color;
+        this.update();
+    }
+
     update() {
         if (!this._ready)
             return;

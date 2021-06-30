@@ -9,6 +9,7 @@ interface CurrentModeConfig extends BarModuleConfig
     textColor?: string;
     font?: string;
     margin?: number;
+    barColor?: string | { [key: string]: string };
 }
 
 export class CurrentMode extends EventEmitter implements BarModule
@@ -16,13 +17,17 @@ export class CurrentMode extends EventEmitter implements BarModule
     private _config: CurrentModeConfig;
     private _currentMode: Graphics.Text;
     private _color: { red: number, green: number, blue: number, alpha: number };
+    private _originalBarColor: string;
     private _metrics: { width: number, height: number };
     private _owm: OWMLib;
     private _modeStack: string[];
+    private _bar: Bar;
 
     constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
         super();
         this._modeStack = [];
+        this._bar = bar;
+        this._originalBarColor = bar.backgroundColor;
 
         this._owm = owm;
         owm.events.on("enterMode", (mode: KeybindingsMode) => {
@@ -63,8 +68,21 @@ export class CurrentMode extends EventEmitter implements BarModule
             const text = this._modeStack[this._modeStack.length - 1];
             this._owm.engine.textSetText(this._currentMode, text);
             this._metrics = this._owm.engine.textMetrics(this._currentMode);
+            let col: string | undefined;
+            switch (typeof this._config.barColor) {
+            case "string":
+                col = this._config.barColor
+                break;
+            case "object":
+                col = this._config.barColor[text];
+                break;
+            }
+            if (col) {
+                this._bar.backgroundColor = col;
+            }
         } else {
             this._metrics = { width: 0, height: 0 };
+            this._bar.backgroundColor = this._originalBarColor;
         }
         this.emit("geometryChanged");
         this.emit("updated");
