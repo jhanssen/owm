@@ -5,3 +5,4 @@ export { Workspace } from "./workspace";
 export { Load } from "./load";
 export { IpAddress } from "./ipaddress";
 export { Weather } from "./weather";
+export { CurrentMode } from "./current-mode";

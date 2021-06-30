@@ -45,7 +45,7 @@ export class Message extends EventEmitter implements BarModule
         if (!this._currentMessage) {
             this._setCurrentMessage(msg);
         } else {
-            this._pendingMessages.push(msg);;
+            this._pendingMessages.push(msg);
         }
     }
 

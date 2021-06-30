@@ -1,6 +1,6 @@
 import { OWMLib, Geometry, Monitor } from "../../lib";
 import { Graphics } from "../../native";
-import { Clock, Load, IpAddress, Message, Title, Weather, Workspace } from "./modules";
+import { Clock, Load, IpAddress, Message, Title, Weather, Workspace, CurrentMode } from "./modules";
 import { EventEmitter } from "events";
 import { default as hexRgb } from "hex-rgb";
 
@@ -85,7 +85,8 @@ export class Bar
             message: Message,
             title: Title,
             weather: Weather,
-            workspace: Workspace
+            workspace: Workspace,
+            currentMode: CurrentMode
         };
 
         const monitor = (typeof output === "string") ? owm.monitors.monitorByOutput(output) : output;
