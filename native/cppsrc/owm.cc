@@ -1,5 +1,6 @@
 #include "owm.h"
 #include <stdlib.h>
+#include <xcb/xcb_errors.h>
 
 namespace owm {
 
@@ -1539,9 +1540,28 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
         const uint32_t atom = info[1].As<Napi::Number>().Uint32Value();
 
         auto cookie = xcb_get_atom_name(wm->conn, atom);
-        auto reply = xcb_get_atom_name_reply(wm->conn, cookie, nullptr);
+        xcb_generic_error_t* err = nullptr;
+        auto reply = xcb_get_atom_name_reply(wm->conn, cookie, &err);
         if (!reply) {
-            throw Napi::TypeError::New(env, "get_atom_name no reply");
+            if (err) {
+                char buff[2048];
+                xcb_errors_context_t* errctx;
+                xcb_errors_context_new(wm->conn, &errctx);
+                const char* major = xcb_errors_get_name_for_major_code(errctx, err->major_code);
+                const char* minor = xcb_errors_get_name_for_minor_code(errctx, err->major_code, err->minor_code);
+                const char* ext = nullptr;
+                const char* error = xcb_errors_get_name_for_error(errctx, err->error_code, &ext);
+
+                snprintf(buff, std::size(buff), "get_atom_name no reply: '%s:%s %s:%s, res %u seq %u'",
+                         error, ext ? ext : "no_extension", major, minor ? minor : "no_minor",
+                         err->resource_id, static_cast<uint32_t>(err->sequence));
+
+                xcb_errors_context_free(errctx);
+
+                throw Napi::TypeError::New(env, buff);
+            } else {
+                throw Napi::TypeError::New(env, "get_atom_name no reply");
+            }
         }
 
         const char* cname = xcb_get_atom_name_name(reply);

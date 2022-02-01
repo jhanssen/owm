@@ -13,11 +13,14 @@
 	    }]
 	],
 	"sources": [
+	    "libxcb-errors/src/extensions.c",
+	    "libxcb-errors/src/xcb_errors.c",
 	    "cppsrc/main.cc",
 	    "cppsrc/owm.cc",
 	    "cppsrc/graphics.cc"
 	],
 	'include_dirs': [
+	    "libxcb-errors/include",
 	    "<!@(node -p \"require('node-addon-api').include\")",
 	    "<!@(pkg-config cairo --cflags-only-I | sed s/-I//g)",
 	    "<!@(pkg-config libpng --cflags-only-I | sed s/-I//g)",
