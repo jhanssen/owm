@@ -22,10 +22,12 @@ export class CurrentMode extends EventEmitter implements BarModule
     private _owm: OWMLib;
     private _modeStack: string[];
     private _bar: Bar;
+    private _suppressBackgroundColorEvent: number;
 
     constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
         super();
         this._modeStack = [];
+        this._suppressBackgroundColorEvent = 0;
         this._bar = bar;
         this._originalBarColor = bar.backgroundColor;
 
@@ -37,6 +39,12 @@ export class CurrentMode extends EventEmitter implements BarModule
         owm.events.on("exitMode", () => {
             this._modeStack.pop();
             this._onUpdate();
+        });
+
+        owm.events.on("barBackgroundColor", color => {
+            if (!this._suppressBackgroundColorEvent) {
+                this._originalBarColor = color;
+            }
         });
 
         const currentModeConfig = config as CurrentModeConfig;
@@ -78,7 +86,9 @@ export class CurrentMode extends EventEmitter implements BarModule
                 break;
             }
             if (col) {
+                ++this._suppressBackgroundColorEvent;
                 this._bar.backgroundColor = col;
+                --this._suppressBackgroundColorEvent;
             }
         } else {
             this._metrics = { width: 0, height: 0 };

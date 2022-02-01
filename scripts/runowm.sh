@@ -1,10 +1,18 @@
 #!/bin/bash
 
-SCRIPTPATH="$( cd "$(dirname "$(readlink $0)")" ; pwd )"
+pushd . > /dev/null
+SCRIPT_PATH="${BASH_SOURCE[0]}";
+while([ -h "${SCRIPT_PATH}" ]); do
+    cd "`dirname "${SCRIPT_PATH}"`"
+    SCRIPT_PATH="$(readlink "`basename "${SCRIPT_PATH}"`")";
+done
+cd "`dirname "${SCRIPT_PATH}"`" > /dev/null
+SCRIPT_PATH="`pwd`";
+popd > /dev/null
 
 BUILD=2
 while true; do
-    cd $SCRIPTPATH/..
+    cd $SCRIPT_PATH/..
     if [ "$BUILD" = 1 ]; then
         npm install
         cd native
@@ -31,7 +39,7 @@ while true; do
             BUILD=3
             ;;
         *)
-            echo "Bad exit copde $?"
+            echo "Bad exit code $?"
             exit 1
             ;;
     esac

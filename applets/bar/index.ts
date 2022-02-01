@@ -261,6 +261,7 @@ export class Bar
 
     set backgroundColor(color: string) {
         this._config.backgroundColor = color;
+        this._owm.events.emit("barBackgroundColor", color);
         this.update();
     }
 
