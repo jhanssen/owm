@@ -14,7 +14,7 @@
    "author": "",
    "license": "MIT",
    "devDependencies": {
-      "node-gyp": "^6.0.0"
+      "node-gyp": "^9.0.0"
    },
    "dependencies": {
       "node-addon-api": "^1.7.1"
