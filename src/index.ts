@@ -6,6 +6,12 @@ if (process.env.PATH) {
     }).join(":");
 }
 
+for (const key in process.env) {
+    if (key.startsWith("npm_")) {
+        delete process.env[key];
+    }
+}
+
 import * as xdgBaseDir from "xdg-basedir";
 import { default as Options } from "@jhanssen/options";
 import { default as native, OWM, XCB } from "native";
