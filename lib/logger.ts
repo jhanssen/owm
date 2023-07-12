@@ -1,3 +1,6 @@
+import fs from "fs";
+import { format } from "util";
+
 function timestamp() {
     const d = new Date();
     let h = d.getHours() + "";
@@ -21,6 +24,7 @@ export interface Logger
     warning(...args: any): void;
     error(...args: any): void;
     fatal(...args: any): void;
+    file(...args: any): void;
 }
 
 export namespace Logger
@@ -90,4 +94,10 @@ export class ConsoleLogger implements Logger
         this.log(Logger.Level.Fatal, ...args);
         process.exit();
     }
+
+    file(...args: any) {
+        const first = args.shift() || "";
+        fs.appendFileSync("/tmp/owm.log", format(first, ...args, "\n"));
+    }
 }
+
