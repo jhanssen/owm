@@ -219,10 +219,15 @@ export class OWMLib {
         });
 
         this._ipc.events.on("message", (msg: IPCMessage) => {
+            // this._log.file("Got message from ipc", msg);
             switch (msg.type) {
             case "exit":
                 msg.close();
-                this._events.emit("exit");
+                if (msg.payload && typeof msg.payload === "object") {
+                    this._events.emit("exit", msg.payload.code);
+                } else {
+                    this._events.emit("exit");
+                }
                 break;
             case "message":
                 this._events.emit("message", msg);
