@@ -6,14 +6,12 @@ interface GeometryData
     height?: number;
 }
 
-export class Point
-{
+export class Point {
     public x: number;
     public y: number;
 
-    constructor(point: Point = {} as Point)
-    {
-        let {
+    constructor(point: Point = {} as Point) {
+        const {
             x = 0,
             y = 0,
         } = point;
@@ -21,17 +19,16 @@ export class Point
         this.x = x;
         this.y = y;
     }
-};
+}
 
-export class Geometry
-{
+export class Geometry {
     public x: number;
     public y: number;
     public width: number;
     public height: number;
 
     constructor(geom: GeometryData = {} as GeometryData) {
-        let {
+        const {
             x = 0,
             y = 0,
             height = 0,
@@ -48,10 +45,10 @@ export class Geometry
         if (isGeometrish(geom)) {
             return (geom.x >= this.x && geom.x + geom.width <= this.x + this.width
                     && geom.y >= this.y && geom.y + geom.height <= this.y + this.height);
-        } else {
+        }
             return (geom.x >= this.x && geom.x < this.x + this.width
                     && geom.y >= this.y && geom.y < this.y + this.height);
-        }
+
     }
 
     adjusted(dx: number, dy: number, dw: number, dh: number) {
@@ -90,12 +87,13 @@ export class Geometry
     }
 }
 
-export function isGeometrish(o: any): o is Geometry {
+export function isGeometrish(o: unknown): o is Geometry {
     return typeof o === "object"
-        && typeof o.x === "number"
-        && typeof o.y === "number"
-        && typeof o.width === "number"
-        && typeof o.height === "number";
+        && o !== null
+        && "x" in o && typeof o.x === "number"
+        && "y" in o && typeof o.y === "number"
+        && "width" in o && typeof o.width === "number"
+        && "height" in o && typeof o.height === "number";
 }
 
 interface StrutData
@@ -114,8 +112,7 @@ interface StrutData
     bottom_end_x?: number;
 }
 
-export class Strut
-{
+export class Strut {
     public left: number;
     public right: number;
     public top: number;
@@ -130,7 +127,7 @@ export class Strut
     public bottom_end_x: number;
 
     constructor(strut: StrutData = {} as StrutData) {
-        let {
+        const {
             left = 0,
             right = 0,
             top = 0,
@@ -160,34 +157,46 @@ export class Strut
     }
 
     unite(strut: Strut) {
-        if (strut.left > this.left)
-            this.left = strut.left;
-        if (strut.right > this.right)
-            this.right = strut.right;
-        if (strut.top > this.top)
-            this.top = strut.top;
-        if (strut.bottom > this.bottom)
-            this.bottom = strut.bottom;
+        if (strut.left > this.left) {
+this.left = strut.left;
+}
+        if (strut.right > this.right) {
+this.right = strut.right;
+}
+        if (strut.top > this.top) {
+this.top = strut.top;
+}
+        if (strut.bottom > this.bottom) {
+this.bottom = strut.bottom;
+}
 
-        if (strut.left_start_y < this.left_start_y)
-            this.left_start_y = strut.left_start_y;
-        if (strut.left_end_y > this.left_end_y)
-            this.left_end_y = strut.left_end_y;
+        if (strut.left_start_y < this.left_start_y) {
+this.left_start_y = strut.left_start_y;
+}
+        if (strut.left_end_y > this.left_end_y) {
+this.left_end_y = strut.left_end_y;
+}
 
-        if (strut.right_start_y < this.right_start_y)
-            this.right_start_y = strut.right_start_y;
-        if (strut.right_end_y > this.right_end_y)
-            this.right_end_y = strut.right_end_y;
+        if (strut.right_start_y < this.right_start_y) {
+this.right_start_y = strut.right_start_y;
+}
+        if (strut.right_end_y > this.right_end_y) {
+this.right_end_y = strut.right_end_y;
+}
 
-        if (strut.top_start_x < this.top_start_x)
-            this.top_start_x = strut.top_start_x;
-        if (strut.top_end_x > this.top_end_x)
-            this.top_end_x = strut.top_end_x;
+        if (strut.top_start_x < this.top_start_x) {
+this.top_start_x = strut.top_start_x;
+}
+        if (strut.top_end_x > this.top_end_x) {
+this.top_end_x = strut.top_end_x;
+}
 
-        if (strut.bottom_start_x < this.bottom_start_x)
-            this.bottom_start_x = strut.bottom_start_x;
-        if (strut.bottom_end_x > this.bottom_end_x)
-            this.bottom_end_x = strut.bottom_end_x;
+        if (strut.bottom_start_x < this.bottom_start_x) {
+this.bottom_start_x = strut.bottom_start_x;
+}
+        if (strut.bottom_end_x > this.bottom_end_x) {
+this.bottom_end_x = strut.bottom_end_x;
+}
     }
 
     fillPartial(partial: { x: number, y: number, width: number, height: number }) {

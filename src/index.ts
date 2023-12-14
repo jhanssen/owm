@@ -6,18 +6,17 @@ if (process.env.PATH) {
     }).join(":");
 }
 
-import * as xdgBaseDir from "xdg-basedir";
-import { default as Options } from "@jhanssen/options";
-import { default as native, OWM, XCB } from "native";
-import { OWMLib } from "../lib/owm";
-import { Logger } from "../lib/logger";
 import * as path from "path";
+import * as xdgBaseDir from "xdg-basedir";
+import { Logger } from "../lib/logger";
+import { OWM, XCB, default as native } from "native";
+import { OWMLib } from "../lib/owm";
+import { default as Options } from "@jhanssen/options";
 import { createInterface } from "readline";
 
 const options = Options("owm");
 
-function stringOption(key: string): string | undefined
-{
+function stringOption(key: string): string | undefined {
     const value = options(key);
     if (typeof value === "string") {
         return value;
@@ -25,8 +24,7 @@ function stringOption(key: string): string | undefined
     return undefined;
 }
 
-function loadConfig(dir: string, lib: OWMLib)
-{
+function loadConfig(dir: string, lib: OWMLib) {
     return new Promise<void>((resolve, reject) => {
         import(path.join(dir, "owm")).then(cfg => {
             cfg.default(lib, options);
@@ -41,22 +39,24 @@ function loadConfig(dir: string, lib: OWMLib)
     });
 }
 
-process.on('uncaughtException', (err: any) => {
+process.on('uncaughtException', (err: Error) => {
     if (typeof err === 'object' && err && err.stack) {
         console.error("Uncaught exception", err.message, err.stack);
     } else {
         console.error("Uncaught exception", err.message);
     }
     let val = options("exit-on-uncaught-exception") || false
-    if (typeof val !== 'boolean')
+    if (typeof val !== 'boolean') {
         val = true;
-    if (val)
+    }
+    if (val) {
         process.exit();
+    }
 });
 
-let lib: OWMLib;
+const lib: OWMLib;
 
-const configDir = stringOption("config") || xdgBaseDir.config;
+const configDir = stringOption("config") || xdgBaseDir.xdgConfig;
 if (configDir === undefined) {
     console.error("no config dir");
     process.exit();
@@ -73,9 +73,9 @@ if (display === undefined) {
 function event(e: OWM.Event) {
     // console.log("got event2", e);
 
-    if (e.type == "xcb") {
+    if (e.type === "xcb") {
         lib.handleXCB(e);
-    } else if (e.type == "screens" && e.screens) {
+    } else if (e.type === "screens" && e.screens) {
         const screens = e.screens;
         lib.updateScreens(screens);
     } else if (e.type === "xkb" && e.xkb === "recreate") {
@@ -125,7 +125,7 @@ lib = new OWMLib(data.wm, data.xcb, data.xkb, data.graphics, {
 const rl = createInterface({ input: process.stdin, output: process.stdout });
 rl.setPrompt("owm> ");
 rl.on('line', input => {
-    try {
+    try {// eslint-disable-next-line no-eval
         console.log(eval(input));
     } catch (err) {
         console.error("Got exception", err);
@@ -146,8 +146,9 @@ if (configDir !== undefined) {
             const windows = data.windows as XCB.Window[];
             //console.log("got wins", windows);
             for (const window of windows) {
-                if (!window.attributes.override_redirect)
+                if (!window.attributes.override_redirect) {
                     lib.addClient(window, false);
+                }
             }
 
             lib.inited();
@@ -170,8 +171,9 @@ lib.events.on("exit", (exitCode?: number) => {
 });
 
 process.on("SIGINT", () => {
-    if (lib)
+    if (lib) {
         lib.cleanup();
+    }
     native.stop();
     process.exit();
 });

@@ -1,12 +1,9 @@
-import { XCB } from "native";
-import { OWMLib } from "./owm";
 import { Container, ContainerItem, ContainerItemType } from "./container";
-import { Geometry, Strut } from "./utils";
-import { Client } from "./client";
+import { Geometry } from "./utils";
 import { Monitor } from "./monitor";
+import { OWMLib } from "./owm";
 
-export class Workspace
-{
+export class Workspace {
     private _monitor: Monitor | undefined;
     private _id: number;
     private _name: string | undefined;
@@ -34,8 +31,9 @@ export class Workspace
     }
 
     set name(name: string | undefined) {
-        if (this._workspaces && name)
+        if (this._workspaces && name) {
             this._workspaces.removeByName(name);
+        }
         this._name = name;
     }
 
@@ -128,8 +126,9 @@ export class Workspace
     }
 
     activate() {
-        if (this._monitor)
+        if (this._monitor) {
             this._monitor.workspace = this;
+        }
     }
 
     findItemByPosition(x: number, y: number, itemType: ContainerItemType): ContainerItem | undefined {
@@ -137,8 +136,7 @@ export class Workspace
     }
 }
 
-export class Workspaces
-{
+export class Workspaces {
     private _workspaces: Set<Workspace>;
     private _owm: OWMLib;
     private _monitor: Monitor;
@@ -260,8 +258,9 @@ export class Workspaces
 
     forEachWorkspace(run: (ws: Workspace) => boolean) {
         for (const ws of this._workspaces) {
-            if (!run(ws))
+            if (!run(ws)) {
                 return false;
+            }
         }
         return true;
     }

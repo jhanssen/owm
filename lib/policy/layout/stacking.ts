@@ -1,7 +1,7 @@
-import { Client, isClient as itemIsClient } from "../../client";
-import { Workspace, Monitor, Geometry, Logger, ContainerItem } from "../..";
+import { Client } from "../../client";
+import { ContainerItem, Geometry, Logger, Monitor, Workspace } from "../..";
 import { Graphics } from "../../../native";
-import { LayoutPolicy, LayoutConfig } from ".";
+import { LayoutConfig, LayoutPolicy } from ".";
 import { Policy } from "..";
 import { default as hexRgb } from "hex-rgb";
 
@@ -13,8 +13,7 @@ function makeColor(color: string) {
     return c;
 }
 
-export class StackingLayoutConfig implements LayoutConfig
-{
+export class StackingLayoutConfig implements LayoutConfig {
     private _type: string;
     private _font: string | undefined;
     private _height: number | undefined;
@@ -117,12 +116,7 @@ export class StackingLayoutConfig implements LayoutConfig
     }
 }
 
-function isStackingLayoutConfig(o: any): o is StackingLayoutConfig {
-    return o._type === "stacking";
-}
-
-export class StackingLayoutPolicy implements LayoutPolicy
-{
+export class StackingLayoutPolicy implements LayoutPolicy {
     readonly Config = StackingLayoutConfig;
 
     private _policy: Policy;
@@ -160,8 +154,9 @@ export class StackingLayoutPolicy implements LayoutPolicy
             }
         });
         owm.events.on("workspaceActivated", (monitor: Monitor) => {
-            if (this._win === undefined)
+            if (this._win === undefined) {
                 return;
+            }
             if (monitor === this._ws.monitor) {
                 const owm = this._policy.owm;
                 if (monitor.workspace === this._ws) {
@@ -214,11 +209,9 @@ export class StackingLayoutPolicy implements LayoutPolicy
         item.resize(newgeom.width, newgeom.height);
     }
 
-    initialize() {
-    }
+    initialize() { /* */ }
 
-    deinitialize() {
-    }
+    deinitialize() { /* */ }
 
     update() {
         // make sure we recreate & repaint everything on the next layout
@@ -279,8 +272,9 @@ export class StackingLayoutPolicy implements LayoutPolicy
         let y = 0;
         const len = items.length;
         items.forEach((item, idx) => {
-            if (!itemIsClient(item))
+            if (!(item instanceof Client)) {
                 return;
+            }
             const client = item as Client;
             if (idx < len - 1) {
                 engine.setSourceRGB(ctx, inRed, inGreen, inBlue);
@@ -430,8 +424,4 @@ export class StackingLayoutPolicy implements LayoutPolicy
         }
         this._copyArgs = { src_d: 0, dst_d: 0, gc: 0, width: 0, height: 0 };
     }
-}
-
-export function isStackingLayout(o: any): o is StackingLayoutPolicy {
-    return o._type === "stacking";
 }

@@ -1,10 +1,8 @@
-import { Policy } from "..";
 import { FocusPolicy } from ".";
-import { OWMLib } from "../../owm";
+import { Policy } from "..";
 import { XCB } from "native";
 
-export class FocusFollowsMousePolicy implements FocusPolicy
-{
+export class FocusFollowsMousePolicy implements FocusPolicy {
     private _policy: Policy;
 
     constructor(policy: Policy) {
@@ -16,20 +14,24 @@ export class FocusFollowsMousePolicy implements FocusPolicy
         this._raise(event);
     }
 
-    buttonRelease(event: XCB.ButtonPress) {
+    buttonRelease(/*event: XCB.ButtonPress*/) {
+        //
     }
 
-    keyPress(event: XCB.KeyPress) {
+    keyPress(/*event: XCB.KeyPress*/) {
+        //
     }
 
-    keyRelease(event: XCB.KeyPress) {
+    keyRelease(/*event: XCB.KeyPress*/) {
+        //
     }
 
     enterNotify(event: XCB.EnterNotify) {
         this._focus(event);
     }
 
-    leaveNotify(event: XCB.EnterNotify) {
+    leaveNotify(/*event: XCB.EnterNotify*/) {
+        //
     }
 
     private _focus(event: XCB.EnterNotify | XCB.ButtonPress) {

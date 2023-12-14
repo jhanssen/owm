@@ -1,7 +1,7 @@
-import { Graphics } from "../../../native";
-import { OWMLib, Geometry } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
+import { Geometry, OWMLib } from "../../../lib";
+import { Graphics } from "../../../native";
 import { default as dateFormat } from "dateformat";
 
 interface ClockConfig extends BarModuleConfig
@@ -12,11 +12,10 @@ interface ClockConfig extends BarModuleConfig
     timeout?: number;
 }
 
-export class Clock extends EventEmitter implements BarModule
-{
+export class Clock extends EventEmitter implements BarModule {
     private _config: ClockConfig;
     private _clock: Graphics.Text;
-    private _color: { red: number, green: number, blue: number, alpha: number };
+    private _color: { red: number; green: number; blue: number; alpha: number };
     private _metrics: { width: number, height: number };
 
     constructor(owm: OWMLib, bar: Bar, config: BarModuleConfig) {
@@ -39,7 +38,7 @@ export class Clock extends EventEmitter implements BarModule
         }, this._config.timeout || 1000 * 60);
     }
 
-    paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+    paint(engine: Graphics.Engine, ctx: Graphics.Context /*, geometry: Geometry*/) {
         const { red, green, blue } = this._color;
         engine.setSourceRGB(ctx, red, green, blue);
 
@@ -47,7 +46,7 @@ export class Clock extends EventEmitter implements BarModule
         engine.drawText(ctx, this._clock);
     }
 
-    geometry(geometry: Geometry) {
+    geometry(/*geometry: Geometry*/) {
         return new Geometry({ x: 0, y: 0, width: this._metrics.width, height: this._metrics.height});
     }
 }

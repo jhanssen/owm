@@ -1,14 +1,13 @@
-import { FocusPolicy } from "./focus";
+import { OWMLib, Workspace } from "..";
 import { FocusFollowsMousePolicy } from "./focus/follows-mouse";
-import { LayoutPolicy, LayoutConfig, LayoutPolicyConstructor, LayoutConfigConstructor } from "./layout";
-import { TilingLayoutPolicy, TilingLayoutConfig } from "./layout/tiling";
-import { StackingLayoutPolicy, StackingLayoutConfig } from "./layout/stacking";
-import { OWMLib, Client, Workspace } from "..";
+import { FocusPolicy } from "./focus";
+import { LayoutConfig, LayoutPolicy, LayoutPolicyConstructor } from "./layout";
+import { StackingLayoutConfig, StackingLayoutPolicy } from "./layout/stacking";
+import { TilingLayoutConfig, TilingLayoutPolicy } from "./layout/tiling";
 import { XCB } from "native";
-import { serialize, deserialize } from "v8";
+import { deserialize, serialize } from "v8";
 
-export class Policy
-{
+export class Policy {
     private _focus: FocusPolicy;
     private _layoutConstructor: LayoutPolicyConstructor;
     private _layoutConfig: LayoutConfig;
@@ -99,6 +98,6 @@ export class Policy
     leaveNotify(event: XCB.EnterNotify) {
         this._focus.leaveNotify(event);
     }
-};
+}
 
 export { FocusPolicy, FocusFollowsMousePolicy };

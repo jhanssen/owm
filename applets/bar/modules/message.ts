@@ -1,7 +1,7 @@
-import { Graphics } from "../../../native";
-import { OWMLib, Geometry } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
+import { Geometry, OWMLib } from "../../../lib";
+import { Graphics } from "../../../native";
 
 interface MessageConfig extends BarModuleConfig
 {
@@ -16,8 +16,7 @@ interface MessageData
     timeout: number;
 }
 
-export class Message extends EventEmitter implements BarModule
-{
+export class Message extends EventEmitter implements BarModule {
     private _config: MessageConfig;
     private _message: Graphics.Text;
     private _color: { red: number, green: number, blue: number, alpha: number };
@@ -65,7 +64,7 @@ export class Message extends EventEmitter implements BarModule
         }, msg.timeout);
     }
 
-    paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+    paint(engine: Graphics.Engine, ctx: Graphics.Context/*, geometry: Geometry*/) {
         if (this._currentMessage) {
             const { red, green, blue } = this._color;
             engine.setSourceRGB(ctx, red, green, blue);
@@ -74,7 +73,7 @@ export class Message extends EventEmitter implements BarModule
         }
     }
 
-    geometry(geometry: Geometry) {
+    geometry(/*geometry: Geometry*/) {
         return new Geometry({ x: 0, y: 0, width: this._metrics.width + ((this._config.margin || 0) * 2), height: this._metrics.height});
     }
 }

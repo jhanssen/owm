@@ -1,7 +1,7 @@
-import { Graphics } from "../../../native";
-import { OWMLib, Geometry, Client, Monitor } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
+import { Client, Geometry, Monitor, OWMLib } from "../../../lib";
 import { EventEmitter } from "events";
+import { Graphics } from "../../../native";
 
 interface TitleConfig extends BarModuleConfig
 {
@@ -9,8 +9,7 @@ interface TitleConfig extends BarModuleConfig
     font?: string;
 }
 
-export class Title extends EventEmitter implements BarModule
-{
+export class Title extends EventEmitter implements BarModule {
     private _config: TitleConfig;
     private _title: Graphics.Text;
     private _color: { red: number, green: number, blue: number, alpha: number };
@@ -33,8 +32,9 @@ export class Title extends EventEmitter implements BarModule
         this._width = 300;
         owm.engine.textSetFont(this._title, titleConfig.font || bar.font);
 
-        if (!owm.focused || owm.focused.monitor == this._monitor)
-            this._updateFocus(owm.engine, owm.focused);
+        if (!owm.focused || owm.focused.monitor === this._monitor) {
+this._updateFocus(owm.engine, owm.focused);
+}
 
         const _updateClient = () => {
             this._updateFocus(owm.engine, this._client);
@@ -60,13 +60,13 @@ export class Title extends EventEmitter implements BarModule
         });
     }
 
-    paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+    paint(engine: Graphics.Engine, ctx: Graphics.Context/*, geometry: Geometry*/) {
         const { red, green, blue } = this._color;
         engine.setSourceRGB(ctx, red, green, blue);
         engine.drawText(ctx, this._title);
     }
 
-    geometry(geometry: Geometry) {
+    geometry(/*geometry: Geometry*/) {
         return new Geometry({ x: 0, y: 0, width: this._titleGeometry.width, height: this._titleGeometry.height });
     }
 

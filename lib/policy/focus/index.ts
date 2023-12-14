@@ -1,5 +1,4 @@
 import { XCB } from "native";
-import { Policy } from "..";
 
 export interface FocusPolicy
 {

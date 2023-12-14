@@ -1,7 +1,7 @@
-import { Graphics } from "../../../native";
-import { OWMLib, Geometry } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
+import { Geometry, OWMLib } from "../../../lib";
+import { Graphics } from "../../../native";
 import { loadavg } from "os";
 
 interface LoadConfig extends BarModuleConfig
@@ -13,8 +13,7 @@ interface LoadConfig extends BarModuleConfig
     interval?: number;
 }
 
-export class Load extends EventEmitter implements BarModule
-{
+export class Load extends EventEmitter implements BarModule {
     private _config: LoadConfig;
     private _load: Graphics.Text;
     private _loadValue: number;
@@ -32,7 +31,7 @@ export class Load extends EventEmitter implements BarModule
         this._prefix = loadConfig.prefix || "";
         this._colors = [[0, Bar.makeColor(loadConfig.color || "#fff")]];
         if (loadConfig.colors) {
-            for (let t of loadConfig.colors) {
+            for (const t of loadConfig.colors) {
                 this._colors.push([t[0], Bar.makeColor(t[1])]);
                 // make sure that the order is ascending
                 if (this._colors[this._colors.length - 1][0] <= this._colors[this._colors.length - 2][0]) {
@@ -58,13 +57,13 @@ export class Load extends EventEmitter implements BarModule
         }, loadConfig.interval || 5000);
     }
 
-    paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+    paint(engine: Graphics.Engine, ctx: Graphics.Context /*, geometry: Geometry*/) {
         const { red, green, blue } = this._findColor(this._loadValue);
         engine.setSourceRGB(ctx, red, green, blue);
         engine.drawText(ctx, this._load);
     }
 
-    geometry(geometry: Geometry) {
+    geometry(/*geometry: Geometry*/) {
         return new Geometry({ x: 0, y: 0, width: this._geometry.width, height: this._geometry.height });
     }
 

@@ -1,7 +1,7 @@
-import { Graphics } from "../../../native";
-import { OWMLib, Geometry, Monitor } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
+import { Geometry, Monitor, OWMLib } from "../../../lib";
+import { Graphics } from "../../../native";
 
 interface WorkspaceConfig extends BarModuleConfig
 {
@@ -15,8 +15,7 @@ interface WorkspaceConfig extends BarModuleConfig
     font?: string;
 }
 
-export class Workspace extends EventEmitter implements BarModule
-{
+export class Workspace extends EventEmitter implements BarModule {
     private _config: WorkspaceConfig;
     private _borderColor: { red: number, green: number, blue: number, alpha: number };
     private _inactiveBackgroundColor: { red: number, green: number, blue: number, alpha: number };
@@ -74,7 +73,7 @@ export class Workspace extends EventEmitter implements BarModule
         this._updateSurfaces(owm);
     }
 
-    paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+    paint(engine: Graphics.Engine, ctx: Graphics.Context/*, geometry: Geometry*/) {
         const wss = this._monitor.workspaces;
         let x = 0;
         for (const ws of wss.workspaces) {
@@ -118,7 +117,7 @@ export class Workspace extends EventEmitter implements BarModule
         }
     }
 
-    geometry(geometry: Geometry) {
+    geometry(/*geometry: Geometry*/) {
         const width = (Workspace.SizePerWorkspace + Workspace.Pad) * this._monitor.workspaces.size;
         return new Geometry({ x: 0, y: 0, width: width, height: 18 });
     }
@@ -149,10 +148,12 @@ export class Workspace extends EventEmitter implements BarModule
     }
 
     private _mapName(name: string) {
-        if (!this._config.nameMapping)
-            return name;
-        if (name in this._config.nameMapping)
-            return this._config.nameMapping[name];
+        if (!this._config.nameMapping) {
+return name;
+}
+        if (name in this._config.nameMapping) {
+return this._config.nameMapping[name];
+}
         return name;
     }
 }

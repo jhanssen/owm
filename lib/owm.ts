@@ -1,18 +1,18 @@
-import { XCB, OWM, Graphics } from "native";
-import { EWMH } from "./ewmh";
-import { Policy } from "./policy";
-import { Keybindings, KeybindingsMode } from "./keybindings";
-import { Logger, ConsoleLogger } from "./logger";
-import { Workspace } from "./workspace";
-import { Monitors } from "./monitor";
-import { Client, ClientGroup, isClient } from "./client";
-import { Container, ContainerItemType, isContainer } from "./container";
-import { Match } from "./match";
-import { Geometry } from "./utils";
-import { IPC, IPCMessage } from "./ipc";
 import { Bar } from "../applets";
+import { Client, ClientGroup } from "./client";
+import { ConsoleLogger, Logger } from "./logger";
+import { Container, ContainerItemType, isContainer } from "./container";
+import { EWMH } from "./ewmh";
 import { EventEmitter } from "events";
-import { spawn, StdioOptions } from "child_process";
+import { Geometry } from "./utils";
+import { Graphics, OWM, XCB } from "native";
+import { IPC, IPCMessage } from "./ipc";
+import { Keybindings, KeybindingsMode } from "./keybindings";
+import { Match } from "./match";
+import { Monitors } from "./monitor";
+import { Policy } from "./policy";
+import { StdioOptions, spawn } from "child_process";
+import { Workspace } from "./workspace";
 import { default as hexRgb } from "hex-rgb";
 import { quote } from "shell-quote";
 
@@ -20,10 +20,9 @@ interface ClientInternal
 {
     readonly _parent: number;
     readonly _window: XCB.Window;
-};
+}
 
-function makePixel(hex: string): number
-{
+function makePixel(hex: string): number {
     const rgba = hexRgb(hex);
     return ((rgba.alpha * 255) << 24) | (rgba.red << 16) | (rgba.green << 8) | rgba.blue;
 }
@@ -33,6 +32,7 @@ interface LaunchOptions
     command: string;
     detached?: boolean;
     shell?: string;
+    cwd?: string;
     shellArgs?: string[];
     env?: { [key: string]: string };
     stdio?: string;
@@ -60,9 +60,6 @@ class MoveResize {
     public resizingKeyboard: Client | undefined;
 
     public static readonly AdjustBy = 20;
-
-    constructor() {
-    }
 
     get enabled() {
         return this.moving !== undefined
@@ -154,21 +151,21 @@ export class OWMLib {
         this._moveResize = new MoveResize();
 
         this._moveResizeMode = new KeybindingsMode(this, "Pointer move/resize mode", false);
-        this._moveResizeMode.add("Escape", (mode: KeybindingsMode, binding: string) => {
+        this._moveResizeMode.add("Escape", (mode: KeybindingsMode/*, binding: string*/) => {
             if (this._moveResize.moving || this._moveResize.resizing) {
                 this._xcb.ungrab_pointer(this._wm, this._currentTime);
             }
             this._moveResize.clear();
             mode.exit();
         });
-        this._moveResizeMode.add("Return", (mode: KeybindingsMode, binding: string) => {
+        this._moveResizeMode.add("Return", (mode: KeybindingsMode/*, binding: string*/) => {
             if (this._moveResize.moving || this._moveResize.resizing) {
                 this._xcb.ungrab_pointer(this._wm, this._currentTime);
             }
             this._moveResize.clear();
             mode.exit();
         });
-        this._moveResizeMode.add("Left", (mode: KeybindingsMode, binding: string) => {
+        this._moveResizeMode.add("Left", (/*mode: KeybindingsMode, binding: string*/) => {
             if (this._moveResize.movingKeyboard) {
                 const client = this._moveResize.movingKeyboard;
                 const geom = client.frameGeometry;
@@ -176,12 +173,13 @@ export class OWMLib {
             } else if (this._moveResize.resizingKeyboard) {
                 const client = this._moveResize.resizingKeyboard;
                 const geom = client.frameGeometry;
-                if (geom.width <= MoveResize.AdjustBy)
+                if (geom.width <= MoveResize.AdjustBy) {
                     return;
+                }
                 client.resize(geom.width - MoveResize.AdjustBy, geom.height);
             }
         });
-        this._moveResizeMode.add("Right", (mode: KeybindingsMode, binding: string) => {
+        this._moveResizeMode.add("Right", (/*mode: KeybindingsMode, binding: string*/) => {
             if (this._moveResize.movingKeyboard) {
                 const client = this._moveResize.movingKeyboard;
                 const geom = client.frameGeometry;
@@ -192,7 +190,7 @@ export class OWMLib {
                 client.resize(geom.width + MoveResize.AdjustBy, geom.height);
             }
         });
-        this._moveResizeMode.add("Up", (mode: KeybindingsMode, binding: string) => {
+        this._moveResizeMode.add("Up", (/*mode: KeybindingsMode, binding: string*/) => {
             if (this._moveResize.movingKeyboard) {
                 const client = this._moveResize.movingKeyboard;
                 const geom = client.frameGeometry;
@@ -201,12 +199,13 @@ export class OWMLib {
                 const client = this._moveResize.resizingKeyboard;
                 const geom = client.frameGeometry;
                 // make sure we don't go too too small
-                if (geom.height <= MoveResize.AdjustBy)
+                if (geom.height <= MoveResize.AdjustBy) {
                     return;
+                }
                 client.resize(geom.width, geom.height - MoveResize.AdjustBy, true);
             }
         });
-        this._moveResizeMode.add("Down", (mode: KeybindingsMode, binding: string) => {
+        this._moveResizeMode.add("Down", (/*mode: KeybindingsMode, binding: string*/) => {
             if (this._moveResize.movingKeyboard) {
                 const client = this._moveResize.movingKeyboard;
                 const geom = client.frameGeometry;
@@ -221,20 +220,20 @@ export class OWMLib {
         this._ipc.events.on("message", (msg: IPCMessage) => {
             // this._log.file("Got message from ipc", msg);
             switch (msg.type) {
-            case "exit":
-                msg.close();
-                if (msg.payload && typeof msg.payload === "object") {
-                    this._events.emit("exit", msg.payload.code);
-                } else {
-                    this._events.emit("exit");
-                }
-                break;
-            case "message":
-                this._events.emit("message", msg);
-                break;
+                case "exit":
+                    msg.close();
+                    if (msg.payload && typeof msg.payload === "object") {
+                        this._events.emit("exit", msg.payload.code);
+                    } else {
+                        this._events.emit("exit");
+                    }
+                    break;
+                case "message":
+                    this._events.emit("message", msg);
+                    break;
             }
         });
-    };
+    }
 
     get wm() {
         return this._wm;
@@ -387,7 +386,7 @@ export class OWMLib {
         for (const client of this._clients) {
             if (compareInstance && client.window.wmClass.instance_name === cls.instance_name) {
                 return client;
-            } else if (compareClass && client.window.wmClass.class_name === cls.class_name) {
+            } if (compareClass && client.window.wmClass.class_name === cls.class_name) {
                 return client;
             }
         }
@@ -410,7 +409,7 @@ export class OWMLib {
         for (const client of this._clients) {
             if (client.window.ewmhName === name) {
                 return client;
-            } else if (client.window.wmName === name) {
+            } if (client.window.wmName === name) {
                 return client;
             }
         }
@@ -420,7 +419,7 @@ export class OWMLib {
     findClientByPosition(x: number, y: number): Client | undefined {
         const monitor = this._monitors.monitorByPosition(x, y);
         const item = monitor.findItemByPosition(x, y, ContainerItemType.Client);
-        if (item && isClient(item)) {
+        if (item && item instanceof Client) {
             return item as Client;
         }
         return undefined;
@@ -456,9 +455,9 @@ export class OWMLib {
         // reparent to new window
         const border = calculateBorder(win, this._xcb);
         const parent = this._xcb.create_window(this._wm, { x: win.geometry.x, y: win.geometry.y,
-                                                         width: win.geometry.width + (border * 2),
-                                                         height: win.geometry.height + (border * 2),
-                                                         parent: win.geometry.root });
+            width: win.geometry.width + (border * 2),
+            height: win.geometry.height + (border * 2),
+            parent: win.geometry.root });
 
         this._xcb.change_window_attributes(this._wm, { window: parent, override_redirect: 1, back_pixel: 0 });
         // make sure we don't get an unparent notify for this window when we reparent
@@ -479,7 +478,7 @@ export class OWMLib {
 
         this._ewmh.updateClientList();
 
-        for (let m of this._matches) {
+        for (const m of this._matches) {
             m.match(client);
         }
 
@@ -493,23 +492,25 @@ export class OWMLib {
     }
 
     moveByKeyboard(client: Client) {
-        if (!client.floating || this._moveResize.enabled)
+        if (!client.floating || this._moveResize.enabled) {
             return;
+        }
         this._moveResize.movingKeyboard = client;
         this._bindings.enterMode(this._moveResizeMode);
     }
 
     resizeByKeyboard(client: Client) {
-        if (!client.floating || this._moveResize.enabled)
+        if (!client.floating || this._moveResize.enabled) {
             return;
+        }
         this._moveResize.resizingKeyboard = client;
         this._bindings.enterMode(this._moveResizeMode);
     }
 
     warpPointerToClient(client: Client, x?: number, y?: number) {
         this._xcb.warp_pointer(this._wm, { dst_window: client.window.window,
-                                           dst_x: x || client.geometry.width / 2,
-                                           dst_y: y || client.geometry.height / 2 });
+            dst_x: x || client.geometry.width / 2,
+            dst_y: y || client.geometry.height / 2 });
 
     }
 
@@ -519,7 +520,7 @@ export class OWMLib {
 
     addMatch(match: Match) {
         this._matches.add(match);
-        for (let c of this._clients) {
+        for (const c of this._clients) {
             match.match(c);
         }
     }
@@ -538,15 +539,16 @@ export class OWMLib {
         const syncMode = this._xcb.grabMode.SYNC;
         const asyncMode = this._xcb.grabMode.ASYNC;
         this._xcb.grab_button(this._wm, { window: this._root, modifiers: 0,
-                                          button: 1, owner_events: 1, event_mask: events,
-                                          pointer_mode: syncMode, keyboard_mode: asyncMode });
+            button: 1, owner_events: 1, event_mask: events,
+            pointer_mode: syncMode, keyboard_mode: asyncMode });
     }
 
     mapRequest(event: XCB.MapRequest) {
         // check if we already have a client for this window
         const client = this.findClient(event.window);
-        if (client)
+        if (client) {
             return;
+        }
 
         const win = this._xcb.request_window_information(this._wm, event.window);
         this._log.info("maprequest", event.window, win);
@@ -560,28 +562,35 @@ export class OWMLib {
     configureRequest(event: XCB.ConfigureRequest) {
         this._log.info("configurerequest", event);
         const cfg: { window: number,
-                     x?: number,
-                     y?: number,
-                     width?: number,
-                     height?: number,
-                     border_width?: number,
-                     sibling?: number,
-                     stack_mode?: number
-                   } = { window: event.window };
-        if (event.value_mask & this._xcb.configWindow.X)
+            x?: number,
+            y?: number,
+            width?: number,
+            height?: number,
+            border_width?: number,
+            sibling?: number,
+            stack_mode?: number
+        } = { window: event.window };
+        if (event.value_mask & this._xcb.configWindow.X) {
             cfg.x = event.x;
-        if (event.value_mask & this._xcb.configWindow.Y)
+        }
+        if (event.value_mask & this._xcb.configWindow.Y) {
             cfg.y = event.y;
-        if (event.value_mask & this._xcb.configWindow.WIDTH)
+        }
+        if (event.value_mask & this._xcb.configWindow.WIDTH) {
             cfg.width = event.width;
-        if (event.value_mask & this._xcb.configWindow.HEIGHT)
+        }
+        if (event.value_mask & this._xcb.configWindow.HEIGHT) {
             cfg.height = event.height;
-        if (event.value_mask & this._xcb.configWindow.BORDER_WIDTH)
+        }
+        if (event.value_mask & this._xcb.configWindow.BORDER_WIDTH) {
             cfg.border_width = event.border_width;
-        if (event.value_mask & this._xcb.configWindow.SIBLING)
+        }
+        if (event.value_mask & this._xcb.configWindow.SIBLING) {
             cfg.sibling = event.sibling;
-        if (event.value_mask & this._xcb.configWindow.STACK_MODE)
+        }
+        if (event.value_mask & this._xcb.configWindow.STACK_MODE) {
             cfg.stack_mode = event.stack_mode;
+        }
 
         const client = this.findClient(event.window);
         if (client) {
@@ -598,9 +607,10 @@ export class OWMLib {
     mapNotify(event: XCB.MapNotify) {
         this._log.info("mapnotify", event);
         const client = this.findClient(event.window);
-        if (!client)
+        if (!client) {
             return;
-        if (this.focused == client) {
+        }
+        if (this.focused === client) {
             client.focus();
         }
     }
@@ -608,28 +618,33 @@ export class OWMLib {
     unmapNotify(event: XCB.UnmapNotify) {
         this._log.info("unmapnotify", event);
         const client = this.findClient(event.window);
-        if (!client)
+        if (!client) {
             return;
+        }
         this._destroyClient(client, true);
     }
 
     destroyNotify(event: XCB.DestroyNotify) {
         this._log.info("destroynotify", event);
         const client = this.findClient(event.window);
-        if (!client)
+        if (!client) {
             return;
+        }
         this._destroyClient(client, false);
     }
 
-    focusIn(event: XCB.FocusIn) {
+    focusIn(/*event: XCB.FocusIn*/) {
+        //
     }
 
-    focusOut(event: XCB.FocusIn) {
+    focusOut(/*event: XCB.FocusIn*/) {
+        //
     }
 
     expose(event: XCB.Expose) {
-        if (event.count !== 0)
+        if (event.count !== 0) {
             return;
+        }
         let client = this._clientsByFrame.get(event.window);
         if (!client) {
             client = this._clientsByWindow.get(event.window);
@@ -642,8 +657,9 @@ export class OWMLib {
         }
         this._log.info("frame expose", client.frame, client.framePixel, client.frameGC);
         const gc = client.frameGC;
-        if (gc === undefined)
+        if (gc === undefined) {
             return;
+        }
         this._xcb.poly_fill_rectangle(this._wm, { window: client.frame, gc: gc, rects: { width: client.frameWidth, height: client.frameHeight } });
     }
 
@@ -651,156 +667,163 @@ export class OWMLib {
         const atom = this._xcb.atom;
         const ewmh = this._xcb.ewmh;
         switch (event.message_type) {
-        case atom._NET_CLOSE_WINDOW: {
-            const client = this._clientsByWindow.get(event.window);
-            if (client) {
-                client.kill();
-            }
-            break; }
-        case atom._NET_ACTIVE_WINDOW: {
-            const client = this._clientsByWindow.get(event.window);
-            if (client) {
-                if (client.workspace)
-                    client.workspace.activate();
-                client.focus();
-                client.raise();
-            }
-            break; }
-        case atom._NET_WM_DESKTOP: {
-            const u32 = new Uint32Array(event.data);
-            if (u32.length >= 1) {
+            case atom._NET_CLOSE_WINDOW: {
                 const client = this._clientsByWindow.get(event.window);
                 if (client) {
-                    const newws = this._monitors.workspaceById(u32[0] + 1);
-                    if (newws) {
-                        client.workspace = newws;
+                    client.kill();
+                }
+                break; }
+            case atom._NET_ACTIVE_WINDOW: {
+                const client = this._clientsByWindow.get(event.window);
+                if (client) {
+                    if (client.workspace) {
+                        client.workspace.activate();
                     }
+                    client.focus();
+                    client.raise();
                 }
-            }
-            break; }
-        case atom._NET_WM_STATE: {
-            const action = this._xcb.ewmh.stateAction;
-            const u32 = new Uint32Array(event.data);
-            if (u32.length >= 3) {
-                // 0: action, 1: first change, 2: second change
-                const client = this._clientsByWindow.get(event.window);
-                if (client) {
-                    if (u32[1] === atom._NET_WM_STATE_FULLSCREEN) {
-                        if (u32[0] === action.REMOVE)
-                            client.fullscreen = false;
-                        else if (u32[0] === action.ADD)
-                            client.fullscreen = true;
-                        else if (u32[0] === action.TOGGLE)
-                            client.fullscreen = !client.fullscreen;
-                    } else if (u32[1] === atom._NET_WM_STATE_ABOVE) {
-                        if (u32[0] === action.REMOVE)
-                            client.staysOnTop = false;
-                        else if (u32[0] === action.ADD)
-                            client.staysOnTop = true;
-                        else if (u32[0] === action.TOGGLE)
-                            client.staysOnTop = !client.staysOnTop;
-                    }
-                }
-            }
-            break; }
-        case atom._NET_MOVERESIZE_WINDOW: {
-            // use Int32Array here, x and y can be negative
-            const i32 = new Int32Array(event.data);
-            if (i32.length >= 5) {
-                // 0: gravity, 1: x, 2: y, 3: width, 4: height
-                const client = this._clientsByWindow.get(event.window);
-                if (client) {
-                    // yay
-                    const flags = i32[0];
-                    const cfg: {
-                        window: number,
-                        x?: number,
-                        y?: number,
-                        width?: number,
-                        height?: number
-                    } = { window: event.window };
-                    if (flags & ewmh.moveResizeWindow.X)
-                        cfg.x = i32[1];
-                    if (flags & ewmh.moveResizeWindow.X)
-                        cfg.y = i32[2];
-                    if (flags & ewmh.moveResizeWindow.WIDTH)
-                        cfg.width = i32[3];
-                    if (flags & ewmh.moveResizeWindow.HEIGHT)
-                        cfg.height = i32[4];
-                    client.configure(cfg);
-                }
-            }
-            break; }
-        case atom._NET_WM_MOVERESIZE: {
-            const u32 = new Uint32Array(event.data);
-            if (!this._moveResize.enabled && u32.length >= 5) {
-                const client = this._clientsByWindow.get(event.window);
-                if (client && client.floating) {
-                    const dir = this._xcb.ewmh.moveResizeDirection;
-                    const direction = u32[2];
-                    const time = this._currentTime;
-                    switch (direction) {
-                    case dir.MOVE_KEYBOARD:
-                        this._moveResize.movingKeyboard = client;
-                        this._bindings.enterMode(this._moveResizeMode);
-                        break;
-                    case dir.SIZE_KEYBOARD:
-                        this._moveResize.resizingKeyboard = client;
-                        this._bindings.enterMode(this._moveResizeMode);
-                        break;
-                    case dir.CANCEL:
-                        if (this._moveResize.enabled) {
-                            this._moveResizeMode.exit();
-                            this._xcb.ungrab_pointer(this._wm, time);
-                            this._moveResize.clear();
+                break; }
+            case atom._NET_WM_DESKTOP: {
+                const u32 = new Uint32Array(event.data);
+                if (u32.length >= 1) {
+                    const client = this._clientsByWindow.get(event.window);
+                    if (client) {
+                        const newws = this._monitors.workspaceById(u32[0] + 1);
+                        if (newws) {
+                            client.workspace = newws;
                         }
-                        break;
-                    case dir.MOVE:
-                        this._grabPointer(time);
-                        this._moveClient(client, { root_x: u32[0], root_y: u32[1] });
-                        break;
-                    case dir.SIZE_TOPLEFT:
-                    case dir.SIZE_TOP:
-                    case dir.SIZE_TOPRIGHT:
-                    case dir.SIZE_RIGHT:
-                    case dir.SIZE_BOTTOMRIGHT:
-                    case dir.SIZE_BOTTOM:
-                    case dir.SIZE_BOTTOMLEFT:
-                    case dir.SIZE_LEFT:
-                        this._grabPointer(time);
-                        this._resizeClient(client, { root_x: u32[0], root_y: u32[1], time: time });
-                        break;
                     }
                 }
-            }
-            break; }
-        case atom._NET_REQUEST_FRAME_EXTENTS: {
-            let border = 0;
-            const xcb = this._xcb;
-
-            const client = this._clientsByWindow.get(event.window);
-            if (client) {
-                border = calculateBorder(client.window, xcb);
-            } else {
-                try {
-                    const win = xcb.request_window_information(this._wm, event.window);
-                    border = calculateBorder(win, xcb);
-                } catch (e) {
-                    // no such window?
-                    return;
+                break; }
+            case atom._NET_WM_STATE: {
+                const action = this._xcb.ewmh.stateAction;
+                const u32 = new Uint32Array(event.data);
+                if (u32.length >= 3) {
+                    // 0: action, 1: first change, 2: second change
+                    const client = this._clientsByWindow.get(event.window);
+                    if (client) {
+                        if (u32[1] === atom._NET_WM_STATE_FULLSCREEN) {
+                            if (u32[0] === action.REMOVE) {
+                                client.fullscreen = false;
+                            } else if (u32[0] === action.ADD) {
+                                client.fullscreen = true;
+                            } else if (u32[0] === action.TOGGLE) {
+                                client.fullscreen = !client.fullscreen;
+                            }
+                        } else if (u32[1] === atom._NET_WM_STATE_ABOVE) {
+                            if (u32[0] === action.REMOVE) {
+                                client.staysOnTop = false;
+                            } else if (u32[0] === action.ADD) {
+                                client.staysOnTop = true;
+                            } else if (u32[0] === action.TOGGLE) {
+                                client.staysOnTop = !client.staysOnTop;
+                            }
+                        }
+                    }
                 }
-            }
+                break; }
+            case atom._NET_MOVERESIZE_WINDOW: {
+                // use Int32Array here, x and y can be negative
+                const i32 = new Int32Array(event.data);
+                if (i32.length >= 5) {
+                    // 0: gravity, 1: x, 2: y, 3: width, 4: height
+                    const client = this._clientsByWindow.get(event.window);
+                    if (client) {
+                        // yay
+                        const flags = i32[0];
+                        const cfg: {
+                            window: number,
+                            x?: number,
+                            y?: number,
+                            width?: number,
+                            height?: number
+                        } = { window: event.window };
+                        if (flags & ewmh.moveResizeWindow.X) {
+                            cfg.x = i32[1];
+                        }
+                        if (flags & ewmh.moveResizeWindow.X) {
+                            cfg.y = i32[2];
+                        }
+                        if (flags & ewmh.moveResizeWindow.WIDTH) {
+                            cfg.width = i32[3];
+                        }
+                        if (flags & ewmh.moveResizeWindow.HEIGHT) {
+                            cfg.height = i32[4];
+                        }
+                        client.configure(cfg);
+                    }
+                }
+                break; }
+            case atom._NET_WM_MOVERESIZE: {
+                const u32 = new Uint32Array(event.data);
+                if (!this._moveResize.enabled && u32.length >= 5) {
+                    const client = this._clientsByWindow.get(event.window);
+                    if (client && client.floating) {
+                        const dir = this._xcb.ewmh.moveResizeDirection;
+                        const direction = u32[2];
+                        const time = this._currentTime;
+                        switch (direction) {
+                            case dir.MOVE_KEYBOARD:
+                                this._moveResize.movingKeyboard = client;
+                                this._bindings.enterMode(this._moveResizeMode);
+                                break;
+                            case dir.SIZE_KEYBOARD:
+                                this._moveResize.resizingKeyboard = client;
+                                this._bindings.enterMode(this._moveResizeMode);
+                                break;
+                            case dir.CANCEL:
+                                if (this._moveResize.enabled) {
+                                    this._moveResizeMode.exit();
+                                    this._xcb.ungrab_pointer(this._wm, time);
+                                    this._moveResize.clear();
+                                }
+                                break;
+                            case dir.MOVE:
+                                this._grabPointer(time);
+                                this._moveClient(client, { root_x: u32[0], root_y: u32[1] });
+                                break;
+                            case dir.SIZE_TOPLEFT:
+                            case dir.SIZE_TOP:
+                            case dir.SIZE_TOPRIGHT:
+                            case dir.SIZE_RIGHT:
+                            case dir.SIZE_BOTTOMRIGHT:
+                            case dir.SIZE_BOTTOM:
+                            case dir.SIZE_BOTTOMLEFT:
+                            case dir.SIZE_LEFT:
+                                this._grabPointer(time);
+                                this._resizeClient(client, { root_x: u32[0], root_y: u32[1], time: time });
+                                break;
+                        }
+                    }
+                }
+                break; }
+            case atom._NET_REQUEST_FRAME_EXTENTS: {
+                let border = 0;
+                const xcb = this._xcb;
 
-            const borderData = new Uint32Array(4);
-            borderData[0] = border;
-            borderData[1] = border;
-            borderData[2] = border;
-            borderData[3] = border;
+                const client = this._clientsByWindow.get(event.window);
+                if (client) {
+                    border = calculateBorder(client.window, xcb);
+                } else {
+                    try {
+                        const win = xcb.request_window_information(this._wm, event.window);
+                        border = calculateBorder(win, xcb);
+                    } catch (e) {
+                        // no such window?
+                        return;
+                    }
+                }
 
-            xcb.change_property(this._wm, { window: event.window, mode: xcb.propMode.REPLACE,
-                                            property: xcb.atom._NET_FRAME_EXTENTS, type: xcb.atom.CARDINAL,
-                                            format: 32, data: borderData });
-            break; }
+                const borderData = new Uint32Array(4);
+                borderData[0] = border;
+                borderData[1] = border;
+                borderData[2] = border;
+                borderData[3] = border;
+
+                xcb.change_property(this._wm, { window: event.window, mode: xcb.propMode.REPLACE,
+                    property: xcb.atom._NET_FRAME_EXTENTS, type: xcb.atom.CARDINAL,
+                    format: 32, data: borderData });
+                break; }
         }
     }
 
@@ -808,8 +831,9 @@ export class OWMLib {
         this._log.info("property", event);
         this._currentTime = event.time;
         const client = this._clientsByWindow.get(event.window);
-        if (!client)
+        if (!client) {
             return;
+        }
 
         client.updateProperty(event.atom, event.state === this._xcb.propState.NEW_VALUE);
     }
@@ -858,21 +882,21 @@ export class OWMLib {
             const dx = event.root_x - this._moveResize.resizing.x;
             const dy = event.root_y - this._moveResize.resizing.y;
             switch (this._moveResize.resizing.handle) {
-            case ResizeHandle.TopLeft:
-                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y + dy);
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height - dy);
-                break;
-            case ResizeHandle.TopRight:
-                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x, this._moveResize.resizing.geom.y + dy);
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height - dy);
-                break;
-            case ResizeHandle.BottomLeft:
-                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y);
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height + dy);
-                break;
-            case ResizeHandle.BottomRight:
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height + dy);
-                break;
+                case ResizeHandle.TopLeft:
+                    this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y + dy);
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height - dy);
+                    break;
+                case ResizeHandle.TopRight:
+                    this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x, this._moveResize.resizing.geom.y + dy);
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height - dy);
+                    break;
+                case ResizeHandle.BottomLeft:
+                    this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y);
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height + dy);
+                    break;
+                case ResizeHandle.BottomRight:
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height + dy);
+                    break;
             }
             this._xcb.ungrab_pointer(this._wm, event.time);
             this._moveResize.clear();
@@ -892,21 +916,21 @@ export class OWMLib {
             const dx = event.root_x - this._moveResize.resizing.x;
             const dy = event.root_y - this._moveResize.resizing.y;
             switch (this._moveResize.resizing.handle) {
-            case ResizeHandle.TopLeft:
-                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y + dy);
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height - dy);
-                break;
-            case ResizeHandle.TopRight:
-                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x, this._moveResize.resizing.geom.y + dy);
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height - dy);
-                break;
-            case ResizeHandle.BottomLeft:
-                this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y);
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height + dy);
-                break;
-            case ResizeHandle.BottomRight:
-                this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height + dy);
-                break;
+                case ResizeHandle.TopLeft:
+                    this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y + dy);
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height - dy);
+                    break;
+                case ResizeHandle.TopRight:
+                    this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x, this._moveResize.resizing.geom.y + dy);
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height - dy);
+                    break;
+                case ResizeHandle.BottomLeft:
+                    this._moveResize.resizing.client.move(this._moveResize.resizing.geom.x + dx, this._moveResize.resizing.geom.y);
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width - dx, this._moveResize.resizing.geom.height + dy);
+                    break;
+                case ResizeHandle.BottomRight:
+                    this._moveResize.resizing.client.resize(this._moveResize.resizing.geom.width + dx, this._moveResize.resizing.geom.height + dy);
+                    break;
             }
         }
     }
@@ -971,8 +995,9 @@ export class OWMLib {
     }
 
     revertFocus(fromDestroy?: boolean) {
-        if (!this._focused)
+        if (!this._focused) {
             return;
+        }
 
         const newfocus = this.findClientUnderCursor();
         if (newfocus) {
@@ -1000,8 +1025,8 @@ export class OWMLib {
         const activeData = new Uint32Array(1);
         activeData[0] = root;
         this._xcb.change_property(this._wm, { window: root, mode: this._xcb.propMode.REPLACE,
-                                            property: this._xcb.atom._NET_ACTIVE_WINDOW, type: this._xcb.atom.WINDOW,
-                                            format: 32, data: activeData });
+            property: this._xcb.atom._NET_ACTIVE_WINDOW, type: this._xcb.atom.WINDOW,
+            format: 32, data: activeData });
     }
 
     updateLayout() {
@@ -1029,12 +1054,14 @@ export class OWMLib {
     }
 
     launch(opts: string | LaunchOptions, ...args: string[]) {
-        if (typeof opts === "string")
+        if (typeof opts === "string") {
             opts = { command: opts };
+        }
 
-        let {
+        const {
             env = process.env,
             command = opts.command,
+            // cwd = opts.cwd || process.cwd(),
             detached = true,
             shell = "/bin/sh",
             shellArgs = [ "-c" ],
@@ -1045,13 +1072,13 @@ export class OWMLib {
             env = Object.assign({}, env);
             env.DISPLAY = this._options.display;
         }
-        const spawnArgs = shellArgs.concat([`${quote([ opts.command ].concat(args))}`]);
+        const spawnArgs = shellArgs.concat([`${quote([ command ].concat(args))}`]);
         let stdioValue: StdioOptions;
         switch (stdio) {
-        case "ignore": stdioValue = "ignore"; break;
-        case "pipe": stdioValue = "pipe"; break;
-        case "inherit": stdioValue = "inherit"; break;
-        default: throw new Error(`Bad stdio ${stdio}`); break;
+            case "ignore": stdioValue = "ignore"; break;
+            case "pipe": stdioValue = "pipe"; break;
+            case "inherit": stdioValue = "inherit"; break;
+            default: throw new Error(`Bad stdio ${stdio}`); break;
         }
 
         this._log.debug("spawn", shell, spawnArgs, "detached", detached, "stdio", stdioValue);
@@ -1061,8 +1088,9 @@ export class OWMLib {
             env: env
         });
 
-        if (detached)
+        if (detached) {
             subprocess.unref();
+        }
         return subprocess;
     }
 
@@ -1072,12 +1100,12 @@ export class OWMLib {
 
         // left button
         this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
-                                          button: 1, owner_events: 1, event_mask: events,
-                                          pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
+            button: 1, owner_events: 1, event_mask: events,
+            pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
         // right button
         this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
-                                          button: 3, owner_events: 1, event_mask: events,
-                                          pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
+            button: 3, owner_events: 1, event_mask: events,
+            pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
     }
 
     cleanup() {
@@ -1095,64 +1123,65 @@ export class OWMLib {
     }
 
     handleXCB(e: OWM.Event) {
-        if (!e.xcb)
+        if (!e.xcb) {
             return;
+        }
         const event = this._xcb.event;
         switch (e.xcb.type) {
-        case event.BUTTON_PRESS:
-            this.buttonPress(e.xcb as XCB.ButtonPress);
-            break;
-        case event.BUTTON_RELEASE:
-            this.buttonRelease(e.xcb as XCB.ButtonPress);
-            break;
-        case event.MOTION_NOTIFY:
-            this.motionNotify(e.xcb as XCB.MotionNotify);
-            break;
-        case event.KEY_PRESS:
-            this.keyPress(e.xcb as XCB.KeyPress);
-            break;
-        case event.KEY_RELEASE:
-            this.keyRelease(e.xcb as XCB.KeyPress);
-            break;
-        case event.ENTER_NOTIFY:
-            this.enterNotify(e.xcb as XCB.EnterNotify);
-            break;
-        case event.LEAVE_NOTIFY:
-            this.leaveNotify(e.xcb as XCB.EnterNotify);
-            break;
-        case event.MAP_REQUEST:
-            this.mapRequest(e.xcb as XCB.MapRequest);
-            break;
-        case event.CONFIGURE_REQUEST:
-            this.configureRequest(e.xcb as XCB.ConfigureRequest);
-            break;
-        case event.CONFIGURE_NOTIFY:
-            this.configureNotify(e.xcb as XCB.ConfigureNotify);
-            break;
-        case event.MAP_NOTIFY:
-            this.mapNotify(e.xcb as XCB.MapNotify);
-            break;
-        case event.UNMAP_NOTIFY:
-            this.unmapNotify(e.xcb as XCB.UnmapNotify);
-            break;
-        case event.DESTROY_NOTIFY:
-            this.destroyNotify(e.xcb as XCB.DestroyNotify);
-            break;
-        case event.FOCUS_IN:
-            this.focusIn(e.xcb as XCB.FocusIn);
-            break;
-        case event.FOCUS_OUT:
-            this.focusOut(e.xcb as XCB.FocusIn);
-            break;
-        case event.EXPOSE:
-            this.expose(e.xcb as XCB.Expose);
-            break;
-        case event.CLIENT_MESSAGE:
-            this.clientMessage(e.xcb as XCB.ClientMessage);
-            break;
-        case event.PROPERTY_NOTIFY:
-            this.propertyNotify(e.xcb as XCB.PropertyNotify);
-            break;
+            case event.BUTTON_PRESS:
+                this.buttonPress(e.xcb as XCB.ButtonPress);
+                break;
+            case event.BUTTON_RELEASE:
+                this.buttonRelease(e.xcb as XCB.ButtonPress);
+                break;
+            case event.MOTION_NOTIFY:
+                this.motionNotify(e.xcb as XCB.MotionNotify);
+                break;
+            case event.KEY_PRESS:
+                this.keyPress(e.xcb as XCB.KeyPress);
+                break;
+            case event.KEY_RELEASE:
+                this.keyRelease(e.xcb as XCB.KeyPress);
+                break;
+            case event.ENTER_NOTIFY:
+                this.enterNotify(e.xcb as XCB.EnterNotify);
+                break;
+            case event.LEAVE_NOTIFY:
+                this.leaveNotify(e.xcb as XCB.EnterNotify);
+                break;
+            case event.MAP_REQUEST:
+                this.mapRequest(e.xcb as XCB.MapRequest);
+                break;
+            case event.CONFIGURE_REQUEST:
+                this.configureRequest(e.xcb as XCB.ConfigureRequest);
+                break;
+            case event.CONFIGURE_NOTIFY:
+                this.configureNotify(e.xcb as XCB.ConfigureNotify);
+                break;
+            case event.MAP_NOTIFY:
+                this.mapNotify(e.xcb as XCB.MapNotify);
+                break;
+            case event.UNMAP_NOTIFY:
+                this.unmapNotify(e.xcb as XCB.UnmapNotify);
+                break;
+            case event.DESTROY_NOTIFY:
+                this.destroyNotify(e.xcb as XCB.DestroyNotify);
+                break;
+            case event.FOCUS_IN:
+                this.focusIn(e.xcb as XCB.FocusIn);
+                break;
+            case event.FOCUS_OUT:
+                this.focusOut(e.xcb as XCB.FocusIn);
+                break;
+            case event.EXPOSE:
+                this.expose(e.xcb as XCB.Expose);
+                break;
+            case event.CLIENT_MESSAGE:
+                this.clientMessage(e.xcb as XCB.ClientMessage);
+                break;
+            case event.PROPERTY_NOTIFY:
+                this.propertyNotify(e.xcb as XCB.PropertyNotify);
+                break;
         }
     }
 
@@ -1160,8 +1189,8 @@ export class OWMLib {
         const events = this._xcb.eventMask.BUTTON_RELEASE | this._xcb.eventMask.POINTER_MOTION;
         const asyncMode = this._xcb.grabMode.ASYNC;
         this._xcb.grab_pointer(this._wm, { window: this._root, owner_events: 1, event_mask: events,
-                                           pointer_mode: asyncMode, keyboard_mode: asyncMode,
-                                           time: time });
+            pointer_mode: asyncMode, keyboard_mode: asyncMode,
+            time: time });
         this._xcb.allow_events(this._wm, { mode: this._xcb.allow.ASYNC_POINTER, time: time });
 
         // also grab the escape button so that we can exit that way
@@ -1269,26 +1298,26 @@ export class OWMLib {
     private _parseMoveModifier(mod: string) {
         const mask = this._xcb.modMask;
         switch (mod.toLowerCase()) {
-        case "shift":
-            return mask.SHIFT;
-        case "ctrl":
-        case "control":
-            return mask.CONTROL;
-        case "mod1":
-        case "alt":
-            return mask["1"];
-        case "mod2":
-            return mask["2"];
-        case "mod3":
-            return mask["3"];
-        case "mod4":
-            return mask["4"];
-        case "mod5":
-            return mask["5"];
-        case "lock":
-            return mask.LOCK;
-        default:
-            throw new Error("Couldn't parse keybinding mask");
+            case "shift":
+                return mask.SHIFT;
+            case "ctrl":
+            case "control":
+                return mask.CONTROL;
+            case "mod1":
+            case "alt":
+                return mask["1"];
+            case "mod2":
+                return mask["2"];
+            case "mod3":
+                return mask["3"];
+            case "mod4":
+                return mask["4"];
+            case "mod5":
+                return mask["5"];
+            case "lock":
+                return mask.LOCK;
+            default:
+                throw new Error("Couldn't parse keybinding mask");
         }
     }
 
@@ -1296,4 +1325,4 @@ export class OWMLib {
         this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 1 });
         this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 3 });
     }
-};
+}

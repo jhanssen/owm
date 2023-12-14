@@ -1,8 +1,8 @@
-import { Graphics } from "../../../native";
-import { OWMLib, Geometry } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
-import { KeybindingsMode } from "../../../lib/keybindings";
 import { EventEmitter } from "events";
+import { Geometry, OWMLib } from "../../../lib";
+import { Graphics } from "../../../native";
+import { KeybindingsMode } from "../../../lib/keybindings";
 
 interface CurrentModeConfig extends BarModuleConfig
 {
@@ -12,8 +12,7 @@ interface CurrentModeConfig extends BarModuleConfig
     barColor?: string | { [key: string]: string };
 }
 
-export class CurrentMode extends EventEmitter implements BarModule
-{
+export class CurrentMode extends EventEmitter implements BarModule {
     private _config: CurrentModeConfig;
     private _currentMode: Graphics.Text;
     private _color: { red: number, green: number, blue: number, alpha: number };
@@ -57,7 +56,7 @@ export class CurrentMode extends EventEmitter implements BarModule
         owm.engine.textSetFont(this._currentMode, currentModeConfig.font || bar.font);
     }
 
-    paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+    paint(engine: Graphics.Engine, ctx: Graphics.Context /*, geometry: Geometry*/) {
         if (this._modeStack.length) {
             const { red, green, blue } = this._color;
             engine.setSourceRGB(ctx, red, green, blue);
@@ -66,12 +65,11 @@ export class CurrentMode extends EventEmitter implements BarModule
         }
     }
 
-    geometry(geometry: Geometry) {
+    geometry(/*geometry: Geometry*/) {
         return new Geometry({ x: 0, y: 0, width: this._metrics.width + ((this._config.margin || 0) * 2), height: this._metrics.height});
     }
 
-    private _onUpdate()
-    {
+    private _onUpdate() {
         if (this._modeStack.length) {
             const text = this._modeStack[this._modeStack.length - 1];
             this._owm.engine.textSetText(this._currentMode, text);

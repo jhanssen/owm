@@ -1,12 +1,11 @@
-import { Workspace, Workspaces } from "./workspace";
-import { OWMLib } from "./owm";
 import { ContainerItem, ContainerItemType } from "./container";
-import { Strut, Geometry } from "./utils";
-import { XCB, OWM } from "native";
+import { Geometry, Strut } from "./utils";
+import { XCB } from "native";
+import { OWMLib } from "./owm";
+import { Workspace, Workspaces } from "./workspace";
 
 
-export class Monitor
-{
+export class Monitor {
     private _screen: XCB.Screen;
     private _workspaces: Workspaces;
     private _workspace: Workspace | undefined;
@@ -120,14 +119,14 @@ export class Monitor
     }
 
     findItemByPosition(x: number, y: number, itemType: ContainerItemType): ContainerItem | undefined {
-        if (this._workspace)
-            return this._workspace.findItemByPosition(x, y, itemType);
+        if (this._workspace) {
+return this._workspace.findItemByPosition(x, y, itemType);
+}
         return undefined;
     }
 }
 
-export class Monitors
-{
+export class Monitors {
     private _monitors: Map<string, Monitor>;
     private _owm: OWMLib;
 
@@ -146,9 +145,11 @@ export class Monitors
 
     monitorByPosition(x: number, y: number): Monitor {
         let first: Monitor | undefined;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [key, monitor] of this._monitors) {
-            if (!first)
-                first = monitor;
+            if (!first) {
+first = monitor;
+}
             if (x >= monitor.screen.x
                 && x <= monitor.screen.x + monitor.screen.width
                 && y >= monitor.screen.y
@@ -156,8 +157,9 @@ export class Monitors
                 return monitor;
             }
         }
-        if (!first)
-            throw new Error(`No monitor matching x/y ${x}/${y}`);
+        if (!first) {
+throw new Error(`No monitor matching x/y ${x}/${y}`);
+}
         return first;
     }
 
@@ -178,21 +180,25 @@ export class Monitors
     }
 
     removeItem(item: ContainerItem) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [key, monitor] of this._monitors) {
             monitor.workspaces.removeItem(item);
         }
     }
 
     relayout() {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [key, monitor] of this._monitors) {
             monitor.workspaces.relayout();
         }
     }
 
     forEachWorkspace(run: (ws: Workspace) => boolean) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [key, monitor] of this._monitors) {
-            if (!monitor.workspaces.forEachWorkspace(run))
-                return false;
+            if (!monitor.workspaces.forEachWorkspace(run)) {
+return false;
+}
         }
         return true;
     }
@@ -228,8 +234,9 @@ export class Monitors
         for (const screen of screens) {
             let found = false;
             const outputs = screen.outputs;
-            if (!outputs.length)
-                continue;
+            if (!outputs.length) {
+continue;
+}
             for (const output of outputs) {
                 const monitor = this._monitors.get(output);
                 if (monitor) {
@@ -253,6 +260,7 @@ export class Monitors
         }
 
         // delete oldMonitors from current map
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [key, monitor] of oldMonitors) {
             this._monitors.delete(key);
         }

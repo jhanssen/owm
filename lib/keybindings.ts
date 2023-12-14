@@ -1,10 +1,9 @@
-import { OWMLib } from "./owm";
-import { Logger } from "./logger";
-import { XCB } from "native";
 import { EventEmitter } from "events";
+import { Logger } from "./logger";
+import { OWMLib } from "./owm";
+import { XCB } from "native";
 
-class Keybinding
-{
+class Keybinding {
     private _owm: OWMLib;
     private _binding: string;
     private _sym: number;
@@ -55,8 +54,9 @@ class Keybinding
     }
 
     recreate() {
-        if (this._sym === 0)
+        if (this._sym === 0) {
             return;
+        }
         this._codes = this._owm.xcb.key_symbols_get_keycode(this._owm.wm, this._sym);
     }
 
@@ -116,8 +116,7 @@ class Keybinding
     }
 }
 
-export class KeybindingsMode extends EventEmitter
-{
+export class KeybindingsMode extends EventEmitter {
     private _parent: Keybindings;
     private _bindings: Map<string, Keybinding>;
     private _name: string | undefined;
@@ -154,16 +153,16 @@ export class KeybindingsMode extends EventEmitter
 
     addMode(binding: string, mode: KeybindingsMode) {
         this._parent.registerMode(mode);
-        const keybinding = new Keybinding(this._parent.owm, binding, (bindings: Keybindings, binding: string) => {
+        const keybinding = new Keybinding(this._parent.owm, binding, (/*bindings: Keybindings, binding: string*/) => {
             try {
                 this._parent.enterMode(mode);
             } catch (e) {
                 this._parent.owm.xcb.allow_events(this._parent.owm.wm, { mode: this._parent.owm.xcb.allow.ASYNC_KEYBOARD,
-                                                                         time: this._parent.owm.currentTime });
+                    time: this._parent.owm.currentTime });
                 throw e;
             }
             this._parent.owm.xcb.allow_events(this._parent.owm.wm, { mode: this._parent.owm.xcb.allow.ASYNC_KEYBOARD,
-                                                                     time: this._parent.owm.currentTime });
+                time: this._parent.owm.currentTime });
         }, true);
         keybinding.recreate();
         this._bindings.set(binding, keybinding);
@@ -174,14 +173,13 @@ export class KeybindingsMode extends EventEmitter
     }
 
     recreate() {
-        for (const [key, keybinding] of this._bindings) {
+        this._bindings.forEach((keybinding) => {
             keybinding.recreate();
-        }
+        });
     }
 }
 
-export class Keybindings
-{
+export class Keybindings {
     private _owm: OWMLib;
     private _bindings: Map<string, Keybinding>;
     private _enteredModes: KeybindingsMode[];
@@ -208,7 +206,7 @@ export class Keybindings
 
     addMode(binding: string, mode: KeybindingsMode) {
         this._allModes.add(mode);
-        this._add(binding, (bindings: Keybindings, binding: string) => {
+        this._add(binding, (/*bindings: Keybindings, binding: string*/) => {
             this.enterMode(mode);
             this._owm.xcb.allow_events(this._owm.wm, { mode: this._owm.xcb.allow.ASYNC_KEYBOARD, time: this._owm.currentTime });
         }, true);
@@ -216,24 +214,27 @@ export class Keybindings
 
     enterMode(mode: KeybindingsMode) {
         const match = mode.matchModifiers;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [str, binding] of mode.bindings) {
-            if (match && this._hasSym(binding.sym, binding.mods))
+            if (match && this._hasSym(binding.sym, binding.mods)) {
                 continue;
+            }
 
             const codes = binding.codes;
-            if (!codes.length)
+            if (!codes.length) {
                 return;
+            }
             const mods = binding.mods;
             const mode = binding.mode;
             const grabMode = this._owm.xcb.grabMode;
-            for (let code of codes) {
+            for (const code of codes) {
                 if (match) {
                     this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                        key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
                 } else {
                     const mask = this._owm.xcb.modMask;
                     this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mask.ANY,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                        key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
                 }
             }
         }
@@ -252,12 +253,14 @@ export class Keybindings
         this._enteredModes.pop();
 
         if (mode.matchModifiers) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             for (const [str, binding] of mode.bindings) {
-                if (this._hasSym(binding.sym, binding.mods))
+                if (this._hasSym(binding.sym, binding.mods)) {
                     continue;
+                }
 
                 const mods = binding.mods;
-                for (let code of binding.codes) {
+                for (const code of binding.codes) {
                     this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: mods });
                 }
             }
@@ -303,13 +306,15 @@ export class Keybindings
     feed(press: XCB.KeyPress) {
         this._log.debug("feed", press, this._enabled);
 
-        if (!this._enabled)
+        if (!this._enabled) {
             return;
+        }
 
         const mode: KeybindingsMode | undefined = this._enteredModes.length > 0 ? this._enteredModes[this._enteredModes.length - 1] : undefined;
-        let bindings = mode ? mode.bindings : this._bindings;
+        const bindings = mode ? mode.bindings : this._bindings;
         const match = mode ? mode.matchModifiers : true;
 
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [key, keybinding] of bindings) {
             //console.log("cand. binding", keybinding);
             if (press.sym === keybinding.sym && (!match || press.state === keybinding.mods)) {
@@ -318,6 +323,7 @@ export class Keybindings
         }
         if (bindings !== this._bindings) {
             const allowEvents = (bindings: Map<string, Keybinding>) => {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 for (const [key, keybinding] of bindings) {
                     //console.log("cand. binding", keybinding);
                     if (press.sym === keybinding.sym && (!match || press.state === keybinding.mods) && keybinding.sync) {
@@ -346,16 +352,17 @@ export class Keybindings
 
         if (this._enabled && !this.has(binding)) {
             const codes = keybinding.codes;
-            if (!codes.length)
+            if (!codes.length) {
                 return;
+            }
             const mods = keybinding.mods;
             const mode = keybinding.mode;
             const grabMode = this._owm.xcb.grabMode;
             this._log.debug("codes", codes, mods, mode);
-            for (let code of codes) {
+            for (const code of codes) {
                 this._log.debug("really add", this._owm.root, code);
                 this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                       key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                    key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
             }
         }
 
@@ -366,6 +373,7 @@ export class Keybindings
         for (const mode of this._allModes) {
             mode.recreate();
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [key, keybinding] of this._bindings) {
             keybinding.recreate();
         }
@@ -380,19 +388,21 @@ export class Keybindings
         this._log.debug("rebind");
 
         const rebindBindings = (bindings: Map<string, Keybinding>) => {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             for (const [key, keybinding] of bindings) {
                 const codes = keybinding.codes;
-                if (!codes.length)
+                if (!codes.length) {
                     return;
+                }
                 const mods = keybinding.mods;
                 const mode = keybinding.mode;
                 const grabMode = this._owm.xcb.grabMode;
 
                 this._log.debug("rebind root", this._owm.root, mods, codes);
                 //this._owm.xcb.grab_key(this._owm.wm,
-                for (let code of codes) {
+                for (const code of codes) {
                     this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                        key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
                 }
             }
         };
@@ -404,14 +414,18 @@ export class Keybindings
 
     private _hasSym(sym: number, mods: number) {
         for (const m of this._enteredModes) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             for (const [s, k] of m.bindings) {
-                if (k.sym === sym && k.mods === mods)
+                if (k.sym === sym && k.mods === mods) {
                     return true;
+                }
             }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         for (const [s, k] of this._bindings) {
-            if (k.sym === sym && k.mods === mods)
+            if (k.sym === sym && k.mods === mods) {
                 return true;
+            }
         }
         return false;
     }

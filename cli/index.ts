@@ -8,8 +8,7 @@ import { join } from "path";
 
 const options = Options("owmcli");
 
-function stringOption(key: string): string | undefined
-{
+function stringOption(key: string): string | undefined {
     const value = options(key);
     if (typeof value === "string") {
         return value;
@@ -25,7 +24,7 @@ const knownCommands = [
 const cmd = stringOption("cmd");
 const payload = stringOption("payload");
 const sock = stringOption("sock");
-let payloadType = stringOption("payload-type") || "auto";
+const payloadType = stringOption("payload-type") || "auto";
 if (payloadType !== "auto" && payloadType !== "json" && payloadType !== "string") {
     console.error("Invalid payload-type", payloadType);
     process.exit(1);
@@ -68,9 +67,9 @@ if (cmd !== undefined && knownCommands.includes(cmd)) {
         process.exit();
     });
     ws.on("open", () => {
-        let message: {
+        const message: {
             type: string;
-            payload: any;
+            payload: unknown;
         } = {
             type: cmd,
             payload: undefined

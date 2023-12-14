@@ -1,7 +1,7 @@
-import { Graphics } from "../../../native";
-import { OWMLib, Geometry, Logger } from "../../../lib";
 import { Bar, BarModule, BarModuleConfig } from "..";
 import { EventEmitter } from "events";
+import { Geometry, Logger, OWMLib } from "../../../lib";
+import { Graphics } from "../../../native";
 import { default as request } from "request-promise-native";
 
 interface WeatherConfig extends BarModuleConfig
@@ -19,8 +19,7 @@ interface WeatherConfig extends BarModuleConfig
     interval?: number;
 }
 
-export class Weather extends EventEmitter implements BarModule
-{
+export class Weather extends EventEmitter implements BarModule {
     private _log: Logger;
     private _config: WeatherConfig;
     private _weather: Graphics.Text;
@@ -75,7 +74,7 @@ export class Weather extends EventEmitter implements BarModule
         }
         this._colors = [[0, Bar.makeColor(weatherConfig.color || "#fff")]];
         if (weatherConfig.colors) {
-            for (let t of weatherConfig.colors) {
+            for (const t of weatherConfig.colors) {
                 this._colors.push([t[0], Bar.makeColor(t[1])]);
                 // make sure that the order is ascending
                 if (this._colors[this._colors.length - 1][0] <= this._colors[this._colors.length - 2][0]) {
@@ -96,13 +95,13 @@ export class Weather extends EventEmitter implements BarModule
         }, weatherConfig.interval || 60000);
     }
 
-    paint(engine: Graphics.Engine, ctx: Graphics.Context, geometry: Geometry) {
+    paint(engine: Graphics.Engine, ctx: Graphics.Context/*, geometry: Geometry*/) {
         const { red, green, blue } = this._findColor(this._temperature);
         engine.setSourceRGB(ctx, red, green, blue);
         engine.drawText(ctx, this._weather);
     }
 
-    geometry(geometry: Geometry) {
+    geometry(/*geometry: Geometry*/) {
         return new Geometry({ x: 0, y: 0, width: this._geometry.width, height: this._geometry.height });
     }
 

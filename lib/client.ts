@@ -1,12 +1,12 @@
-import { OWMLib } from "./owm";
-import { Logger } from "./logger";
-import { ContainerItem } from "./container";
-import { Workspace } from "./workspace";
-import { Monitor } from "./monitor";
 import { Container } from "./container";
+import { ContainerItem } from "./container";
 import { Geometry, Strut } from "./utils";
+import { Logger } from "./logger";
+import { Monitor } from "./monitor";
+import { OWM, XCB } from "native";
+import { OWMLib } from "./owm";
+import { Workspace } from "./workspace";
 import { endianness } from "os";
-import { XCB, OWM } from "native";
 
 interface ConfigureArgs {
     x?: number;
@@ -25,14 +25,13 @@ type MutableWMClass = {
     -readonly [K in keyof XCB.WindowTypes.WMClass]: XCB.WindowTypes.WMClass[K];
 }
 
-function zero(data: any) {
+function zero(data: Record<string, number>) {
     for (const k in data) {
         data[k] = 0;
     }
 }
 
-export class Client implements ContainerItem
-{
+export class Client implements ContainerItem {
     private readonly _parent: number;
     private readonly _window: XCB.Window;
     private readonly _owm: OWMLib;
@@ -117,8 +116,8 @@ export class Client implements ContainerItem
         borderData[2] = border;
         borderData[3] = border;
         owm.xcb.change_property(owm.wm, { window: window.window, mode: owm.xcb.propMode.REPLACE,
-                                          property: owm.xcb.atom._NET_FRAME_EXTENTS, type: owm.xcb.atom.CARDINAL,
-                                          format: 32, data: borderData });
+            property: owm.xcb.atom._NET_FRAME_EXTENTS, type: owm.xcb.atom.CARDINAL,
+            format: 32, data: borderData });
 
         owm.ewmh.updateAllowed(this);
 
@@ -127,6 +126,10 @@ export class Client implements ContainerItem
             throw new Error("inactive is string, can't happen");
         }
         this._pixel = inactive;
+    }
+
+    get type(): string {
+        return this._client;
     }
 
     get root() {
@@ -166,16 +169,21 @@ export class Client implements ContainerItem
     }
 
     get normal() {
-        if (!this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_NORMAL))
+        if (!this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_NORMAL)) {
             return false;
-        if (this.transient)
+        }
+        if (this.transient) {
             return false;
-        if (this._window.ewmhWindowType.length === 2 && this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DND))
+        }
+        if (this._window.ewmhWindowType.length === 2 && this._window.ewmhWindowType.includes(this._owm.xcb.atom._NET_WM_WINDOW_TYPE_DND)) {
             return true;
-        if (this._window.ewmhWindowType.length > 1)
+        }
+        if (this._window.ewmhWindowType.length > 1) {
             return false;
-        if (this._noinput)
+        }
+        if (this._noinput) {
             return false;
+        }
         return true;
     }
 
@@ -225,8 +233,8 @@ export class Client implements ContainerItem
         borderData[2] = value;
         borderData[3] = value;
         this._owm.xcb.change_property(this._owm.wm, { window: this._window.window, mode: this._owm.xcb.propMode.REPLACE,
-                                          property: this._owm.xcb.atom._NET_FRAME_EXTENTS, type: this._owm.xcb.atom.CARDINAL,
-                                          format: 32, data: borderData });
+            property: this._owm.xcb.atom._NET_FRAME_EXTENTS, type: this._owm.xcb.atom.CARDINAL,
+            format: 32, data: borderData });
 
 
         this._border = value;
@@ -288,8 +296,9 @@ export class Client implements ContainerItem
     }
 
     set ignoreWorkspace(ignore: boolean) {
-        if (ignore === this._ignoreWorkspace)
+        if (ignore === this._ignoreWorkspace) {
             return;
+        }
 
         this._ignoreWorkspace = ignore;
 
@@ -314,8 +323,9 @@ export class Client implements ContainerItem
     }
 
     set staysOnTop(s: boolean) {
-        if (this._staysOnTop === s)
+        if (this._staysOnTop === s) {
             return;
+        }
         this._staysOnTop = s;
         if (this._container) {
             this._container.reinsert(this);
@@ -327,8 +337,9 @@ export class Client implements ContainerItem
     }
 
     set fullscreen(f: boolean) {
-        if (this._fullscreen === f)
+        if (this._fullscreen === f) {
             return;
+        }
         const ws = this.workspace;
         if (ws) {
             if (f && ws.fullscreen !== undefined) {
@@ -348,8 +359,9 @@ export class Client implements ContainerItem
 
     set floating(f: boolean) {
         this._explicitFloating = f;
-        if (this._floating === f)
+        if (this._floating === f) {
             return;
+        }
         this._floating = f;
         this._owm.relayout();
         const ws = this.workspace;
@@ -373,10 +385,6 @@ export class Client implements ContainerItem
         return undefined;
     }
 
-    get monitor() {
-        return this._monitor;
-    }
-
     set workspace(ws: Workspace | undefined) {
         if (this._ignoreWorkspace) {
             return;
@@ -389,6 +397,10 @@ export class Client implements ContainerItem
             // add the client to the top-most container of the workspace
             ws.addItem(this);
         }
+    }
+
+    get monitor() {
+        return this._monitor;
     }
 
     get container() {
@@ -469,8 +481,9 @@ export class Client implements ContainerItem
     }
 
     hide() {
-        if (this._hidden)
+        if (this._hidden) {
             return;
+        }
         this._hidden = true;
 
         this._owm.ewmh.addStateHidden(this);
@@ -478,8 +491,9 @@ export class Client implements ContainerItem
     }
 
     show() {
-        if (!this._hidden)
+        if (!this._hidden) {
             return;
+        }
         this._hidden = false;
 
         this._owm.ewmh.removeStateHidden(this);
@@ -520,8 +534,9 @@ export class Client implements ContainerItem
     }
 
     centerOn(client: Client) {
-        if (!this._floating)
+        if (!this._floating) {
             return;
+        }
 
         const cg = client.geometry;
         const cx = ((cg.width / 2) - (this._geometry.width / 2)) + cg.x;
@@ -614,45 +629,46 @@ export class Client implements ContainerItem
 
         const atom = this._owm.xcb.atom;
         switch (property) {
-        case atom.WM_HINTS:
-            this._updateWmHints(propdata);
-            break;
-        case atom.WM_NAME:
-            this._updateWmName(propdata);
-            break;
-        case atom._NET_WM_OPAQUE_REGION:
-            break;
-        case atom.WM_NORMAL_HINTS:
-            this._updateWmNormalHints(propdata);
-            break;
-        case atom.WM_CLIENT_LEADER:
-            this._updateWmClientLeader(propdata);
-            break;
-        case atom.WM_TRANSIENT_FOR:
-            this._updateWmTransientFor(propdata);
-            break;
-        case atom.WM_WINDOW_ROLE:
-            this._updateWmWindowRole(propdata);
-            break;
-        case atom.WM_CLASS:
-            this._updateWmClass(propdata);
-            break;
-        case atom._NET_WM_NAME:
-            this._updateEwmhWmName(propdata);
-            break;
-        case atom._NET_WM_STRUT:
-            this._updateEwmhStrut(propdata);
-            break;
-        case atom._NET_WM_STRUT_PARTIAL:
-            this._updateEwmhStrutPartial(propdata);
-            break;
-        case atom._NET_WM_WINDOW_TYPE:
-            this._updateEwmhWindowType(propdata);
-            break;
-        default:
-            const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
-            this._log.warn(`unhandled property notify ${name}`);
-            break;
+            case atom.WM_HINTS:
+                this._updateWmHints(propdata);
+                break;
+            case atom.WM_NAME:
+                this._updateWmName(propdata);
+                break;
+            case atom._NET_WM_OPAQUE_REGION:
+                break;
+            case atom.WM_NORMAL_HINTS:
+                this._updateWmNormalHints(propdata);
+                break;
+            case atom.WM_CLIENT_LEADER:
+                this._updateWmClientLeader(propdata);
+                break;
+            case atom.WM_TRANSIENT_FOR:
+                this._updateWmTransientFor(propdata);
+                break;
+            case atom.WM_WINDOW_ROLE:
+                this._updateWmWindowRole(propdata);
+                break;
+            case atom.WM_CLASS:
+                this._updateWmClass(propdata);
+                break;
+            case atom._NET_WM_NAME:
+                this._updateEwmhWmName(propdata);
+                break;
+            case atom._NET_WM_STRUT:
+                this._updateEwmhStrut(propdata);
+                break;
+            case atom._NET_WM_STRUT_PARTIAL:
+                this._updateEwmhStrutPartial(propdata);
+                break;
+            case atom._NET_WM_WINDOW_TYPE:
+                this._updateEwmhWindowType(propdata);
+                break;
+            default: {
+                const name = this._owm.xcb.get_atom_name(this._owm.wm, property);
+                this._log.warn(`unhandled property notify ${name}`);
+                break;
+            }
         }
     }
 
@@ -665,15 +681,7 @@ export class Client implements ContainerItem
     }
 
     focus() {
-        let client: Client = this;
-        for (;;) {
-            const clients = this._group.transientsForClient(client);
-            if (clients.length > 0 && clients[0].modal) {
-                client = clients[0];
-            } else {
-                break;
-            }
-        }
+        const client = this.findClient(this);
 
         const owm = this._owm;
 
@@ -690,7 +698,7 @@ export class Client implements ContainerItem
             owm.xcb.send_client_message(owm.wm, { window: client.window.window, type: owm.xcb.atom.WM_PROTOCOLS, data: data });
         } else if (!client.noinput) {
             owm.xcb.set_input_focus(owm.wm, { window: client.window.window, revert_to: owm.xcb.inputFocus.FOCUS_PARENT,
-                                              time: owm.currentTime });
+                time: owm.currentTime });
         } else {
             return false;
         }
@@ -698,8 +706,8 @@ export class Client implements ContainerItem
         const activeData = new Uint32Array(1);
         activeData[0] = client.window.window;
         owm.xcb.change_property(owm.wm, { window: client.window.geometry.root, mode: owm.xcb.propMode.REPLACE,
-                                          property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
-                                          format: 32, data: activeData });
+            property: owm.xcb.atom._NET_ACTIVE_WINDOW, type: owm.xcb.atom.WINDOW,
+            format: 32, data: activeData });
 
         owm.focused = client;
 
@@ -713,8 +721,8 @@ export class Client implements ContainerItem
             const data = new Uint32Array(1);
             data[0] = deleteWindow;
             this._owm.xcb.send_client_message(this._owm.wm, { window: this._window.window,
-                                                              type: this._owm.xcb.atom.WM_PROTOCOLS,
-                                                              data: data });
+                type: this._owm.xcb.atom.WM_PROTOCOLS,
+                data: data });
 
             // make sure the client dies
             const win = this._window.window;
@@ -735,8 +743,9 @@ export class Client implements ContainerItem
     }
 
     isRelated(other: ContainerItem) {
-        if (!isClient(other))
+        if (!(other instanceof Client)) {
             return false;
+        }
         const client = other as Client;
         return client.group === this.group;
     }
@@ -762,9 +771,9 @@ export class Client implements ContainerItem
 
         buf[1] = xcb.none;
         xcb.change_property(this._owm.wm,
-                            { window: this._window.window, mode: xcb.propMode.REPLACE,
-                              property: xcb.atom.WM_STATE, type: xcb.atom.WM_STATE,
-                              format: 32, data: buf });
+            { window: this._window.window, mode: xcb.propMode.REPLACE,
+                property: xcb.atom.WM_STATE, type: xcb.atom.WM_STATE,
+                format: 32, data: buf });
 
         if (this._state === Client.State.Normal && this._hidden) {
             return;
@@ -819,7 +828,7 @@ export class Client implements ContainerItem
         }
 
         const dv = new DataView(property.buffer);
-        if (dv.byteLength != 9 * 4) {
+        if (dv.byteLength !== 9 * 4) {
             throw new Error(`incorrect number of WM_HINTS arguments ${dv.byteLength / 4} should be 9`);
         }
 
@@ -848,7 +857,7 @@ export class Client implements ContainerItem
             return;
         }
 
-        let encoding = "latin1";
+        let encoding: "latin1" | "utf8" = "latin1";
         if (property.type === this._owm.xcb.atom.UTF8_STRING) {
             encoding = "utf8";
         }
@@ -864,7 +873,7 @@ export class Client implements ContainerItem
             return;
         }
         const dv = new DataView(property.buffer);
-        if (dv.byteLength != 18 * 4) {
+        if (dv.byteLength !== 18 * 4) {
             throw new Error(`incorrect number of WM_NORMAL_HINTS arguments ${dv.byteLength / 4} should be 18`);
         }
 
@@ -962,7 +971,7 @@ export class Client implements ContainerItem
             return;
         }
 
-        let encoding = "latin1";
+        let encoding: "latin1" | "utf8" = "latin1";
         if (property.type === this._owm.xcb.atom.UTF8_STRING) {
             encoding = "utf8";
         }
@@ -984,7 +993,7 @@ export class Client implements ContainerItem
             --last;
         }
 
-        let wmClass = (this._window.wmClass as MutableWMClass);
+        const wmClass = (this._window.wmClass as MutableWMClass);
         if (mid !== 0) {
             // we have an instance_name
             wmClass.instance_name = nbuf.toString(encoding, 0, mid);
@@ -1021,7 +1030,7 @@ export class Client implements ContainerItem
             return;
         }
         const dv = new DataView(property.buffer);
-        if (dv.byteLength != 4 * 4) {
+        if (dv.byteLength !== 4 * 4) {
             throw new Error(`incorrect number of _NET_WM_STRUT arguments ${dv.byteLength / 4} should be 4`);
         }
 
@@ -1050,7 +1059,7 @@ export class Client implements ContainerItem
             return;
         }
         const dv = new DataView(property.buffer);
-        if (dv.byteLength != 12 * 4) {
+        if (dv.byteLength !== 12 * 4) {
             throw new Error(`incorrect number of _NET_WM_STRUT_PARTIAL arguments ${dv.byteLength / 4} should be 12`);
         }
 
@@ -1103,19 +1112,19 @@ export class Client implements ContainerItem
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
         // this._log.info("_configure", args, keepHeight);
-        if ((args.x === undefined) != (args.y === undefined)) {
+        if ((args.x === undefined) !== (args.y === undefined)) {
             throw new Error(`_configure, x must be set if y is`);
         }
-        if ((args.width === undefined) != (args.height === undefined)) {
+        if ((args.width === undefined) !== (args.height === undefined)) {
             throw new Error(`_configure, width must be set if height is`);
         }
 
-        let thisArgs: {
+        const thisArgs: {
             window: number,
             width?: number,
             height?: number
         } = { window: this._window.window };
-        let parentArgs = Object.assign({ window: this._parent }, args);
+        const parentArgs = Object.assign({ window: this._parent }, args);
 
         if (args.x !== undefined && args.y !== undefined) {
             const oldmonitor = this._monitor;
@@ -1223,14 +1232,18 @@ export class Client implements ContainerItem
         }
 
         // enforce minimum and maximum size
-        if (width < sizes.minWidth)
+        if (width < sizes.minWidth) {
             width = sizes.minWidth;
-        if (sizes.maxWidth > 0 && width > sizes.maxWidth)
+        }
+        if (sizes.maxWidth > 0 && width > sizes.maxWidth) {
             width = sizes.maxWidth;
-        if (height < sizes.minHeight)
+        }
+        if (height < sizes.minHeight) {
             height = sizes.minHeight;
-        if (sizes.maxHeight > 0 && height > sizes.maxHeight)
+        }
+        if (sizes.maxHeight > 0 && height > sizes.maxHeight) {
             height = sizes.maxHeight;
+        }
 
         if (normal.flags & sizeHint.P_ASPECT) {
             let ar = (width - baseWidth) / (height - baseHeight);
@@ -1289,20 +1302,23 @@ export class Client implements ContainerItem
         const transientFor = window.transientFor !== 0 && window.transientFor !== window.window;
 
         this._noinput = dock || notification;
-        if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT)
+        if (window.wmHints.flags & owm.xcb.icccm.hint.INPUT) {
             this._noinput = window.wmHints.input === 0;
+        }
 
         // if we were explicitly set to floating by the
         // configuration system then we need to respect that
-        if (this._explicitFloating !== undefined)
+        if (this._explicitFloating !== undefined) {
             return;
+        }
 
         const wasFloating = this._floating;
         this._floating = dock || notification || dialog || util || transientFor;
 
         // if our floating status didn't change, bail out
-        if (wasFloating === this._floating)
+        if (wasFloating === this._floating) {
             return;
+        }
 
         if (!wasFloating && this._floating) {
             if (!transientFor) {
@@ -1365,14 +1381,16 @@ export class Client implements ContainerItem
             let topmost: ContainerItem | undefined;
             if (client.staysOnTop) {
                 topmost = container.topmostOnTop;
-                if (topmost === undefined)
+                if (topmost === undefined) {
                     topmost = client;
+                }
             } else {
                 topmost = container.topmostRegular;
-                if (topmost === undefined)
+                if (topmost === undefined) {
                     topmost = client;
+                }
             }
-            if (!isClient(topmost)) {
+            if (!(topmost instanceof Client)) {
                 throw new Error("topmost is not a client");
             }
 
@@ -1445,6 +1463,19 @@ export class Client implements ContainerItem
             }
         }
     }
+
+
+    private findClient(client: Client): Client {
+        for (;;) {
+            const clients = this._group.transientsForClient(client);
+            if (clients.length > 0 && clients[0].modal) {
+                client = clients[0];
+            } else {
+                break;
+            }
+        }
+        return client;
+    }
 }
 
 export namespace Client {
@@ -1453,10 +1484,6 @@ export namespace Client {
         Iconic,
         Withdrawn
     }
-}
-
-export function isClient(o: any): o is Client {
-    return o._type && o._type === "Client";
 }
 
 export class ClientGroup {
@@ -1493,7 +1520,7 @@ export class ClientGroup {
 
     get transients(): Client[] {
         const ret: Client[] = [];
-        for (const [f, t] of this._transients) {
+        for (const [f] of this._transients) {
             const c = this._owm.findClientByWindow(f);
             if (c && !ret.includes(c)) {
                 ret.push(c);
@@ -1505,7 +1532,7 @@ export class ClientGroup {
     get nonTransients(): Client[] {
         // all _followers not in _transients
         const ret: Client[] = [];
-        for (let k of this._followers) {
+        for (const k of this._followers) {
             if (!this._transients.has(k)) {
                 const c = this._owm.findClientByWindow(k);
                 if (c) {

@@ -3,10 +3,9 @@ import { Client } from "./client";
 export interface MatchCondition
 {
     match(client: Client): boolean;
-};
+}
 
-export class MatchWMClass implements MatchCondition
-{
+export class MatchWMClass implements MatchCondition {
     private _instance?: string;
     private _class?: string;
 
@@ -16,18 +15,20 @@ export class MatchWMClass implements MatchCondition
     }
 
     match(client: Client) {
-        if (!this._instance && !this._class)
-            return false;
-        if (this._instance && client.window.wmClass.instance_name !== this._instance)
-            return false;
-        if (this._class && client.window.wmClass.class_name !== this._class)
-            return false;
+        if (!this._instance && !this._class) {
+return false;
+}
+        if (this._instance && client.window.wmClass.instance_name !== this._instance) {
+return false;
+}
+        if (this._class && client.window.wmClass.class_name !== this._class) {
+return false;
+}
         return true;
     }
 }
 
-export class MatchWMName implements MatchCondition
-{
+export class MatchWMName implements MatchCondition {
     private _name: string;
 
     constructor(name: string) {
@@ -40,8 +41,7 @@ export class MatchWMName implements MatchCondition
     }
 }
 
-export class Match
-{
+export class Match {
     private _conditions: MatchCondition[];
     private _callback: (client: Client) => void;
     private _type: Match.MatchType;
@@ -60,8 +60,9 @@ export class Match
     }
 
     match(client: Client) {
-        if (!this._conditions.length)
-            return;
+        if (!this._conditions.length) {
+return;
+}
 
         const and = this._type === Match.MatchType.And;
 
@@ -69,7 +70,7 @@ export class Match
             const m = cond.match(client);
             if (and && !m) {
                 return;
-            } else if (!and && m) {
+            } if (!and && m) {
                 this._callback(client);
                 return;
             }

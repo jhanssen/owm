@@ -1,9 +1,9 @@
-import { OWMLib, } from "./owm";
-import { Logger } from "./logger";
-import { LayoutPolicy } from "./policy/layout";
 import { Geometry, Strut } from "./utils";
-import { Workspace } from "./workspace";
+import { LayoutPolicy } from "./policy/layout";
+import { Logger } from "./logger";
 import { Monitor } from "./monitor";
+import { OWMLib, } from "./owm";
+import { Workspace } from "./workspace";
 
 export interface ContainerItem
 {
@@ -30,8 +30,7 @@ export enum ContainerItemType
     Client
 }
 
-export class Container implements ContainerItem
-{
+export class Container implements ContainerItem {
     private _owm: OWMLib;
     private _regularItems: ContainerItem[];
     private _ontopItems: ContainerItem[];
@@ -101,14 +100,16 @@ export class Container implements ContainerItem
     }
 
     get topmostRegular() {
-        if (this._regularItems.length > 0)
-            return this._regularItems[this._regularItems.length - 1];
+        if (this._regularItems.length > 0) {
+return this._regularItems[this._regularItems.length - 1];
+}
         return undefined;
     }
 
     get topmostOnTop() {
-        if (this._ontopItems.length > 0)
-            return this._ontopItems[this._ontopItems.length - 1];
+        if (this._ontopItems.length > 0) {
+return this._ontopItems[this._ontopItems.length - 1];
+}
         return undefined;
     }
 
@@ -154,11 +155,11 @@ export class Container implements ContainerItem
 
     get strut() {
         const strut = new Strut();
-        for (let item of this._layoutItems) {
+        for (const item of this._layoutItems) {
             strut.unite(item.strut);
         }
         if (this._monitor) {
-            for (let item of this._monitor.items) {
+            for (const item of this._monitor.items) {
                 strut.unite(item.strut);
             }
         }
@@ -194,8 +195,9 @@ export class Container implements ContainerItem
     }
 
     set staysOnTop(s: boolean) {
-        if (this._staysOnTop === s)
-            return;
+        if (this._staysOnTop === s) {
+return;
+}
         this._staysOnTop = s;
         if (this._container) {
             this._container.reinsert(this);
@@ -218,7 +220,7 @@ export class Container implements ContainerItem
     set visible(v: boolean) {
         this._visible = v;
 
-        for (let item of this._layoutItems) {
+        for (const item of this._layoutItems) {
             if (!item.ignoreWorkspace) {
                 item.visible = v;
             }
@@ -238,8 +240,9 @@ export class Container implements ContainerItem
         if (this._containerType !== Container.Type.TopLevel) {
             throw new Error("only top-level containers may have a fullscreen item");
         }
-        if (this._fullscreenItem === item)
-            return;
+        if (this._fullscreenItem === item) {
+return;
+}
 
         const old = this._fullscreenItem;
         this._fullscreenItem = item;
@@ -769,8 +772,9 @@ export class Container implements ContainerItem
     }
 
     relayout() {
-        if (!this._layout)
-            return;
+        if (!this._layout) {
+return;
+}
         if (this._fullscreenItem) {
             // _geometry is the non-strutted geometry
             this._layout.layout([this._fullscreenItem], this._geometry);
@@ -783,8 +787,9 @@ export class Container implements ContainerItem
         // walk items from the top-most item to the bottom-most one
         const allItems = this.stackItems;
         const len = allItems.length;
-        if (len === 0)
-            return itemType === ContainerItemType.Container ? this : undefined;
+        if (len === 0) {
+return itemType === ContainerItemType.Container ? this : undefined;
+}
         for (let i = len - 1; i >= 0; --i) {
             const item = allItems[i];
             const geom = item.geometry;
@@ -794,7 +799,7 @@ export class Container implements ContainerItem
                 && y <= geom.y + geom.height) {
                 if (isContainer(item)) {
                     return (item as Container).findItemByPosition(x, y, itemType);
-                } else if (itemType === ContainerItemType.Client) {
+                } if (itemType === ContainerItemType.Client) {
                     return item;
                 }
             }
@@ -807,8 +812,9 @@ export class Container implements ContainerItem
     stackIndex(item: ContainerItem) {
         const allItems = this.stackItems;
         for (let i = 0; i < allItems.length; ++i) {
-            if (item === allItems[i])
-                return i;
+            if (item === allItems[i]) {
+return i;
+}
         }
         return -1;
     }
@@ -902,10 +908,12 @@ export class Container implements ContainerItem
                 this._layoutItems.splice(otherIdx, 0, item);
             } else {
                 // one step forward from current
-                if (idx > 0)
-                    --idx;
-                while (idx > 0 && this._layoutItems[idx].floating)
-                    --idx;
+                if (idx > 0) {
+--idx;
+}
+                while (idx > 0 && this._layoutItems[idx].floating) {
+--idx;
+}
                 this._layoutItems.splice(idx, 0, item);
             }
             break;
@@ -915,8 +923,9 @@ export class Container implements ContainerItem
                 this._layoutItems.splice(otherIdx + 1, 0, item);
             } else {
                 ++idx;
-                while (idx < this._layoutItems.length - 1 && this._layoutItems[idx].floating)
-                    ++idx;
+                while (idx < this._layoutItems.length - 1 && this._layoutItems[idx].floating) {
+++idx;
+}
                 this._layoutItems.splice(idx + 1, 0, item);
             }
         }
@@ -934,10 +943,12 @@ export class Container implements ContainerItem
     }
 
     private _stackListForItem(item: ContainerItem) {
-        if (this._regularItems.includes(item))
-            return this._regularItems;
-        if (this._ontopItems.includes(item))
-            return this._ontopItems;
+        if (this._regularItems.includes(item)) {
+return this._regularItems;
+}
+        if (this._ontopItems.includes(item)) {
+return this._ontopItems;
+}
         return undefined;
     }
 }
@@ -957,8 +968,4 @@ export namespace Container {
         Up = Backward,
         Down = Forward
     }
-}
-
-export function isContainer(o: any): o is Container {
-    return o._type && o._type === "Container";
 }

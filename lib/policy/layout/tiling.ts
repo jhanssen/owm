@@ -1,13 +1,11 @@
 import { ContainerItem } from "../../container";
 import { Geometry } from "../../utils";
+import { LayoutConfig, LayoutPolicy } from ".";
 import { Logger } from "../../logger";
-import { Client } from "../../client";
-import { Workspace } from "../../workspace";
-import { LayoutPolicy, LayoutConfig } from ".";
 import { Policy } from "..";
+import { Workspace } from "../../workspace";
 
-export class TilingLayoutConfig implements LayoutConfig
-{
+export class TilingLayoutConfig implements LayoutConfig {
     private _type: string;
 
     private _rows: number | undefined;
@@ -51,8 +49,9 @@ export class TilingLayoutConfig implements LayoutConfig
 
     columnRatio(c: number): number {
         const r = this._columnRatios.get(c);
-        if (r === undefined)
+        if (r === undefined) {
             return 1;
+        }
         return r;
     }
 
@@ -62,18 +61,14 @@ export class TilingLayoutConfig implements LayoutConfig
 
     rowRatio(c: number): number {
         const r = this._rowRatios.get(c);
-        if (r === undefined)
+        if (r === undefined) {
             return 1;
+        }
         return r;
     }
 }
 
-function isTilingLayoutConfig(o: any): o is TilingLayoutConfig {
-    return o._type === "tiling";
-}
-
-export class TilingLayoutPolicy implements LayoutPolicy
-{
+export class TilingLayoutPolicy implements LayoutPolicy {
     readonly Config = TilingLayoutConfig;
 
     private _policy: Policy;
@@ -142,8 +137,9 @@ export class TilingLayoutPolicy implements LayoutPolicy
         let itemno = 0;
 
         const setItemGeometry = (no: number, x: number, y: number, w: number, h: number) => {
-            if (no >= filtered.length)
+            if (no >= filtered.length) {
                 return;
+            }
             const item = filtered[no];
             item.move(x, y);
             item.resize(w, h);
@@ -172,16 +168,9 @@ export class TilingLayoutPolicy implements LayoutPolicy
         }
     }
 
-    initialize() {
-    }
+    initialize() { /* */ }
 
-    deinitialize() {
-    }
+    deinitialize() { /* */ }
 
-    update() {
-    }
-}
-
-export function isTilingLayout(o: any): o is TilingLayoutPolicy {
-    return o._type === "tiling";
+    update() { /* */ }
 }

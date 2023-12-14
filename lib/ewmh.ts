@@ -1,8 +1,8 @@
-import { OWMLib } from "./owm";
-import { Geometry } from "./utils";
-import { Workspace } from "./workspace";
 import { Client } from "./client";
+import { Geometry } from "./utils";
 import { Logger } from "./logger";
+import { OWMLib } from "./owm";
+import { Workspace } from "./workspace";
 
 export class EWMH {
     private _owm: OWMLib;
@@ -80,7 +80,7 @@ export class EWMH {
         });
 
         if (high <= 0) {
-            throw new Error(`highest workspace ${high}?`);;
+            throw new Error(`highest workspace ${high}?`);
         }
 
         const wsData = new Uint32Array(1);

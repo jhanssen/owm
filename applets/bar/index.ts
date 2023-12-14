@@ -1,7 +1,7 @@
-import { OWMLib, Geometry, Monitor } from "../../lib";
-import { Graphics } from "../../native";
-import { Clock, Load, IpAddress, Message, Title, Weather, Workspace, CurrentMode } from "./modules";
+import { Clock, CurrentMode, IpAddress, Load, Message, Title, Weather, Workspace } from "./modules";
 import { EventEmitter } from "events";
+import { Geometry, Monitor, OWMLib } from "../../lib";
+import { Graphics } from "../../native";
 import { default as hexRgb } from "hex-rgb";
 
 export interface BarModuleConfig
@@ -40,18 +40,17 @@ function makeColor(color: string) {
 
 function align(from: number, to: number, position: Bar.Position) {
     switch (position) {
-    case Bar.Position.Left:
-        return 0;
-    case Bar.Position.Middle:
-        return (to / 2) - (from / 2);
-    case Bar.Position.Right:
-        return to - from;
+        case Bar.Position.Left:
+            return 0;
+        case Bar.Position.Middle:
+            return (to / 2) - (from / 2);
+        case Bar.Position.Right:
+            return to - from;
     }
     throw new Error("can't happen");
 }
 
-export class Bar
-{
+export class Bar {
     public static readonly Pad = { x: 10, y: 2 };
     public static readonly makeColor = makeColor;
     public static readonly align = align;
@@ -226,8 +225,12 @@ export class Bar
             } else {
                 this._modules.set(m.position, [m]);
             }
-            c.on("updated", () => { this.update(); });
-            c.on("geometryChanged", (module: BarModule) => { this._relayout(c); });
+            c.on("updated", () => {
+                this.update();
+            });
+            c.on("geometryChanged", (/* module: BarModule */) => {
+                this._relayout(c);
+            });
         };
 
         for (const [name, module] of Object.entries(config.modules)) {
@@ -266,8 +269,9 @@ export class Bar
     }
 
     update() {
-        if (!this._ready)
+        if (!this._ready) {
             return;
+        }
 
         this._redraw();
         const owm = this._owm;
@@ -283,18 +287,24 @@ export class Bar
         } else {
             this._modules.set(m.position, [m]);
         }
-        module.on("updated", () => { this.update(); });
-        module.on("geometryChanged", (module: BarModule) => { this._relayout(module); });
+        module.on("updated", () => {
+            this.update();
+        });
+        module.on("geometryChanged", (module: BarModule) => {
+            this._relayout(module);
+        });
         this._relayout(module);
     }
 
     removeModule(module: BarModule, position: Bar.Position) {
         const a = this._modules.get(position);
-        if (a === undefined)
+        if (a === undefined) {
             return;
+        }
         const idx = a.findIndex(elem => elem.module === module);
-        if (idx === -1)
+        if (idx === -1) {
             return;
+        }
         a.splice(idx, 1);
         this._relayout();
     }
@@ -314,8 +324,9 @@ export class Bar
 
         const contains = (modules: Module[], module: BarModule) => {
             for (const m of modules) {
-                if (m.module === module)
+                if (m.module === module) {
                     return true;
+                }
             }
             return false;
         };
@@ -356,8 +367,9 @@ export class Bar
                 e.geometry.y += Bar.Pad.y;
 
                 x += e.geometry.width;
-                if (idx < last - 1)
+                if (idx < last - 1) {
                     x += Bar.Pad.x;
+                }
             }
 
             const off = (this._width / 2) - (x / 2);
@@ -381,7 +393,7 @@ export class Bar
         engine.setSourceRGB(this._ctx, red, green, blue);
         engine.paint(this._ctx);
 
-        for (const [position, modules] of this._modules) {
+        this._modules.forEach((modules: Module[]) => {
             for (const module of modules) {
                 engine.save(this._ctx);
                 engine.pathRectangle(this._ctx, module.geometry.x, module.geometry.y, module.geometry.width, module.geometry.height);
@@ -390,7 +402,7 @@ export class Bar
                 module.module.paint(engine, this._ctx, module.geometry);
                 engine.restore(this._ctx);
             }
-        }
+        });
     }
 }
 
