@@ -10,6 +10,9 @@ cd "`dirname "${SCRIPT_PATH}"`" > /dev/null
 SCRIPT_PATH="`pwd`";
 popd > /dev/null
 
+# Set default cursor for root window (X11 window managers need this)
+xsetroot -cursor_name left_ptr 2>/dev/null || true
+
 BUILD=2
 while true; do
     cd $SCRIPT_PATH/..
