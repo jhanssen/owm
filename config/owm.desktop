@@ -1,9 +1,10 @@
 [Desktop Entry]
-Name=owm
-Comment=improved dynamic tiling window manager
-Exec=owm
-TryExec=owm
+Name=Owm
+Comment=This session logs you into Ubuntu
+Exec=/home/abakken/dev/owm/scripts/runowm.sh
+TryExec=/usr/bin/node
 Type=Application
-X-LightDM-DesktopName=owm
-DesktopNames=owm
-Keywords=tiling;wm;windowmanager;window;manager;
+DesktopNames=Owm
+X-GDM-SessionRegisters=true
+X-GDM-CanRunHeadless=true
+X-Ubuntu-Gettext-Domain=gnome-session-47
