@@ -699,6 +699,9 @@ export class OWMLib {
                             client.staysOnTop = true;
                         else if (u32[0] === action.TOGGLE)
                             client.staysOnTop = !client.staysOnTop;
+                        for (let m of this._matches) {
+                            m.match(client);
+                        }
                     }
                 }
             }
