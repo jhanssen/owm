@@ -26,7 +26,7 @@ while true; do
         npm run build
     fi
 
-    npm run launch -- "$@"
+    node ./build/src/index.js -- "$@"
 
     case $? in
         0)
