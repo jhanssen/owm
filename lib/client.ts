@@ -892,6 +892,12 @@ export class Client implements ContainerItem
         };
 
         (this._window as MutableWindow).normalHints = normalHints;
+
+        // Size hints changed (e.g. terminal font size change updated width_inc/height_inc).
+        // Re-apply the layout so the window is resized to respect the new hints.
+        if (!this._floating) {
+            this._relayoutWorkspace();
+        }
     }
 
     private _updateWmClientLeader(property?: OWM.GetProperty) {
@@ -1010,6 +1016,16 @@ export class Client implements ContainerItem
         const nbuf = Buffer.from(property.buffer);
         (this._window as MutableWindow).ewmhName = nbuf.toString('utf8', 0, property.buffer.byteLength);
         this._owm.events.emit("clientEwmhNameUpdated", this);
+
+        // Some clients (e.g. wezterm) update their title after an internal
+        // change such as a font-size adjustment without sending a
+        // ConfigureRequest or updating WM_NORMAL_HINTS.  Re-applying the
+        // layout forces _configure() to run, and its size-unchanged nudge
+        // ensures the client receives a real ConfigureNotify so it can
+        // recalculate its content dimensions.
+        if (!this._floating) {
+            this._relayoutWorkspace();
+        }
     }
 
     private _updateEwmhStrut(property?: OWM.GetProperty) {
@@ -1117,6 +1133,10 @@ export class Client implements ContainerItem
         } = { window: this._window.window };
         let parentArgs = Object.assign({ window: this._parent }, args);
 
+        // Track whether the geometry actually changed so we can nudge
+        // clients that need a real ConfigureNotify (see below).
+        let sizeUnchanged = false;
+
         if (args.x !== undefined && args.y !== undefined) {
             const oldmonitor = this._monitor;
             const oldws = this.workspace;
@@ -1157,7 +1177,13 @@ export class Client implements ContainerItem
             }
         }
         if (args.width !== undefined && args.height !== undefined) {
-            if (this._floating && !this.dock) {
+            const oldWidth = this._geometry.width;
+            const oldHeight = this._geometry.height;
+
+            if (!this.dock) {
+                // Enforce size hints (min/max, aspect ratio, resize increments)
+                // for both floating and tiled windows so that e.g. terminal
+                // character-cell increments are respected.
                 this._enforceSize(args.width, args.height, keepHeight);
             } else {
                 this._geometry.width = args.width;
@@ -1166,6 +1192,8 @@ export class Client implements ContainerItem
                 this._frameGeometry.height = args.height + (this._border * 2);
             }
 
+            sizeUnchanged = (this._geometry.width === oldWidth && this._geometry.height === oldHeight);
+
             parentArgs.width = this._frameGeometry.width;
             parentArgs.height = this._frameGeometry.height;
             thisArgs.width = this._geometry.width;
@@ -1173,6 +1201,26 @@ export class Client implements ContainerItem
         }
 
         // this._log.info("configure_window thisArgs", thisArgs, "parentArgs", parentArgs);
+
+        if (sizeUnchanged && thisArgs.width !== undefined && thisArgs.height !== undefined
+            && parentArgs.width !== undefined && parentArgs.height !== undefined) {
+            // The X server suppresses ConfigureNotify when nothing changes.
+            // Some clients (e.g. wezterm after a font-size change) need a real
+            // ConfigureNotify to recalculate their internal layout.  Nudge the
+            // window by shrinking it 1 px and immediately restoring it so the
+            // server delivers two real ConfigureNotify events.
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: thisArgs.window,
+                width: thisArgs.width - 1,
+                height: thisArgs.height
+            });
+            this._owm.xcb.configure_window(this._owm.wm, {
+                window: this._parent,
+                width: parentArgs.width - 1,
+                height: parentArgs.height
+            });
+            this._owm.xcb.flush(this._owm.wm);
+        }
 
         this._owm.xcb.configure_window(this._owm.wm, thisArgs);
         this._owm.xcb.configure_window(this._owm.wm, parentArgs);
