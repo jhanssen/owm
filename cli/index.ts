@@ -19,6 +19,7 @@ function stringOption(key: string): string | undefined
 
 const knownCommands = [
     "exit",
+    "nudge",
     "message"
 ];
 

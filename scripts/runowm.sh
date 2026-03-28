@@ -26,7 +26,7 @@ while true; do
         npm run build
     fi
 
-    node ./build/src/index.js -- "$@"
+    node ./build/src/index.js -- "$@" | tee -a /tmp/owm.log 
 
     case $? in
         0)

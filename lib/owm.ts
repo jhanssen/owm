@@ -229,6 +229,19 @@ export class OWMLib {
                     this._events.emit("exit");
                 }
                 break;
+            case "nudge":
+                // Nudge the focused client (shrink 1px + restore) to force
+                // a real ConfigureNotify.  Useful when a client changes its
+                // internal rendering (e.g. wezterm font-size change) without
+                // sending any X11 resize event.
+                {
+                    const focused = this._focused;
+                    if (focused) {
+                        focused.nudgeResize();
+                    }
+                }
+                msg.close();
+                break;
             case "message":
                 this._events.emit("message", msg);
                 break;
