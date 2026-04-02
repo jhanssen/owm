@@ -1,4 +1,5 @@
 #!/bin/bash
+set -o pipefail
 
 pushd . > /dev/null
 SCRIPT_PATH="${BASH_SOURCE[0]}";
@@ -26,7 +27,7 @@ while true; do
         npm run build
     fi
 
-    node ./build/src/index.js -- "$@" | tee -a /tmp/owm.log 
+    node ./build/src/index.js -- "$@" | tee -a /tmp/owm.log
 
     case $? in
         0)
