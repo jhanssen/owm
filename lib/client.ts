@@ -58,6 +58,7 @@ export class Client implements ContainerItem
     private _explicitFloating: boolean | undefined;
     private _ignoreWorkspace: boolean;
     private _group: ClientGroup;
+    private _savedBorder: number | undefined;
 
     constructor(owm: OWMLib, parent: number, window: XCB.Window, border: number) {
         this._log = owm.logger.prefixed("Client");
@@ -327,8 +328,9 @@ export class Client implements ContainerItem
     }
 
     set fullscreen(f: boolean) {
-        if (this._fullscreen === f)
+        if (this._fullscreen === f) {
             return;
+        }
         const ws = this.workspace;
         if (ws) {
             if (f && ws.fullscreen !== undefined) {
@@ -336,9 +338,27 @@ export class Client implements ContainerItem
                 return;
             }
             this._fullscreen = f;
+            if (f) {
+                this._savedBorder = this._border;
+                this.border = 0;
+            } else {
+                if (this._savedBorder !== undefined) {
+                    this.border = this._savedBorder;
+                    this._savedBorder = undefined;
+                }
+            }
             ws.fullscreen = f ? this : undefined;
         } else {
             this._fullscreen = f;
+            if (f) {
+                this._savedBorder = this._border;
+                this.border = 0;
+            } else {
+                if (this._savedBorder !== undefined) {
+                    this.border = this._savedBorder;
+                    this._savedBorder = undefined;
+                }
+            }
         }
     }
 
@@ -1164,10 +1184,7 @@ export class Client implements ContainerItem
         }
         if (args.width !== undefined && args.height !== undefined) {
             if (!this.dock) {
-                // Enforce size hints (min/max, aspect ratio, resize increments)
-                // for both floating and tiled windows so that e.g. terminal
-                // character-cell increments are respected.
-                this._enforceSize(args.width, args.height, keepHeight);
+                this._enforceSize(args.width, args.height, keepHeight, !this._floating);
             } else {
                 this._geometry.width = args.width;
                 this._geometry.height = args.height;
@@ -1191,87 +1208,83 @@ export class Client implements ContainerItem
         this._owm.xcb.send_configure_notify(this._owm.wm, fake);
     }
 
-    private _enforceSize(width: number, height: number, keepHeight?: boolean) {
-        // respect minimum/maximum size and aspect ratio
+    private _enforceSize(width: number, height: number, keepHeight?: boolean, tiled?: boolean) {
         const normal = this._window.normalHints;
         const sizeHint = this._owm.xcb.icccm.sizeHint;
 
-        const sizes = {
-            baseWidth: 0, baseHeight: 0,
-            minWidth: 0, minHeight: 0,
-            maxWidth: 0, maxHeight: 0
-        };
+        let baseWidth = 0, baseHeight = 0;
 
-        // extract our needed info from normal hints
         if (normal.flags & sizeHint.BASE_SIZE) {
-            sizes.baseWidth = normal.base_width;
-            sizes.baseHeight = normal.base_height;
-        }
-        if (normal.flags & sizeHint.P_MIN_SIZE) {
-            sizes.minWidth = normal.min_width;
-            sizes.minHeight = normal.min_height;
-        }
-        if (normal.flags & sizeHint.P_MAX_SIZE) {
-            sizes.maxWidth = normal.max_width;
-            sizes.maxHeight = normal.max_height;
+            baseWidth = normal.base_width;
+            baseHeight = normal.base_height;
+        } else if (normal.flags & sizeHint.P_MIN_SIZE) {
+            baseWidth = normal.min_width;
+            baseHeight = normal.min_height;
         }
 
-        // keep base size for aspect ratio calculation further down
-        const baseWidth = sizes.baseWidth, baseHeight = sizes.baseHeight;
+        if (!tiled) {
+            // Floating windows: enforce min/max size and aspect ratio.
+            let minWidth = 0, minHeight = 0;
+            let maxWidth = 0, maxHeight = 0;
 
-        // use base size for min size if we don't have one
-        if (!(normal.flags & sizeHint.P_MIN_SIZE)) {
-            sizes.minWidth = sizes.baseWidth;
-            sizes.minHeight = sizes.baseHeight;
-        }
-
-        // use min size for base size if we don't have one
-        if (!(normal.flags & sizeHint.BASE_SIZE)) {
-            sizes.baseWidth = sizes.minWidth;
-            sizes.baseHeight = sizes.minHeight;
-        }
-
-        // enforce minimum and maximum size
-        if (width < sizes.minWidth)
-            width = sizes.minWidth;
-        if (sizes.maxWidth > 0 && width > sizes.maxWidth)
-            width = sizes.maxWidth;
-        if (height < sizes.minHeight)
-            height = sizes.minHeight;
-        if (sizes.maxHeight > 0 && height > sizes.maxHeight)
-            height = sizes.maxHeight;
-
-        if (normal.flags & sizeHint.P_ASPECT) {
-            let ar = (width - baseWidth) / (height - baseHeight);
-            if (normal.min_aspect_num > 0 && normal.min_aspect_den > 0 && ar < (normal.min_aspect_num / normal.min_aspect_den)) {
-                ar = normal.min_aspect_num / normal.min_aspect_den;
-            } else if (normal.max_aspect_num > 0 && normal.max_aspect_den > 0 && ar > (normal.max_aspect_num / normal.max_aspect_den)) {
-                ar = normal.max_aspect_num / normal.max_aspect_den;
+            if (normal.flags & sizeHint.P_MIN_SIZE) {
+                minWidth = normal.min_width;
+                minHeight = normal.min_height;
+            } else if (normal.flags & sizeHint.BASE_SIZE) {
+                minWidth = normal.base_width;
+                minHeight = normal.base_height;
+            }
+            if (normal.flags & sizeHint.P_MAX_SIZE) {
+                maxWidth = normal.max_width;
+                maxHeight = normal.max_height;
             }
 
-            let nw = 0, nh = 0;
-            if (keepHeight === true) {
-                nw = Math.round((height - baseHeight) * ar);
-                nh = Math.round(nw / ar);
-            } else {
-                nh = Math.round((width - baseWidth) / ar);
-                nw = Math.round(nh * ar);
+            if (width < minWidth) {
+                width = minWidth;
+            }
+            if (maxWidth > 0 && width > maxWidth) {
+                width = maxWidth;
+            }
+            if (height < minHeight) {
+                height = minHeight;
+            }
+            if (maxHeight > 0 && height > maxHeight) {
+                height = maxHeight;
             }
 
-            width = nw + baseWidth;
-            height = nh + baseHeight;
+            if (normal.flags & sizeHint.P_ASPECT) {
+                let ar = (width - baseWidth) / (height - baseHeight);
+                if (normal.min_aspect_num > 0 && normal.min_aspect_den > 0 && ar < (normal.min_aspect_num / normal.min_aspect_den)) {
+                    ar = normal.min_aspect_num / normal.min_aspect_den;
+                } else if (normal.max_aspect_num > 0 && normal.max_aspect_den > 0 && ar > (normal.max_aspect_num / normal.max_aspect_den)) {
+                    ar = normal.max_aspect_num / normal.max_aspect_den;
+                }
+
+                let nw = 0, nh = 0;
+                if (keepHeight === true) {
+                    nw = Math.round((height - baseHeight) * ar);
+                    nh = Math.round(nw / ar);
+                } else {
+                    nh = Math.round((width - baseWidth) / ar);
+                    nw = Math.round(nh * ar);
+                }
+
+                width = nw + baseWidth;
+                height = nh + baseHeight;
+            }
         }
 
+        // Resize increments apply to both tiled and floating windows.
         if (normal.flags & sizeHint.P_RESIZE_INC) {
-            if (normal.width_inc > 0 && width >= sizes.baseWidth) {
-                width -= sizes.baseWidth;
+            if (normal.width_inc > 0 && width >= baseWidth) {
+                width -= baseWidth;
                 width -= width % normal.width_inc;
-                width += sizes.baseWidth;
+                width += baseWidth;
             }
-            if (normal.height_inc > 0 && height >= sizes.baseHeight) {
-                height -= sizes.baseHeight;
+            if (normal.height_inc > 0 && height >= baseHeight) {
+                height -= baseHeight;
                 height -= height % normal.height_inc;
-                height += sizes.baseHeight;
+                height += baseHeight;
             }
         }
 
