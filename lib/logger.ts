@@ -3,16 +3,9 @@ import { format } from "util";
 
 function timestamp() {
     const d = new Date();
-    let h = d.getHours() + "";
-    let m = d.getMinutes() + "";
-    let s = d.getSeconds() + "";
-    if (h.length === 1)
-        h = "0" + h;
-    if (m.length === 1)
-        m = "0" + m;
-    if (s.length === 1)
-        s = "0" + s;
-    return `[${h}:${m}:${s}]`;
+    const pad2 = (n: number) => (n < 10 ? "0" + n : "" + n);
+    const pad3 = (n: number) => (n < 10 ? "00" + n : n < 100 ? "0" + n : "" + n);
+    return `[${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}.${pad3(d.getMilliseconds())}]`;
 }
 
 export interface Logger

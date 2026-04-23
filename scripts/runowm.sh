@@ -1,35 +1,43 @@
 #!/bin/bash
+if [ -z "${OWM_RUNOWM_STABLE:-}" ]; then
+    STABLE="/tmp/runowm.$$.sh"
+    cp -f -- "$0" "$STABLE"
+    chmod +x "$STABLE"
+    export OWM_RUNOWM_STABLE="$STABLE"
+    export OWM_RUNOWM_SOURCE="$(readlink -f -- "$0")"
+    exec "$STABLE" "$@"
+fi
+
 set -o pipefail
 
-pushd . > /dev/null
-SCRIPT_PATH="${BASH_SOURCE[0]}";
-while([ -h "${SCRIPT_PATH}" ]); do
-    cd "`dirname "${SCRIPT_PATH}"`"
-    SCRIPT_PATH="$(readlink "`basename "${SCRIPT_PATH}"`")";
+SCRIPT_PATH="${OWM_RUNOWM_SOURCE:-${BASH_SOURCE[0]}}"
+while [ -h "${SCRIPT_PATH}" ]; do
+    DIR="$(cd -- "$(dirname -- "${SCRIPT_PATH}")" && pwd)"
+    SCRIPT_PATH="$(readlink -- "${SCRIPT_PATH}")"
+    case "${SCRIPT_PATH}" in
+        /*) : ;;
+        *) SCRIPT_PATH="${DIR}/${SCRIPT_PATH}" ;;
+    esac
 done
-cd "`dirname "${SCRIPT_PATH}"`" > /dev/null
-SCRIPT_PATH="`pwd`";
-popd > /dev/null
+SCRIPT_PATH="$(cd -- "$(dirname -- "${SCRIPT_PATH}")" && pwd)"
 
-# Set default cursor for root window (X11 window managers need this)
 xsetroot -cursor_name left_ptr 2>/dev/null || true
 
 BUILD=2
 while true; do
-    cd $SCRIPT_PATH/..
+    cd "$SCRIPT_PATH/.."
     if [ "$BUILD" = 1 ]; then
         npm install
-        cd native
-        npm run build
-        cd ..
+        (cd native && npm run build)
     fi
     if [ "$BUILD" -lt 3 ]; then
         npm run build
     fi
 
-    node ./build/src/index.js -- "$@" | tee -a /tmp/owm.log
+    node ./build/src/index.js -- "$@" 2>&1 | tee -a /tmp/owm.log
 
-    case $? in
+    RC=${PIPESTATUS[0]}
+    case $RC in
         0)
             exit 0
             ;;
@@ -43,7 +51,7 @@ while true; do
             BUILD=3
             ;;
         *)
-            echo "Bad exit code $?"
+            echo "Bad exit code $RC"
             exit 1
             ;;
     esac

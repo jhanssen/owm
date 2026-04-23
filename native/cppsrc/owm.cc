@@ -2,32 +2,34 @@
 #include <stdlib.h>
 #include <xcb/xcb_errors.h>
 
-namespace owm {
+namespace owm
+{
 
 // inner loop lifted from https://stackoverflow.com/questions/4059775/convert-iso-8859-1-strings-to-utf-8-in-c-c
-std::string latin1toutf8(const std::string& input)
+std::string latin1toutf8(const std::string &input)
 {
     std::string output;
     output.resize(input.size() * 2);
 
-    const unsigned char *in = reinterpret_cast<const unsigned char*>(&input[0]);
-    unsigned char *out = reinterpret_cast<unsigned char*>(&output[0]);
+    const unsigned char *in = reinterpret_cast<const unsigned char *>(&input[0]);
+    unsigned char *out = reinterpret_cast<unsigned char *>(&output[0]);
     while (*in) {
-        if (*in<128) *out++=*in++;
-        else *out++=0xc2+(*in>0xbf), *out++=(*in++&0x3f)+0x80;
+        if (*in < 128)
+            *out++ = *in++;
+        else
+            *out++ = 0xc2 + (*in > 0xbf), *out++ = (*in++ & 0x3f) + 0x80;
     }
 
-    output.resize(out - reinterpret_cast<unsigned char*>(&output[0]));
+    output.resize(out - reinterpret_cast<unsigned char *>(&output[0]));
     return output;
 }
 
-void printException(const char *func, const Napi::Error& e)
+void printException(const char *func, const Napi::Error &e)
 {
-    fprintf(stderr, "%s: %s\n%s\n",
-            func, e.what(), e.Get("stack").As<Napi::String>().Utf8Value().c_str());
+    fprintf(stderr, "%s: %s\n%s\n", func, e.what(), e.Get("stack").As<Napi::String>().Utf8Value().c_str());
 }
 
-static Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event)
+static Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -48,7 +50,7 @@ static Napi::Value makeButtonPress(napi_env env, xcb_button_press_event_t* event
 }
 
 // appears to be the same structure as xcb_button_press_event_t?
-static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* event)
+static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -68,7 +70,7 @@ static Napi::Value makeMotionNotify(napi_env env, xcb_motion_notify_event_t* eve
     return obj;
 }
 
-static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event, const std::shared_ptr<WM>& wm)
+static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t *event, const std::shared_ptr<WM> &wm)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -97,7 +99,7 @@ static Napi::Value makeKeyPress(napi_env env, xcb_key_press_event_t* event, cons
 }
 
 // appears to be the same structure as xcb_button_press_event_t?
-static Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t* event)
+static Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -118,7 +120,7 @@ static Napi::Value makeEnterNotify(napi_env env, xcb_enter_notify_event_t* event
     return obj;
 }
 
-static Napi::Value makeFocusIn(napi_env env, xcb_focus_in_event_t* event)
+static Napi::Value makeFocusIn(napi_env env, xcb_focus_in_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -130,7 +132,7 @@ static Napi::Value makeFocusIn(napi_env env, xcb_focus_in_event_t* event)
     return obj;
 }
 
-static Napi::Value makeMapRequest(napi_env env, xcb_map_request_event_t* event)
+static Napi::Value makeMapRequest(napi_env env, xcb_map_request_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -141,7 +143,7 @@ static Napi::Value makeMapRequest(napi_env env, xcb_map_request_event_t* event)
     return obj;
 }
 
-static Napi::Value makeDestroyNotify(napi_env env, xcb_destroy_notify_event_t* event)
+static Napi::Value makeDestroyNotify(napi_env env, xcb_destroy_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -152,7 +154,7 @@ static Napi::Value makeDestroyNotify(napi_env env, xcb_destroy_notify_event_t* e
     return obj;
 }
 
-static Napi::Value makeUnmapNotify(napi_env env, xcb_unmap_notify_event_t* event)
+static Napi::Value makeUnmapNotify(napi_env env, xcb_unmap_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -164,7 +166,7 @@ static Napi::Value makeUnmapNotify(napi_env env, xcb_unmap_notify_event_t* event
     return obj;
 }
 
-static Napi::Value makeMapNotify(napi_env env, xcb_map_notify_event_t* event)
+static Napi::Value makeMapNotify(napi_env env, xcb_map_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -176,25 +178,23 @@ static Napi::Value makeMapNotify(napi_env env, xcb_map_notify_event_t* event)
     return obj;
 }
 
-static Napi::Value makeKeymapNotify(napi_env env, xcb_keymap_notify_event_t* event)
+static Napi::Value makeKeymapNotify(napi_env env, xcb_keymap_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
     obj.Set("type", event->response_type & ~0x80);
 
-    uint8_t* ptr = new uint8_t[31];
+    uint8_t *ptr = new uint8_t[31];
     memcpy(ptr, event->keys, 31);
 
-    auto array = Napi::ArrayBuffer::New(env, ptr, 31, [](napi_env, void* p) {
-        delete[] reinterpret_cast<uint8_t*>(p);
-    });
+    auto array = Napi::ArrayBuffer::New(env, ptr, 31, [](napi_env, void *p) { delete[] reinterpret_cast<uint8_t *>(p); });
 
     obj.Set("keys", array);
 
     return obj;
 }
 
-static Napi::Value makeExpose(napi_env env, xcb_expose_event_t* event)
+static Napi::Value makeExpose(napi_env env, xcb_expose_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -209,7 +209,7 @@ static Napi::Value makeExpose(napi_env env, xcb_expose_event_t* event)
     return obj;
 }
 
-static Napi::Value makeReparentNotify(napi_env env, xcb_reparent_notify_event_t* event)
+static Napi::Value makeReparentNotify(napi_env env, xcb_reparent_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -224,7 +224,7 @@ static Napi::Value makeReparentNotify(napi_env env, xcb_reparent_notify_event_t*
     return obj;
 }
 
-static Napi::Value makeConfigureNotify(napi_env env, xcb_configure_notify_event_t* event)
+static Napi::Value makeConfigureNotify(napi_env env, xcb_configure_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -242,7 +242,7 @@ static Napi::Value makeConfigureNotify(napi_env env, xcb_configure_notify_event_
     return obj;
 }
 
-static Napi::Value makeConfigureRequest(napi_env env, xcb_configure_request_event_t* event)
+static Napi::Value makeConfigureRequest(napi_env env, xcb_configure_request_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -261,7 +261,7 @@ static Napi::Value makeConfigureRequest(napi_env env, xcb_configure_request_even
     return obj;
 }
 
-static Napi::Value makeGravityNotify(napi_env env, xcb_gravity_notify_event_t* event)
+static Napi::Value makeGravityNotify(napi_env env, xcb_gravity_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -274,7 +274,7 @@ static Napi::Value makeGravityNotify(napi_env env, xcb_gravity_notify_event_t* e
     return obj;
 }
 
-static Napi::Value makeResizeRequest(napi_env env, xcb_resize_request_event_t* event)
+static Napi::Value makeResizeRequest(napi_env env, xcb_resize_request_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -286,7 +286,7 @@ static Napi::Value makeResizeRequest(napi_env env, xcb_resize_request_event_t* e
     return obj;
 }
 
-static Napi::Value makeCirculateNotify(napi_env env, xcb_circulate_notify_event_t* event)
+static Napi::Value makeCirculateNotify(napi_env env, xcb_circulate_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -298,7 +298,7 @@ static Napi::Value makeCirculateNotify(napi_env env, xcb_circulate_notify_event_
     return obj;
 }
 
-static Napi::Value makePropertyNotify(napi_env env, xcb_property_notify_event_t* event)
+static Napi::Value makePropertyNotify(napi_env env, xcb_property_notify_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -311,7 +311,7 @@ static Napi::Value makePropertyNotify(napi_env env, xcb_property_notify_event_t*
     return obj;
 }
 
-static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* event)
+static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t *event)
 {
     Napi::Object obj = Napi::Object::New(env);
 
@@ -320,24 +320,21 @@ static Napi::Value makeClientMessage(napi_env env, xcb_client_message_event_t* e
     obj.Set("format", event->format);
     obj.Set("message_type", event->type);
 
-    uint8_t* ptr = new uint8_t[20];
+    uint8_t *ptr = new uint8_t[20];
     memcpy(ptr, event->data.data8, 20);
 
-    auto array = Napi::ArrayBuffer::New(env, ptr, 20, [](napi_env, void* p) {
-        delete[] reinterpret_cast<uint8_t*>(p);
-    });
+    auto array = Napi::ArrayBuffer::New(env, ptr, 20, [](napi_env, void *p) { delete[] reinterpret_cast<uint8_t *>(p); });
 
     obj.Set("data", array);
 
     return obj;
 }
 
-void handleXcb(const std::shared_ptr<WM>& wm, const Napi::FunctionReference& fn, xcb_generic_event_t* xcb)
+void handleXcb(const std::shared_ptr<WM> &wm, const Napi::FunctionReference &fn, xcb_generic_event_t *xcb)
 {
-    struct Data
-    {
+    struct Data {
         std::shared_ptr<WM> wm;
-        xcb_generic_event_t* event;
+        xcb_generic_event_t *event;
     };
 
     Napi::Value value;
@@ -352,66 +349,85 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::FunctionReference& fn,
     switch (type) {
     case XCB_BUTTON_PRESS:
     case XCB_BUTTON_RELEASE: {
-        value = makeButtonPress(env, reinterpret_cast<xcb_button_press_event_t*>(xcb));
-        break; }
+        value = makeButtonPress(env, reinterpret_cast<xcb_button_press_event_t *>(xcb));
+        break;
+    }
     case XCB_MOTION_NOTIFY: {
-        value = makeMotionNotify(env, reinterpret_cast<xcb_motion_notify_event_t*>(xcb));
-        break; }
+        value = makeMotionNotify(env, reinterpret_cast<xcb_motion_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_KEY_PRESS:
     case XCB_KEY_RELEASE: {
-        value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t*>(xcb), wm);
-        break; }
+        value = makeKeyPress(env, reinterpret_cast<xcb_key_press_event_t *>(xcb), wm);
+        break;
+    }
     case XCB_ENTER_NOTIFY:
     case XCB_LEAVE_NOTIFY: {
-        value = makeEnterNotify(env, reinterpret_cast<xcb_enter_notify_event_t*>(xcb));
-        break; }
+        value = makeEnterNotify(env, reinterpret_cast<xcb_enter_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_FOCUS_IN:
     case XCB_FOCUS_OUT: {
-        value = makeFocusIn(env, reinterpret_cast<xcb_focus_in_event_t*>(xcb));
-        break; }
+        value = makeFocusIn(env, reinterpret_cast<xcb_focus_in_event_t *>(xcb));
+        break;
+    }
     case XCB_KEYMAP_NOTIFY: {
-        value = makeKeymapNotify(env, reinterpret_cast<xcb_keymap_notify_event_t*>(xcb));
-        break; }
+        value = makeKeymapNotify(env, reinterpret_cast<xcb_keymap_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_EXPOSE: {
-        value = makeExpose(env, reinterpret_cast<xcb_expose_event_t*>(xcb));
-        break; }
+        value = makeExpose(env, reinterpret_cast<xcb_expose_event_t *>(xcb));
+        break;
+    }
     case XCB_UNMAP_NOTIFY: {
-        value = makeUnmapNotify(env, reinterpret_cast<xcb_unmap_notify_event_t*>(xcb));
-        break; }
+        value = makeUnmapNotify(env, reinterpret_cast<xcb_unmap_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_DESTROY_NOTIFY: {
-        value = makeDestroyNotify(env, reinterpret_cast<xcb_destroy_notify_event_t*>(xcb));
-        break; }
+        value = makeDestroyNotify(env, reinterpret_cast<xcb_destroy_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_MAP_REQUEST: {
-        value = makeMapRequest(env, reinterpret_cast<xcb_map_request_event_t*>(xcb));
-        break; }
+        value = makeMapRequest(env, reinterpret_cast<xcb_map_request_event_t *>(xcb));
+        break;
+    }
     case XCB_MAP_NOTIFY: {
-        value = makeMapNotify(env, reinterpret_cast<xcb_map_notify_event_t*>(xcb));
-        break; }
+        value = makeMapNotify(env, reinterpret_cast<xcb_map_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_REPARENT_NOTIFY: {
-        value = makeReparentNotify(env, reinterpret_cast<xcb_reparent_notify_event_t*>(xcb));
-        break; }
+        value = makeReparentNotify(env, reinterpret_cast<xcb_reparent_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_CONFIGURE_NOTIFY: {
-        value = makeConfigureNotify(env, reinterpret_cast<xcb_configure_notify_event_t*>(xcb));
-        break; }
+        value = makeConfigureNotify(env, reinterpret_cast<xcb_configure_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_CONFIGURE_REQUEST: {
-        value = makeConfigureRequest(env, reinterpret_cast<xcb_configure_request_event_t*>(xcb));
-        break; }
+        value = makeConfigureRequest(env, reinterpret_cast<xcb_configure_request_event_t *>(xcb));
+        break;
+    }
     case XCB_GRAVITY_NOTIFY: {
-        value = makeGravityNotify(env, reinterpret_cast<xcb_gravity_notify_event_t*>(xcb));
-        break; }
+        value = makeGravityNotify(env, reinterpret_cast<xcb_gravity_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_RESIZE_REQUEST: {
-        value = makeResizeRequest(env, reinterpret_cast<xcb_resize_request_event_t*>(xcb));
-        break; }
+        value = makeResizeRequest(env, reinterpret_cast<xcb_resize_request_event_t *>(xcb));
+        break;
+    }
     case XCB_CIRCULATE_NOTIFY:
     case XCB_CIRCULATE_REQUEST: {
-        value = makeCirculateNotify(env, reinterpret_cast<xcb_circulate_notify_event_t*>(xcb));
-        break; }
+        value = makeCirculateNotify(env, reinterpret_cast<xcb_circulate_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_PROPERTY_NOTIFY: {
-        value = makePropertyNotify(env, reinterpret_cast<xcb_property_notify_event_t*>(xcb));
-        break; }
+        value = makePropertyNotify(env, reinterpret_cast<xcb_property_notify_event_t *>(xcb));
+        break;
+    }
     case XCB_CLIENT_MESSAGE: {
-        value = makeClientMessage(env, reinterpret_cast<xcb_client_message_event_t*>(xcb));
-        break; }
+        value = makeClientMessage(env, reinterpret_cast<xcb_client_message_event_t *>(xcb));
+        break;
+    }
     case XCB_CREATE_NOTIFY:
         // we don't care about these
         log = false;
@@ -435,27 +451,23 @@ void handleXcb(const std::shared_ptr<WM>& wm, const Napi::FunctionReference& fn,
     try {
         napi_value nvalue = obj;
         fn.Call({ nvalue });
-    } catch (const Napi::Error& e) {
+    } catch (const Napi::Error &e) {
         printException(__FUNCTION__, e);
     }
 }
 
-void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::FunctionReference& fn, _xkb_event* event)
+void handleXkb(std::shared_ptr<owm::WM> &wm, const Napi::FunctionReference &fn, _xkb_event *event)
 {
     if (event->any.deviceID == wm->xkb.device) {
         switch (event->any.xkbType) {
         case XCB_XKB_STATE_NOTIFY: {
-            auto state = reinterpret_cast<xcb_xkb_state_notify_event_t*>(event);
-            xkb_state_update_mask(wm->xkb.state,
-                                  state->baseMods,
-                                  state->latchedMods,
-                                  state->lockedMods,
-                                  state->baseGroup,
-                                  state->latchedGroup,
-                                  state->lockedGroup);
-            break; }
+            auto state = reinterpret_cast<xcb_xkb_state_notify_event_t *>(event);
+            xkb_state_update_mask(wm->xkb.state, state->baseMods, state->latchedMods, state->lockedMods, state->baseGroup,
+                                  state->latchedGroup, state->lockedGroup);
+            break;
+        }
         case XCB_XKB_MAP_NOTIFY: {
-            //auto map = reinterpret_cast<xcb_xkb_map_notify_event_t*>(event);
+            // auto map = reinterpret_cast<xcb_xkb_map_notify_event_t*>(event);
 
             auto env = fn.Env();
             Napi::HandleScope scope(env);
@@ -471,18 +483,19 @@ void handleXkb(std::shared_ptr<owm::WM>& wm, const Napi::FunctionReference& fn, 
             try {
                 napi_value nvalue = obj;
                 fn.Call({ nvalue });
-            } catch (const Napi::Error& e) {
+            } catch (const Napi::Error &e) {
                 printException(__FUNCTION__, e);
             }
 
-            break; }
+            break;
+        }
         }
     }
 
     free(event);
 }
 
-void queryScreens(std::shared_ptr<WM>& wm)
+void queryScreens(std::shared_ptr<WM> &wm)
 {
     wm->screens.clear();
 
@@ -504,7 +517,7 @@ void queryScreens(std::shared_ptr<WM>& wm)
         auto nameCookie = xcb_get_atom_name_unchecked(wm->conn, iter.data->name);
         auto nameReply = xcb_get_atom_name_reply(wm->conn, nameCookie, nullptr);
         if (nameReply) {
-            const char* sname = xcb_get_atom_name_name(nameReply);
+            const char *sname = xcb_get_atom_name_name(nameReply);
             size_t slen = xcb_get_atom_name_name_length(nameReply);
 
             name = std::string(sname, slen);
@@ -526,7 +539,7 @@ void queryScreens(std::shared_ptr<WM>& wm)
                 free(outputReply);
                 continue;
             }
-            const char* oname = reinterpret_cast<const char*>(xcb_randr_get_output_info_name(outputReply));
+            const char *oname = reinterpret_cast<const char *>(xcb_randr_get_output_info_name(outputReply));
             const auto olen = xcb_randr_get_output_info_name_length(outputReply);
             std::string outputName;
             if (oname && olen) {
@@ -538,13 +551,14 @@ void queryScreens(std::shared_ptr<WM>& wm)
             free(outputReply);
         }
 
-        wm->screens.emplace_back(iter.data->x, iter.data->y, iter.data->width, iter.data->height, std::move(name), std::move(outputNames), iter.data->primary != 0);
+        wm->screens.emplace_back(iter.data->x, iter.data->y, iter.data->width, iter.data->height, std::move(name), std::move(outputNames),
+                                 iter.data->primary != 0);
     }
 
     free(reply);
 }
 
-Napi::Value makeScreens(napi_env env, const std::shared_ptr<WM>&wm)
+Napi::Value makeScreens(napi_env env, const std::shared_ptr<WM> &wm)
 {
     std::vector<owm::Screen> screens = wm->screens;
     const xcb_window_t root = wm->defaultScreen->root;
@@ -553,7 +567,7 @@ Napi::Value makeScreens(napi_env env, const std::shared_ptr<WM>&wm)
     scr.Set("root", root);
     Napi::Array arr = Napi::Array::New(env, screens.size());
     for (size_t i = 0; i < screens.size(); ++i) {
-        const auto& screen = screens[i];
+        const auto &screen = screens[i];
         Napi::Object s = Napi::Object::New(env);
         s.Set("x", screen.x);
         s.Set("y", screen.y);
@@ -574,22 +588,22 @@ Napi::Value makeScreens(napi_env env, const std::shared_ptr<WM>&wm)
     return scr;
 }
 
-static Napi::Object initAtoms(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initAtoms(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object atoms = Napi::Object::New(env);
 
-    for (const auto& a : wm->atoms) {
+    for (const auto &a : wm->atoms) {
         atoms.Set(a.first, Napi::Number::New(env, a.second));
     }
 
     return atoms;
 }
 
-Napi::Value makeWindow(napi_env env, const Window& win)
+Napi::Value makeWindow(napi_env env, const Window &win)
 {
     Napi::Object nwin = Napi::Object::New(env);
 
-    auto makeAtomArray = [&env](const std::vector<xcb_atom_t>& atoms) -> Napi::Array {
+    auto makeAtomArray = [&env](const std::vector<xcb_atom_t> &atoms) -> Napi::Array {
         const size_t sz = atoms.size();
         Napi::Array arr = Napi::Array::New(env, sz);
         for (size_t i = 0; i < sz; ++i) {
@@ -692,7 +706,7 @@ Napi::Value makeWindow(napi_env env, const Window& win)
     return nwin;
 }
 
-static Napi::Object initEvents(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initEvents(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object events = Napi::Object::New(env);
 
@@ -733,7 +747,7 @@ static Napi::Object initEvents(napi_env env, const std::shared_ptr<WM>& wm)
     return events;
 }
 
-static Napi::Object initEventMasks(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initEventMasks(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object masks = Napi::Object::New(env);
 
@@ -767,7 +781,7 @@ static Napi::Object initEventMasks(napi_env env, const std::shared_ptr<WM>& wm)
     return masks;
 }
 
-static Napi::Object initPropModes(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initPropModes(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object modes = Napi::Object::New(env);
 
@@ -778,7 +792,7 @@ static Napi::Object initPropModes(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
-static Napi::Object initPropStates(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initPropStates(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object states = Napi::Object::New(env);
 
@@ -788,7 +802,7 @@ static Napi::Object initPropStates(napi_env env, const std::shared_ptr<WM>& wm)
     return states;
 }
 
-static Napi::Object initInputFocus(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initInputFocus(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object focus = Napi::Object::New(env);
 
@@ -800,7 +814,7 @@ static Napi::Object initInputFocus(napi_env env, const std::shared_ptr<WM>& wm)
     return focus;
 }
 
-static Napi::Object initModMasks(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initModMasks(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object masks = Napi::Object::New(env);
 
@@ -817,7 +831,7 @@ static Napi::Object initModMasks(napi_env env, const std::shared_ptr<WM>& wm)
     return masks;
 }
 
-static Napi::Object initKeyButtonMasks(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initKeyButtonMasks(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object masks = Napi::Object::New(env);
 
@@ -838,7 +852,7 @@ static Napi::Object initKeyButtonMasks(napi_env env, const std::shared_ptr<WM>& 
     return masks;
 }
 
-static Napi::Object initButtonMasks(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initButtonMasks(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object masks = Napi::Object::New(env);
 
@@ -852,7 +866,7 @@ static Napi::Object initButtonMasks(napi_env env, const std::shared_ptr<WM>& wm)
     return masks;
 }
 
-static Napi::Object initGrabModes(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initGrabModes(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object modes = Napi::Object::New(env);
 
@@ -862,7 +876,7 @@ static Napi::Object initGrabModes(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
-static Napi::Object initGrabStatus(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initGrabStatus(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object status = Napi::Object::New(env);
 
@@ -875,7 +889,7 @@ static Napi::Object initGrabStatus(napi_env env, const std::shared_ptr<WM>& wm)
     return status;
 }
 
-static Napi::Object initAllows(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initAllows(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object allows = Napi::Object::New(env);
 
@@ -891,7 +905,7 @@ static Napi::Object initAllows(napi_env env, const std::shared_ptr<WM>& wm)
     return allows;
 }
 
-static Napi::Object initConfigWindows(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initConfigWindows(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object cfgs = Napi::Object::New(env);
 
@@ -906,7 +920,7 @@ static Napi::Object initConfigWindows(napi_env env, const std::shared_ptr<WM>& w
     return cfgs;
 }
 
-static Napi::Object initStackModes(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initStackModes(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object modes = Napi::Object::New(env);
 
@@ -919,7 +933,7 @@ static Napi::Object initStackModes(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
-static Napi::Object initSetModes(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initSetModes(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object modes = Napi::Object::New(env);
 
@@ -929,7 +943,7 @@ static Napi::Object initSetModes(napi_env env, const std::shared_ptr<WM>& wm)
     return modes;
 }
 
-static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object icccm = Napi::Object::New(env);
 
@@ -966,7 +980,7 @@ static Napi::Object initIcccm(napi_env env, const std::shared_ptr<WM>& wm)
     return icccm;
 }
 
-static Napi::Object initEwmh(napi_env env, const std::shared_ptr<WM>& wm)
+static Napi::Object initEwmh(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object ewmh = Napi::Object::New(env);
 
@@ -1019,1933 +1033,1923 @@ static Napi::Object initEwmh(napi_env env, const std::shared_ptr<WM>& wm)
     return ewmh;
 }
 
-Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
+Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object xcb = Napi::Object::New(env);
 
-    xcb.Set("configure_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "configure_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t window;
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "configure_window requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        uint32_t values[7];
-        uint16_t mask = 0;
-        uint32_t off = 0;
-
-        if (arg.Has("x")) {
-            mask |= XCB_CONFIG_WINDOW_X;
-            values[off++] = arg.Get("x").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("y")) {
-            mask |= XCB_CONFIG_WINDOW_Y;
-            values[off++] = arg.Get("y").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("width")) {
-            mask |= XCB_CONFIG_WINDOW_WIDTH;
-            values[off++] = arg.Get("width").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("height")) {
-            mask |= XCB_CONFIG_WINDOW_HEIGHT;
-            values[off++] = arg.Get("height").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("border_width")) {
-            mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
-            values[off++] = arg.Get("border_width").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("sibling")) {
-            mask |= XCB_CONFIG_WINDOW_SIBLING;
-            values[off++] = arg.Get("sibling").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("stack_mode")) {
-            mask |= XCB_CONFIG_WINDOW_STACK_MODE;
-            values[off++] = arg.Get("stack_mode").As<Napi::Number>().Uint32Value();
-        }
-
-        if (off) {
-            xcb_configure_window(wm->conn, window, mask, values);
-        }
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("change_window_attributes", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "change_window_attributes requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t window;
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "change_window_attributes requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        uint32_t values[15];
-        uint16_t mask = 0;
-        uint32_t off = 0;
-
-        if (arg.Has("back_pixmap")) {
-            mask |= XCB_CW_BACK_PIXMAP;
-            values[off++] = arg.Get("back_pixmap").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("back_pixel")) {
-            mask |= XCB_CW_BACK_PIXEL;
-            values[off++] = arg.Get("back_pixel").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("border_pixmap")) {
-            mask |= XCB_CW_BORDER_PIXMAP;
-            values[off++] = arg.Get("border_pixmap").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("border_pixel")) {
-            mask |= XCB_CW_BORDER_PIXEL;
-            values[off++] = arg.Get("border_pixel").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("bit_gravity")) {
-            mask |= XCB_CW_BIT_GRAVITY;
-            values[off++] = arg.Get("bit_gravity").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("win_gravity")) {
-            mask |= XCB_CW_WIN_GRAVITY;
-            values[off++] = arg.Get("win_gravity").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("backing_store")) {
-            mask |= XCB_CW_BACKING_STORE;
-            values[off++] = arg.Get("backing_store").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("backing_planes")) {
-            mask |= XCB_CW_BACKING_PLANES;
-            values[off++] = arg.Get("backing_planes").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("backing_pixel")) {
-            mask |= XCB_CW_BACKING_PIXEL;
-            values[off++] = arg.Get("backing_pixel").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("override_redirect")) {
-            mask |= XCB_CW_OVERRIDE_REDIRECT;
-            values[off++] = arg.Get("override_redirect").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("save_under")) {
-            mask |= XCB_CW_SAVE_UNDER;
-            values[off++] = arg.Get("save_under").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("event_mask")) {
-            mask |= XCB_CW_EVENT_MASK;
-            values[off++] = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("dont_propagate")) {
-            mask |= XCB_CW_DONT_PROPAGATE;
-            values[off++] = arg.Get("dont_propagate").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("colormap")) {
-            mask |= XCB_CW_COLORMAP;
-            values[off++] = arg.Get("colormap").As<Napi::Number>().Uint32Value();
-        }
-        if (arg.Has("cursor")) {
-            mask |= XCB_CW_CURSOR;
-            values[off++] = arg.Get("cursor").As<Napi::Number>().Uint32Value();
-        }
-
-        if (off) {
-            xcb_change_window_attributes(wm->conn, window, mask, values);
-        }
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("intern_atom", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || (!info[1].IsArray() && !info[1].IsString())) {
-            throw Napi::TypeError::New(env, "intern_atom requires two arguments");
-        }
-        bool onlyIfExists = true;
-        if (info.Length() < 3 && info[2].IsBoolean()) {
-            onlyIfExists = info[2].As<Napi::Boolean>().Value();
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        std::vector<xcb_intern_atom_cookie_t> cookies;
-        if (info[1].IsString()) {
-            const std::string str = info[1].As<Napi::String>();
-            cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
-        } else if (info[1].IsArray()) {
-            const auto array = info[1].As<Napi::Array>();
-            cookies.reserve(array.Length());
-            for (size_t i = 0; i < array.Length(); ++i) {
-                const std::string str = array[i].As<Napi::String>();
-                cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
-            }
-        }
-
-        Napi::Value val;
-        if (cookies.size() == 1) {
-            xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[0], nullptr);
-            val = Napi::Number::New(env, reply->atom);
-            free(reply);
-        } else {
-            const size_t sz = cookies.size();
-            Napi::Array ret = Napi::Array::New(env, sz);
-            for (size_t i = 0; i < sz; ++i) {
-                xcb_intern_atom_reply_t* reply = xcb_intern_atom_reply(wm->conn, cookies[i], nullptr);
-                ret.Set(i, Napi::Number::New(env, reply->atom));
-                free(reply);
-            }
-            val = ret;
-        }
-        return val;
-    }));
-
-    xcb.Set("create_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "create_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        int32_t x = 0, y = 0;
-        uint32_t width, height;
-
-        if (!arg.Has("width")) {
-            throw Napi::TypeError::New(env, "create_window needs a width");
-        }
-        width = arg.Get("width").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("height")) {
-            throw Napi::TypeError::New(env, "create_window needs a height");
-        }
-        height = arg.Get("height").As<Napi::Number>().Uint32Value();
-
-        uint32_t parent;
-        if (!arg.Has("parent")) {
-            throw Napi::TypeError::New(env, "create_window requires a parent");
-        }
-        parent = arg.Get("parent").As<Napi::Number>().Uint32Value();
-
-        if (arg.Has("x")) {
-            x = arg.Get("x").As<Napi::Number>().Int32Value();
-        }
-        if (arg.Has("y")) {
-            y = arg.Get("y").As<Napi::Number>().Int32Value();
-        }
-
-        auto win = xcb_generate_id(wm->conn);
-        xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, win, parent, x, y, width, height, 0,
-                          XCB_WINDOW_CLASS_INPUT_OUTPUT, wm->defaultScreen->root_visual, 0, nullptr);
-
-        return Napi::Number::New(env, win);
-    }));
-
-    xcb.Set("create_pixmap", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "create_pixmap requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t width, height;
-
-        if (!arg.Has("width")) {
-            throw Napi::TypeError::New(env, "create_pixmap needs a width");
-        }
-        width = arg.Get("width").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("height")) {
-            throw Napi::TypeError::New(env, "create_pixmap needs a height");
-        }
-        height = arg.Get("height").As<Napi::Number>().Uint32Value();
-
-        auto screen = wm->defaultScreen;
-
-        auto pm = xcb_generate_id(wm->conn);
-        xcb_create_pixmap(wm->conn, screen->root_depth, pm, screen->root, width, height);
-
-        return Napi::Number::New(env, pm);
-    }));
-
-    xcb.Set("copy_area", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "copy_area requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t src_d, dst_d, gc;
-        int32_t src_x = 0, src_y = 0, dst_x = 0, dst_y = 0;
-        uint32_t width, height;
-
-        if (!arg.Has("src_d")) {
-            throw Napi::TypeError::New(env, "copy_area requires a src_d");
-        }
-        src_d = arg.Get("src_d").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("dst_d")) {
-            throw Napi::TypeError::New(env, "copy_area requires a dst_d");
-        }
-        dst_d = arg.Get("dst_d").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("gc")) {
-            throw Napi::TypeError::New(env, "copy_area requires a gc");
-        }
-        gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
-
-        if (arg.Has("src_x")) {
-            src_x = arg.Get("src_x").As<Napi::Number>().Int32Value();
-        }
-
-        if (arg.Has("src_y")) {
-            src_y = arg.Get("src_y").As<Napi::Number>().Int32Value();
-        }
-
-        if (arg.Has("dst_x")) {
-            dst_x = arg.Get("dst_x").As<Napi::Number>().Int32Value();
-        }
-
-        if (arg.Has("dst_y")) {
-            dst_y = arg.Get("dst_y").As<Napi::Number>().Int32Value();
-        }
-
-        if (!arg.Has("width")) {
-            throw Napi::TypeError::New(env, "copy_area requires a width");
-        }
-        width = arg.Get("width").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("height")) {
-            throw Napi::TypeError::New(env, "copy_area requires a height");
-        }
-        height = arg.Get("height").As<Napi::Number>().Uint32Value();
-
-        xcb_copy_area(wm->conn, src_d, dst_d, gc, src_x, src_y, dst_x, dst_y, width, height);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("flush", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "flush requires one arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        xcb_flush(wm->conn);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("send_client_message", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "send_client_message requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        xcb_client_message_event_t event;
-        memset(&event, 0, sizeof(event));
-        event.response_type = XCB_CLIENT_MESSAGE;
-        event.format = 32;
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "send_client_message requires a window");
-        }
-        event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("type")) {
-            throw Napi::TypeError::New(env, "retype_type requires a type");
-        }
-        event.type = arg.Get("type").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("data")) {
-            throw Napi::TypeError::New(env, "send_client_message requires a data");
-        }
-
-        size_t size;
-        size_t offset;
-
-        const auto ndata = arg.Get("data");
-        Napi::ArrayBuffer data;
-        if (ndata.IsArrayBuffer()) {
-            data = ndata.As<Napi::ArrayBuffer>();
-            size = data.ByteLength();
-            offset = 0;
-        } else if (ndata.IsTypedArray()) {
-            const auto tdata = ndata.As<Napi::TypedArray>();
-            size = tdata.ByteLength();
-            offset = tdata.ByteOffset();
-            data = tdata.ArrayBuffer();
-        } else {
-            throw Napi::TypeError::New(env, "send_client_message data must be an arraybuffer or typedarray");
-        }
-
-        if (size % 4) {
-            throw Napi::TypeError::New(env, "send_client_message data must be divisible by 4");
-        }
-        memcpy(&event.data.data8, reinterpret_cast<uint8_t*>(data.Data()) + offset, size);
-
-        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                       reinterpret_cast<char*>(&event));
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("send_expose", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "send_expose requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        xcb_expose_event_t event;
-        memset(&event, 0, sizeof(event));
-        event.response_type = XCB_EXPOSE;
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "send_expose requires a window");
-        }
-        event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (arg.Has("x")) {
-            event.x = arg.Get("x").As<Napi::Number>().Uint32Value();
-        }
-
-        if (arg.Has("y")) {
-            event.y = arg.Get("y").As<Napi::Number>().Uint32Value();
-        }
-
-        if (!arg.Has("width")) {
-            throw Napi::TypeError::New(env, "send_expose requires a width");
-        }
-        event.width = arg.Get("width").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("height")) {
-            throw Napi::TypeError::New(env, "send_expose requires a height");
-        }
-        event.height = arg.Get("height").As<Napi::Number>().Uint32Value();
-
-        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                       reinterpret_cast<char*>(&event));
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("send_configure_notify", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "send_configure_notify requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        xcb_configure_notify_event_t event;
-        memset(&event, 0, sizeof(event));
-        event.response_type = XCB_CONFIGURE_NOTIFY;
-        event.above_sibling = XCB_NONE;
-        event.override_redirect = false;
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "send_configure_notify requires a window");
-        }
-        event.event = event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("x")) {
-            throw Napi::TypeError::New(env, "send_configure_notify requires a x");
-        }
-        event.x = arg.Get("x").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("y")) {
-            throw Napi::TypeError::New(env, "send_configure_notify requires a y");
-        }
-        event.y = arg.Get("y").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("width")) {
-            throw Napi::TypeError::New(env, "send_configure_notify requires a width");
-        }
-        event.width = arg.Get("width").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("height")) {
-            throw Napi::TypeError::New(env, "send_configure_notify requires a height");
-        }
-        event.height = arg.Get("height").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("border_width")) {
-            throw Napi::TypeError::New(env, "send_configure_notify requires a border_width");
-        }
-        event.border_width = arg.Get("border_width").As<Napi::Number>().Uint32Value();
-
-        xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                       reinterpret_cast<char*>(&event));
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("get_atom_name", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "get_atom_name requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        const uint32_t atom = info[1].As<Napi::Number>().Uint32Value();
-
-        auto cookie = xcb_get_atom_name(wm->conn, atom);
-        xcb_generic_error_t* err = nullptr;
-        auto reply = xcb_get_atom_name_reply(wm->conn, cookie, &err);
-        if (!reply) {
-            if (err) {
-                char buff[2048];
-                xcb_errors_context_t* errctx;
-                xcb_errors_context_new(wm->conn, &errctx);
-                const char* major = xcb_errors_get_name_for_major_code(errctx, err->major_code);
-                const char* minor = xcb_errors_get_name_for_minor_code(errctx, err->major_code, err->minor_code);
-                const char* ext = nullptr;
-                const char* error = xcb_errors_get_name_for_error(errctx, err->error_code, &ext);
-
-                snprintf(buff, std::size(buff), "get_atom_name no reply: '%s:%s %s:%s, res %u seq %u'",
-                         error, ext ? ext : "no_extension", major, minor ? minor : "no_minor",
-                         err->resource_id, static_cast<uint32_t>(err->sequence));
-
-                xcb_errors_context_free(errctx);
-
-                throw Napi::TypeError::New(env, buff);
-            } else {
-                throw Napi::TypeError::New(env, "get_atom_name no reply");
-            }
-        }
-
-        const char* cname = xcb_get_atom_name_name(reply);
-        const int len = xcb_get_atom_name_name_length(reply);
-        if (!cname || !len) {
-            free(reply);
-            throw Napi::TypeError::New(env, "get_atom_name no name");
-        }
-
-        auto name = Napi::String::New(env, cname, len);
-
-        free(reply);
-
-        return name;
-    }));
-
-    xcb.Set("get_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "get_property requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "get_property requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("property")) {
-            throw Napi::TypeError::New(env, "get_property requires a property");
-        }
-        const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
-
-        uint32_t offset = 0;
-        uint32_t length = 4096;
-        uint32_t type = XCB_GET_PROPERTY_TYPE_ANY;
-
-        if (arg.Has("offset")) {
-            offset = arg.Get("offset").As<Napi::Number>().Uint32Value();
-        }
-
-        if (arg.Has("length")) {
-            length = arg.Get("length").As<Napi::Number>().Uint32Value();
-        }
-
-        if (arg.Has("type")) {
-            type = arg.Get("type").As<Napi::Number>().Uint32Value();
-        }
-
-        auto cookie = xcb_get_property(wm->conn, 0, window, property, type, offset, length);
-        auto reply = xcb_get_property_reply(wm->conn, cookie, nullptr);
-
-        if (!reply) {
-            throw Napi::TypeError::New(env, "get_property no reply");
-        }
-
-        const int rlength = xcb_get_property_value_length(reply);
-
-        void* rdata = rlength > 0 ? xcb_get_property_value(reply) : nullptr;
-        auto ret = Napi::Object::New(env);
-        ret.Set("format", reply->format);
-        ret.Set("type", reply->type);
-        if (rdata && rlength) {
-            ret.Set("buffer", Napi::ArrayBuffer::New(env, rdata, rlength, [reply](napi_env, void*) { free(reply); }));
-        } else {
-            free(reply);
-            ret.Set("buffer", Napi::ArrayBuffer::New(env, 0));
-        }
-        return ret;
-    }));
-
-    xcb.Set("change_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "change_property requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "change_property requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("mode")) {
-            throw Napi::TypeError::New(env, "change_property requires a mode");
-        }
-        const uint32_t mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("type")) {
-            throw Napi::TypeError::New(env, "change_property requires a type");
-        }
-        const uint32_t type = arg.Get("type").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("property")) {
-            throw Napi::TypeError::New(env, "change_property requires a property");
-        }
-        const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("format")) {
-            throw Napi::TypeError::New(env, "change_property requires a format");
-        }
-        const uint32_t format = arg.Get("format").As<Napi::Number>().Uint32Value();
-
-        uint32_t elems = 0;
-        if (arg.Has("data_len")) {
-            elems = arg.Get("data_len").As<Napi::Number>().Uint32Value();
-        }
-
-        if (format != 8 && format != 16 && format != 32) {
-            throw Napi::TypeError::New(env, "change_property format needs to be 8/16/32");
-        }
-
-        const uint32_t bpe = format / 8;
-
-        size_t offset;
-        size_t size;
-
-        const auto ndata = arg.Get("data");
-        Napi::ArrayBuffer data;
-        if (ndata.IsArrayBuffer()) {
-            data = ndata.As<Napi::ArrayBuffer>();
-            offset = 0;
-            size = data.ByteLength();
-        } else if (ndata.IsTypedArray()) {
-            const auto tdata = ndata.As<Napi::TypedArray>();
-            data = tdata.ArrayBuffer();
-            offset = tdata.ByteOffset();
-            size = tdata.ByteLength();
-        } else {
-            throw Napi::TypeError::New(env, "change_property data must be an arraybuffer, typedarray or node buffer");
-        }
-
-        if (size % bpe) {
-            throw Napi::TypeError::New(env, "change_property data must be divisible by format/8");
-        }
-
-        if (!elems)
-            elems = size / bpe;
-
-        if (elems * bpe > size) {
-            throw Napi::TypeError::New(env, "change_property data_len too big?");
-        }
-
-        xcb_change_property(wm->conn, mode, window, property, type, format, elems, reinterpret_cast<uint8_t*>(data.Data()) + offset);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("delete_property", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "delete_property requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "delete_property requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("property")) {
-            throw Napi::TypeError::New(env, "delete_property requires a property");
-        }
-        const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
-
-        xcb_delete_property(wm->conn, window, property);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("reparent_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "reparent_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        int32_t x = 0, y = 0;
-        uint32_t window, parent;
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "reparent_window requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("parent")) {
-            throw Napi::TypeError::New(env, "reparent_window requires a parent");
-        }
-        parent = arg.Get("parent").As<Napi::Number>().Uint32Value();
-
-        if (arg.Has("x")) {
-            x = arg.Get("x").As<Napi::Number>().Int32Value();
-        }
-        if (arg.Has("y")) {
-            y = arg.Get("y").As<Napi::Number>().Int32Value();
-        }
-
-        xcb_reparent_window(wm->conn, window, parent, x, y);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("set_input_focus", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "set_input_focus requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t window, revert_to, time = XCB_TIME_CURRENT_TIME;
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "set_input_focus requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("revert_to")) {
-            throw Napi::TypeError::New(env, "set_input_focus requires a revert_to");
-        }
-        revert_to = arg.Get("revert_to").As<Napi::Number>().Uint32Value();
-
-        if (arg.Has("time")) {
-            time = arg.Get("time").As<Napi::Number>().Uint32Value();
-        }
-
-        xcb_set_input_focus(wm->conn, revert_to, window, time);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("map_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "map_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        const auto window = info[1].As<Napi::Number>().Uint32Value();
-
-        xcb_map_window(wm->conn, window);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("unmap_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "unmap_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        const auto window = info[1].As<Napi::Number>().Uint32Value();
-
-        xcb_unmap_window(wm->conn, window);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("destroy_window", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "destroy_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        const auto window = info[1].As<Napi::Number>().Uint32Value();
-
-        xcb_destroy_window(wm->conn, window);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("free_pixmap", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "free_pixmap requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        const auto pixmap = info[1].As<Napi::Number>().Uint32Value();
-
-        xcb_free_pixmap(wm->conn, pixmap);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("kill_client", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "kill_client requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        const auto resource = info[1].As<Napi::Number>().Uint32Value();
-
-        xcb_kill_client(wm->conn, resource);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("change_save_set", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "change_save_set requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t window, mode;
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "change_save_set requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("mode")) {
-            throw Napi::TypeError::New(env, "change_save_set requires a mode");
-        }
-        mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
-
-        xcb_change_save_set(wm->conn, mode, window);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("query_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "unmap_window requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        xcb_window_t window;
-        if (info.Length() > 1) {
-            window = info[1].As<Napi::Number>().Uint32Value();
-        } else {
-            window = wm->defaultScreen->root;
-        }
-
-        auto cookie = xcb_query_pointer(wm->conn, window);
-        auto reply = xcb_query_pointer_reply(wm->conn, cookie, nullptr);
-        if (!reply) {
-            throw Napi::TypeError::New(env, "unable to query pointer");
-        }
-
-        auto obj = Napi::Object::New(env);
-
-        obj.Set("same_screen", Napi::Number::New(env, reply->same_screen));
-        obj.Set("root", Napi::Number::New(env, reply->root));
-        obj.Set("child", Napi::Number::New(env, reply->child));
-        obj.Set("root_x", Napi::Number::New(env, reply->root_x));
-        obj.Set("root_y", Napi::Number::New(env, reply->root_y));
-        obj.Set("win_x", Napi::Number::New(env, reply->win_x));
-        obj.Set("win_y", Napi::Number::New(env, reply->win_y));
-        obj.Set("mask", Napi::Number::New(env, reply->mask));
-
-        free(reply);
-
-        return obj;
-    }));
-
-    xcb.Set("grab_key", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "grab_key requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "grab_key requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("owner_events")) {
-            throw Napi::TypeError::New(env, "grab_key requires a owner_events");
-        }
-        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("modifiers")) {
-            throw Napi::TypeError::New(env, "grab_key requires a modifiers");
-        }
-        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("key")) {
-            throw Napi::TypeError::New(env, "grab_key requires a key");
-        }
-        const uint32_t key = arg.Get("key").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("pointer_mode")) {
-            throw Napi::TypeError::New(env, "grab_key requires a pointer_mode");
-        }
-        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("keyboard_mode")) {
-            throw Napi::TypeError::New(env, "grab_key requires a keyboard_mode");
-        }
-        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
-
-        xcb_grab_key(wm->conn, owner_events, window, modifiers, key, pointer_mode, keyboard_mode);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("ungrab_key", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "ungrab_key requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "ungrab_key requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("modifiers")) {
-            throw Napi::TypeError::New(env, "ungrab_key requires a modifiers");
-        }
-        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("key")) {
-            throw Napi::TypeError::New(env, "ungrab_key requires a key");
-        }
-        const uint32_t key = arg.Get("key").As<Napi::Number>().Uint32Value();
-
-        xcb_ungrab_key(wm->conn, key, window, modifiers);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("grab_button", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "grab_button requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "grab_button requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("owner_events")) {
-            throw Napi::TypeError::New(env, "grab_button requires a owner_events");
-        }
-        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("modifiers")) {
-            throw Napi::TypeError::New(env, "grab_button requires a modifiers");
-        }
-        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("event_mask")) {
-            throw Napi::TypeError::New(env, "grab_button requires a event_mask");
-        }
-        const uint32_t event_mask = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("button")) {
-            throw Napi::TypeError::New(env, "grab_button requires a button");
-        }
-        const uint32_t button = arg.Get("button").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("pointer_mode")) {
-            throw Napi::TypeError::New(env, "grab_button requires a pointer_mode");
-        }
-        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("keyboard_mode")) {
-            throw Napi::TypeError::New(env, "grab_button requires a keyboard_mode");
-        }
-        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
-
-        xcb_grab_button(wm->conn, owner_events, window, event_mask, pointer_mode, keyboard_mode,
-                        XCB_NONE, XCB_NONE, button, modifiers);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("ungrab_button", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "ungrab_button requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "ungrab_button requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("modifiers")) {
-            throw Napi::TypeError::New(env, "ungrab_button requires a modifiers");
-        }
-        const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("button")) {
-            throw Napi::TypeError::New(env, "ungrab_button requires a key");
-        }
-        const uint32_t button = arg.Get("button").As<Napi::Number>().Uint32Value();
-
-        xcb_ungrab_button(wm->conn, button, window, modifiers);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("grab_keyboard", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "grab_keyboard requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "grab_keyboard requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("owner_events")) {
-            throw Napi::TypeError::New(env, "grab_keyboard requires a owner_events");
-        }
-        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("pointer_mode")) {
-            throw Napi::TypeError::New(env, "grab_keyboard requires a pointer_mode");
-        }
-        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("keyboard_mode")) {
-            throw Napi::TypeError::New(env, "grab_keyboard requires a keyboard_mode");
-        }
-        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
-
-        uint32_t time = XCB_TIME_CURRENT_TIME;
-        if (arg.Has("time")) {
-            time = arg.Get("time").As<Napi::Number>().Uint32Value();
-        }
-
-        auto cookie = xcb_grab_keyboard(wm->conn, owner_events, window, time, pointer_mode, keyboard_mode);
-        auto reply = xcb_grab_keyboard_reply(wm->conn, cookie, nullptr);
-        if (!reply) {
-            throw Napi::TypeError::New(env, "grab_keyboard no reply");
-        }
-
-        const auto status = reply->status;
-
-        free(reply);
-
-        return Napi::Number::New(env, status);
-    }));
-
-    xcb.Set("ungrab_keyboard", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "ungrab_keyboard requires one argument");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t time = XCB_TIME_CURRENT_TIME;
-        if (info.Length() > 1 && info[1].IsNumber()) {
-            time = info[1].As<Napi::Number>().Uint32Value();
-        }
-
-        xcb_ungrab_keyboard(wm->conn, time);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("grab_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "grab_pointer requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "grab_pointer requires a window");
-        }
-        const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("owner_events")) {
-            throw Napi::TypeError::New(env, "grab_pointer requires a owner_events");
-        }
-        const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("event_mask")) {
-            throw Napi::TypeError::New(env, "grab_pointer requires a event_mask");
-        }
-        const uint32_t event_mask = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("pointer_mode")) {
-            throw Napi::TypeError::New(env, "grab_pointer requires a pointer_mode");
-        }
-        const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("keyboard_mode")) {
-            throw Napi::TypeError::New(env, "grab_pointer requires a keyboard_mode");
-        }
-        const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
-
-        uint32_t time = XCB_TIME_CURRENT_TIME;
-        if (arg.Has("time")) {
-            time = arg.Get("time").As<Napi::Number>().Uint32Value();
-        }
-
-        auto cookie = xcb_grab_pointer(wm->conn, owner_events, window, event_mask, pointer_mode, keyboard_mode, XCB_NONE, XCB_NONE, time);
-        auto reply = xcb_grab_pointer_reply(wm->conn, cookie, nullptr);
-        if (!reply) {
-            throw Napi::TypeError::New(env, "grab_pointer no reply");
-        }
-
-        const auto status = reply->status;
-
-        free(reply);
-
-        return Napi::Number::New(env, status);
-    }));
-
-    xcb.Set("ungrab_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "ungrab_pointer requires one argument");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t time = XCB_TIME_CURRENT_TIME;
-        if (info.Length() > 1 && info[1].IsNumber()) {
-            time = info[1].As<Napi::Number>().Uint32Value();
-        }
-
-        xcb_ungrab_pointer(wm->conn, time);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("warp_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "warp_pointer requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("dst_x")) {
-            throw Napi::TypeError::New(env, "warp_pointer requires dst_x");
-        }
-        if (!arg.Has("dst_y")) {
-            throw Napi::TypeError::New(env, "warp_pointer requires dst_y");
-        }
-        const int32_t dst_x = arg.Get("dst_x").As<Napi::Number>().Int32Value();
-        const int32_t dst_y = arg.Get("dst_y").As<Napi::Number>().Int32Value();
-
-
-        const uint32_t src_window = arg.Has("src_window") ? arg.Get("src_window").As<Napi::Number>().Uint32Value() : XCB_NONE;
-        const uint32_t dst_window = arg.Has("dst_window") ? arg.Get("dst_window").As<Napi::Number>().Uint32Value() : XCB_NONE;
-
-        const int32_t src_x = arg.Has("src_x") ? arg.Get("src_x").As<Napi::Number>().Int32Value() : 0;
-        const int32_t src_y = arg.Has("src_y") ? arg.Get("src_y").As<Napi::Number>().Int32Value() : 0;
-
-        const uint32_t src_width = arg.Has("src_width") ? arg.Get("src_width").As<Napi::Number>().Uint32Value() : 0;
-        const uint32_t src_height = arg.Has("src_height") ? arg.Get("src_height").As<Napi::Number>().Uint32Value() : 0;
-
-        xcb_warp_pointer(wm->conn, src_window, dst_window, src_x, src_y, src_width, src_height, dst_x, dst_y);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("allow_events", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "allow_events requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        if (!arg.Has("mode")) {
-            throw Napi::TypeError::New(env, "allow_events requires a mode");
-        }
-        const uint32_t mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
-
-        uint32_t time = XCB_TIME_CURRENT_TIME;
-        if (arg.Has("time")) {
-            time = arg.Get("time").As<Napi::Number>().Uint32Value();
-        }
-
-        xcb_allow_events(wm->conn, mode, time);
-
-        return env.Undefined();
-    }));
-
-    xcb.Set("key_symbols_get_keycode", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "key_symbols_get_keycode requires two argument");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-
-        uv_async_send(wm->asyncFlush);
-
-        const uint32_t sym = info[1].As<Napi::Number>().Uint32Value();
-
-        Napi::Array array = Napi::Array::New(env);
-
-        xcb_keycode_t* keycodes = xcb_key_symbols_get_keycode(wm->xkb.syms, sym);
-        if (!keycodes) {
-            return array;
-        }
-
-        uint32_t idx = 0;
-        for (xcb_keycode_t* code = keycodes; *code; ++code, ++idx) {
-            array.Set(idx, *code);
-        }
-
-        free(keycodes);
-
-        return array;
-    }));
-
-    xcb.Set("poly_fill_rectangle", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
-
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "poly_fill_rectangle requires two arguments");
-        }
-
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
-
-        uv_async_send(wm->asyncFlush);
-
-        uint32_t window, gc;
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "poly_fill_rectangle requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("gc")) {
-            throw Napi::TypeError::New(env, "poly_fill_rectangle requires a gc");
-        }
-        gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
-
-        if (!arg.Has("rects")) {
-            throw Napi::TypeError::New(env, "poly_fill_rectangle requires a rects");
-        }
-
-        std::vector<xcb_rectangle_t> rectsVector;
-        auto makeRect = [&rectsVector](const Napi::Object& obj) {
-            if (!obj.Has("width"))
-                return;
-            if (!obj.Has("height"))
-                return;
-            int16_t x, y;
-            uint16_t width, height;
-            if (obj.Has("x")) {
-                x = obj.Get("x").As<Napi::Number>().Int32Value();
-            } else {
-                x = 0;
-            }
-            if (obj.Has("y")) {
-                y = obj.Get("y").As<Napi::Number>().Int32Value();
-            } else {
-                y = 0;
-            }
-            width = obj.Get("width").As<Napi::Number>().Uint32Value();
-            height = obj.Get("height").As<Napi::Number>().Uint32Value();
-            rectsVector.push_back({ x, y, width, height });
-        };
-
-        const auto rects = arg.Get("rects");
-        if (rects.IsArray()) {
-            const auto rectsArray = rects.As<Napi::Array>();
-            const size_t sz = rectsArray.Length();
-            rectsVector.reserve(sz);
-            for (size_t i = 0; i < sz; ++i) {
-                const auto item = rectsArray.Get(i);
-                if (item.IsObject()) {
-                    makeRect(item.As<Napi::Object>());
+    xcb.Set("configure_window", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "configure_window requires two arguments");
                 }
-            }
-        } else if (rects.IsObject()) {
-            makeRect(rects.As<Napi::Object>());
-        } else {
-            throw Napi::TypeError::New(env, "poly_fill_rectangle rects must be an array or object");
-        }
 
-        if (!rectsVector.empty()) {
-            xcb_poly_fill_rectangle(wm->conn, window, gc, rectsVector.size(), &rectsVector[0]);
-        }
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
 
-        return env.Undefined();
-    }));
+                uv_async_send(wm->asyncFlush);
 
-    xcb.Set("create_gc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
+                uint32_t window;
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "configure_window requires a window");
+                }
+                window = arg.Get("window").As<Napi::Number>().Uint32Value();
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "create_gc requires two arguments");
-        }
+                uint32_t values[7];
+                uint16_t mask = 0;
+                uint32_t off = 0;
 
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
+                if (arg.Has("x")) {
+                    mask |= XCB_CONFIG_WINDOW_X;
+                    values[off++] = arg.Get("x").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("y")) {
+                    mask |= XCB_CONFIG_WINDOW_Y;
+                    values[off++] = arg.Get("y").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("width")) {
+                    mask |= XCB_CONFIG_WINDOW_WIDTH;
+                    values[off++] = arg.Get("width").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("height")) {
+                    mask |= XCB_CONFIG_WINDOW_HEIGHT;
+                    values[off++] = arg.Get("height").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("border_width")) {
+                    mask |= XCB_CONFIG_WINDOW_BORDER_WIDTH;
+                    values[off++] = arg.Get("border_width").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("sibling")) {
+                    mask |= XCB_CONFIG_WINDOW_SIBLING;
+                    values[off++] = arg.Get("sibling").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("stack_mode")) {
+                    mask |= XCB_CONFIG_WINDOW_STACK_MODE;
+                    values[off++] = arg.Get("stack_mode").As<Napi::Number>().Uint32Value();
+                }
 
-        uv_async_send(wm->asyncFlush);
+                if (off) {
+                    xcb_configure_window(wm->conn, window, mask, values);
+                }
 
-        uint32_t window;
-        if (!arg.Has("window")) {
-            throw Napi::TypeError::New(env, "create_gc requires a window");
-        }
-        window = arg.Get("window").As<Napi::Number>().Uint32Value();
+                return env.Undefined();
+            }));
 
-        if (!arg.Has("values")) {
-            throw Napi::TypeError::New(env, "create_gc requires a values");
-        }
-        auto vals = arg.Get("values").As<Napi::Object>();
+    xcb.Set("change_window_attributes", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
 
-        uint32_t values[23];
-        uint32_t mask = 0;
-        uint32_t off = 0;
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "change_window_attributes requires two arguments");
+                }
 
-        if (vals.Has("function")) {
-            mask |= XCB_GC_FUNCTION;
-            values[off++] = vals.Get("function").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("plane_mask")) {
-            mask |= XCB_GC_PLANE_MASK;
-            values[off++] = vals.Get("plane_mask").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("foreground")) {
-            mask |= XCB_GC_FOREGROUND;
-            values[off++] = vals.Get("foreground").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("background")) {
-            mask |= XCB_GC_BACKGROUND;
-            values[off++] = vals.Get("background").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("line_width")) {
-            mask |= XCB_GC_LINE_WIDTH;
-            values[off++] = vals.Get("line_width").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("line_style")) {
-            mask |= XCB_GC_LINE_STYLE;
-            values[off++] = vals.Get("line_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("cap_style")) {
-            mask |= XCB_GC_CAP_STYLE;
-            values[off++] = vals.Get("cap_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("join_style")) {
-            mask |= XCB_GC_JOIN_STYLE;
-            values[off++] = vals.Get("join_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("fill_style")) {
-            mask |= XCB_GC_FILL_STYLE;
-            values[off++] = vals.Get("fill_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("fill_rule")) {
-            mask |= XCB_GC_FILL_RULE;
-            values[off++] = vals.Get("fill_rule").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("tile")) {
-            mask |= XCB_GC_TILE;
-            values[off++] = vals.Get("tile").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("stipple")) {
-            mask |= XCB_GC_STIPPLE;
-            values[off++] = vals.Get("stipple").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("tile_stipple_origin_x")) {
-            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_X;
-            values[off++] = vals.Get("tile_stipple_origin_x").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("tile_stipple_origin_y")) {
-            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_Y;
-            values[off++] = vals.Get("tile_stipple_origin_y").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("font")) {
-            mask |= XCB_GC_FONT;
-            values[off++] = vals.Get("font").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("subwindow_mode")) {
-            mask |= XCB_GC_SUBWINDOW_MODE;
-            values[off++] = vals.Get("subwindow_mode").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("graphics_exposures")) {
-            mask |= XCB_GC_GRAPHICS_EXPOSURES;
-            values[off++] = vals.Get("graphics_exposures").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("clip_origin_x")) {
-            mask |= XCB_GC_CLIP_ORIGIN_X;
-            values[off++] = vals.Get("clip_origin_x").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("clip_origin_y")) {
-            mask |= XCB_GC_CLIP_ORIGIN_Y;
-            values[off++] = vals.Get("clip_origin_y").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("clip_mask")) {
-            mask |= XCB_GC_CLIP_MASK;
-            values[off++] = vals.Get("clip_mask").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("dash_offset")) {
-            mask |= XCB_GC_DASH_OFFSET;
-            values[off++] = vals.Get("dash_offset").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("dash_list")) {
-            mask |= XCB_GC_DASH_LIST;
-            values[off++] = vals.Get("dash_list").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("arc_mode")) {
-            mask |= XCB_GC_ARC_MODE;
-            values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
-        }
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
 
-        if (!off) {
-            throw Napi::TypeError::New(env, "create_gc no value");
-        }
+                uv_async_send(wm->asyncFlush);
 
-        auto gcid = xcb_generate_id(wm->conn);
-        xcb_create_gc(wm->conn, gcid, window, mask, values);
-        return Napi::Number::New(env, gcid);
-    }));
+                uint32_t window;
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "change_window_attributes requires a window");
+                }
+                window = arg.Get("window").As<Napi::Number>().Uint32Value();
 
-    xcb.Set("change_gc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
+                uint32_t values[15];
+                uint16_t mask = 0;
+                uint32_t off = 0;
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
-            throw Napi::TypeError::New(env, "change_gc requires two arguments");
-        }
+                if (arg.Has("back_pixmap")) {
+                    mask |= XCB_CW_BACK_PIXMAP;
+                    values[off++] = arg.Get("back_pixmap").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("back_pixel")) {
+                    mask |= XCB_CW_BACK_PIXEL;
+                    values[off++] = arg.Get("back_pixel").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("border_pixmap")) {
+                    mask |= XCB_CW_BORDER_PIXMAP;
+                    values[off++] = arg.Get("border_pixmap").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("border_pixel")) {
+                    mask |= XCB_CW_BORDER_PIXEL;
+                    values[off++] = arg.Get("border_pixel").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("bit_gravity")) {
+                    mask |= XCB_CW_BIT_GRAVITY;
+                    values[off++] = arg.Get("bit_gravity").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("win_gravity")) {
+                    mask |= XCB_CW_WIN_GRAVITY;
+                    values[off++] = arg.Get("win_gravity").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("backing_store")) {
+                    mask |= XCB_CW_BACKING_STORE;
+                    values[off++] = arg.Get("backing_store").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("backing_planes")) {
+                    mask |= XCB_CW_BACKING_PLANES;
+                    values[off++] = arg.Get("backing_planes").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("backing_pixel")) {
+                    mask |= XCB_CW_BACKING_PIXEL;
+                    values[off++] = arg.Get("backing_pixel").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("override_redirect")) {
+                    mask |= XCB_CW_OVERRIDE_REDIRECT;
+                    values[off++] = arg.Get("override_redirect").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("save_under")) {
+                    mask |= XCB_CW_SAVE_UNDER;
+                    values[off++] = arg.Get("save_under").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("event_mask")) {
+                    mask |= XCB_CW_EVENT_MASK;
+                    values[off++] = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("dont_propagate")) {
+                    mask |= XCB_CW_DONT_PROPAGATE;
+                    values[off++] = arg.Get("dont_propagate").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("colormap")) {
+                    mask |= XCB_CW_COLORMAP;
+                    values[off++] = arg.Get("colormap").As<Napi::Number>().Uint32Value();
+                }
+                if (arg.Has("cursor")) {
+                    mask |= XCB_CW_CURSOR;
+                    values[off++] = arg.Get("cursor").As<Napi::Number>().Uint32Value();
+                }
 
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
-        auto arg = info[1].As<Napi::Object>();
+                if (off) {
+                    xcb_change_window_attributes(wm->conn, window, mask, values);
+                }
 
-        uv_async_send(wm->asyncFlush);
+                return env.Undefined();
+            }));
 
-        uint32_t gc;
-        if (!arg.Has("gc")) {
-            throw Napi::TypeError::New(env, "change_gc requires a gc");
-        }
-        gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
+    xcb.Set("intern_atom", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
 
-        if (!arg.Has("values")) {
-            throw Napi::TypeError::New(env, "create_gc requires a values");
-        }
-        auto vals = arg.Get("values").As<Napi::Object>();
+                if (info.Length() < 2 || !info[0].IsObject() || (!info[1].IsArray() && !info[1].IsString())) {
+                    throw Napi::TypeError::New(env, "intern_atom requires two arguments");
+                }
+                bool onlyIfExists = true;
+                if (info.Length() < 3 && info[2].IsBoolean()) {
+                    onlyIfExists = info[2].As<Napi::Boolean>().Value();
+                }
 
-        uint32_t values[23];
-        uint32_t mask = 0;
-        uint32_t off = 0;
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
 
-        if (vals.Has("function")) {
-            mask |= XCB_GC_FUNCTION;
-            values[off++] = vals.Get("function").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("plane_mask")) {
-            mask |= XCB_GC_PLANE_MASK;
-            values[off++] = vals.Get("plane_mask").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("foreground")) {
-            mask |= XCB_GC_FOREGROUND;
-            values[off++] = vals.Get("foreground").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("background")) {
-            mask |= XCB_GC_BACKGROUND;
-            values[off++] = vals.Get("background").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("line_width")) {
-            mask |= XCB_GC_LINE_WIDTH;
-            values[off++] = vals.Get("line_width").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("line_style")) {
-            mask |= XCB_GC_LINE_STYLE;
-            values[off++] = vals.Get("line_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("cap_style")) {
-            mask |= XCB_GC_CAP_STYLE;
-            values[off++] = vals.Get("cap_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("join_style")) {
-            mask |= XCB_GC_JOIN_STYLE;
-            values[off++] = vals.Get("join_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("fill_style")) {
-            mask |= XCB_GC_FILL_STYLE;
-            values[off++] = vals.Get("fill_style").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("fill_rule")) {
-            mask |= XCB_GC_FILL_RULE;
-            values[off++] = vals.Get("fill_rule").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("tile")) {
-            mask |= XCB_GC_TILE;
-            values[off++] = vals.Get("tile").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("stipple")) {
-            mask |= XCB_GC_STIPPLE;
-            values[off++] = vals.Get("stipple").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("tile_stipple_origin_x")) {
-            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_X;
-            values[off++] = vals.Get("tile_stipple_origin_x").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("tile_stipple_origin_y")) {
-            mask |= XCB_GC_TILE_STIPPLE_ORIGIN_Y;
-            values[off++] = vals.Get("tile_stipple_origin_y").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("font")) {
-            mask |= XCB_GC_FONT;
-            values[off++] = vals.Get("font").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("subwindow_mode")) {
-            mask |= XCB_GC_SUBWINDOW_MODE;
-            values[off++] = vals.Get("subwindow_mode").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("graphics_exposures")) {
-            mask |= XCB_GC_GRAPHICS_EXPOSURES;
-            values[off++] = vals.Get("graphics_exposures").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("clip_origin_x")) {
-            mask |= XCB_GC_CLIP_ORIGIN_X;
-            values[off++] = vals.Get("clip_origin_x").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("clip_origin_y")) {
-            mask |= XCB_GC_CLIP_ORIGIN_Y;
-            values[off++] = vals.Get("clip_origin_y").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("clip_mask")) {
-            mask |= XCB_GC_CLIP_MASK;
-            values[off++] = vals.Get("clip_mask").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("dash_offset")) {
-            mask |= XCB_GC_DASH_OFFSET;
-            values[off++] = vals.Get("dash_offset").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("dash_list")) {
-            mask |= XCB_GC_DASH_LIST;
-            values[off++] = vals.Get("dash_list").As<Napi::Number>().Uint32Value();
-        }
-        if (vals.Has("arc_mode")) {
-            mask |= XCB_GC_ARC_MODE;
-            values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
-        }
+                uv_async_send(wm->asyncFlush);
 
-        if (!off) {
-            throw Napi::TypeError::New(env, "change_gc no value");
-        }
+                std::vector<xcb_intern_atom_cookie_t> cookies;
+                if (info[1].IsString()) {
+                    const std::string str = info[1].As<Napi::String>();
+                    cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
+                } else if (info[1].IsArray()) {
+                    const auto array = info[1].As<Napi::Array>();
+                    cookies.reserve(array.Length());
+                    for (size_t i = 0; i < array.Length(); ++i) {
+                        const std::string str = array[i].As<Napi::String>();
+                        cookies.push_back(xcb_intern_atom_unchecked(wm->conn, onlyIfExists, str.size(), str.c_str()));
+                    }
+                }
 
-        xcb_change_gc(wm->conn, gc, mask, values);
+                Napi::Value val;
+                if (cookies.size() == 1) {
+                    xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(wm->conn, cookies[0], nullptr);
+                    val = Napi::Number::New(env, reply->atom);
+                    free(reply);
+                } else {
+                    const size_t sz = cookies.size();
+                    Napi::Array ret = Napi::Array::New(env, sz);
+                    for (size_t i = 0; i < sz; ++i) {
+                        xcb_intern_atom_reply_t *reply = xcb_intern_atom_reply(wm->conn, cookies[i], nullptr);
+                        ret.Set(i, Napi::Number::New(env, reply->atom));
+                        free(reply);
+                    }
+                    val = ret;
+                }
+                return val;
+            }));
 
-        return env.Undefined();
-    }));
+    xcb.Set("create_window", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
 
-    xcb.Set("free_gc", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "create_window requires two arguments");
+                }
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "free_gc requires two arguments");
-        }
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
 
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+                uv_async_send(wm->asyncFlush);
 
-        uv_async_send(wm->asyncFlush);
+                int32_t x = 0, y = 0;
+                uint32_t width, height;
 
-        const auto gcid = info[1].As<Napi::Number>().Uint32Value();
+                if (!arg.Has("width")) {
+                    throw Napi::TypeError::New(env, "create_window needs a width");
+                }
+                width = arg.Get("width").As<Napi::Number>().Uint32Value();
 
-        xcb_free_gc(wm->conn, gcid);
+                if (!arg.Has("height")) {
+                    throw Napi::TypeError::New(env, "create_window needs a height");
+                }
+                height = arg.Get("height").As<Napi::Number>().Uint32Value();
 
-        return env.Undefined();
-    }));
+                uint32_t parent;
+                if (!arg.Has("parent")) {
+                    throw Napi::TypeError::New(env, "create_window requires a parent");
+                }
+                parent = arg.Get("parent").As<Napi::Number>().Uint32Value();
 
-    xcb.Set("grab_server", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
+                if (arg.Has("x")) {
+                    x = arg.Get("x").As<Napi::Number>().Int32Value();
+                }
+                if (arg.Has("y")) {
+                    y = arg.Get("y").As<Napi::Number>().Int32Value();
+                }
 
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "grab_server requires one argument");
-        }
+                auto win = xcb_generate_id(wm->conn);
+                xcb_create_window(wm->conn, XCB_COPY_FROM_PARENT, win, parent, x, y, width, height, 0, XCB_WINDOW_CLASS_INPUT_OUTPUT,
+                                  wm->defaultScreen->root_visual, 0, nullptr);
 
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+                return Napi::Number::New(env, win);
+            }));
 
-        uv_async_send(wm->asyncFlush);
+    xcb.Set("create_pixmap", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
 
-        xcb_grab_server(wm->conn);
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "create_pixmap requires two arguments");
+                }
 
-        return env.Undefined();
-    }));
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
 
-    xcb.Set("ungrab_server", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
+                uv_async_send(wm->asyncFlush);
 
-        if (info.Length() < 1 || !info[0].IsObject()) {
-            throw Napi::TypeError::New(env, "ungrab_server requires one argument");
-        }
+                uint32_t width, height;
 
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+                if (!arg.Has("width")) {
+                    throw Napi::TypeError::New(env, "create_pixmap needs a width");
+                }
+                width = arg.Get("width").As<Napi::Number>().Uint32Value();
 
-        uv_async_send(wm->asyncFlush);
+                if (!arg.Has("height")) {
+                    throw Napi::TypeError::New(env, "create_pixmap needs a height");
+                }
+                height = arg.Get("height").As<Napi::Number>().Uint32Value();
 
-        xcb_ungrab_server(wm->conn);
+                auto screen = wm->defaultScreen;
 
-        return env.Undefined();
-    }));
+                auto pm = xcb_generate_id(wm->conn);
+                xcb_create_pixmap(wm->conn, screen->root_depth, pm, screen->root, width, height);
 
-    xcb.Set("request_window_information", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
+                return Napi::Number::New(env, pm);
+            }));
 
-        if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
-            throw Napi::TypeError::New(env, "request_window_information requires two argument");
-        }
+    xcb.Set("copy_area", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "copy_area requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t src_d, dst_d, gc;
+                int32_t src_x = 0, src_y = 0, dst_x = 0, dst_y = 0;
+                uint32_t width, height;
+
+                if (!arg.Has("src_d")) {
+                    throw Napi::TypeError::New(env, "copy_area requires a src_d");
+                }
+                src_d = arg.Get("src_d").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("dst_d")) {
+                    throw Napi::TypeError::New(env, "copy_area requires a dst_d");
+                }
+                dst_d = arg.Get("dst_d").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("gc")) {
+                    throw Napi::TypeError::New(env, "copy_area requires a gc");
+                }
+                gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
+
+                if (arg.Has("src_x")) {
+                    src_x = arg.Get("src_x").As<Napi::Number>().Int32Value();
+                }
+
+                if (arg.Has("src_y")) {
+                    src_y = arg.Get("src_y").As<Napi::Number>().Int32Value();
+                }
+
+                if (arg.Has("dst_x")) {
+                    dst_x = arg.Get("dst_x").As<Napi::Number>().Int32Value();
+                }
+
+                if (arg.Has("dst_y")) {
+                    dst_y = arg.Get("dst_y").As<Napi::Number>().Int32Value();
+                }
+
+                if (!arg.Has("width")) {
+                    throw Napi::TypeError::New(env, "copy_area requires a width");
+                }
+                width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("height")) {
+                    throw Napi::TypeError::New(env, "copy_area requires a height");
+                }
+                height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+                xcb_copy_area(wm->conn, src_d, dst_d, gc, src_x, src_y, dst_x, dst_y, width, height);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("flush", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 1 || !info[0].IsObject()) {
+                    throw Napi::TypeError::New(env, "flush requires one arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                xcb_flush(wm->conn);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("send_client_message", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "send_client_message requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                xcb_client_message_event_t event;
+                memset(&event, 0, sizeof(event));
+                event.response_type = XCB_CLIENT_MESSAGE;
+                event.format = 32;
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "send_client_message requires a window");
+                }
+                event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("type")) {
+                    throw Napi::TypeError::New(env, "retype_type requires a type");
+                }
+                event.type = arg.Get("type").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("data")) {
+                    throw Napi::TypeError::New(env, "send_client_message requires a data");
+                }
+
+                size_t size;
+                size_t offset;
+
+                const auto ndata = arg.Get("data");
+                Napi::ArrayBuffer data;
+                if (ndata.IsArrayBuffer()) {
+                    data = ndata.As<Napi::ArrayBuffer>();
+                    size = data.ByteLength();
+                    offset = 0;
+                } else if (ndata.IsTypedArray()) {
+                    const auto tdata = ndata.As<Napi::TypedArray>();
+                    size = tdata.ByteLength();
+                    offset = tdata.ByteOffset();
+                    data = tdata.ArrayBuffer();
+                } else {
+                    throw Napi::TypeError::New(env, "send_client_message data must be an arraybuffer or typedarray");
+                }
+
+                if (size % 4) {
+                    throw Napi::TypeError::New(env, "send_client_message data must be divisible by 4");
+                }
+                memcpy(&event.data.data8, reinterpret_cast<uint8_t *>(data.Data()) + offset, size);
+
+                xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY, reinterpret_cast<char *>(&event));
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("send_expose", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "send_expose requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                xcb_expose_event_t event;
+                memset(&event, 0, sizeof(event));
+                event.response_type = XCB_EXPOSE;
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "send_expose requires a window");
+                }
+                event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (arg.Has("x")) {
+                    event.x = arg.Get("x").As<Napi::Number>().Uint32Value();
+                }
+
+                if (arg.Has("y")) {
+                    event.y = arg.Get("y").As<Napi::Number>().Uint32Value();
+                }
+
+                if (!arg.Has("width")) {
+                    throw Napi::TypeError::New(env, "send_expose requires a width");
+                }
+                event.width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("height")) {
+                    throw Napi::TypeError::New(env, "send_expose requires a height");
+                }
+                event.height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+                xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY, reinterpret_cast<char *>(&event));
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("send_configure_notify", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "send_configure_notify requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                xcb_configure_notify_event_t event;
+                memset(&event, 0, sizeof(event));
+                event.response_type = XCB_CONFIGURE_NOTIFY;
+                event.above_sibling = XCB_NONE;
+                event.override_redirect = false;
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "send_configure_notify requires a window");
+                }
+                event.event = event.window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("x")) {
+                    throw Napi::TypeError::New(env, "send_configure_notify requires a x");
+                }
+                event.x = arg.Get("x").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("y")) {
+                    throw Napi::TypeError::New(env, "send_configure_notify requires a y");
+                }
+                event.y = arg.Get("y").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("width")) {
+                    throw Napi::TypeError::New(env, "send_configure_notify requires a width");
+                }
+                event.width = arg.Get("width").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("height")) {
+                    throw Napi::TypeError::New(env, "send_configure_notify requires a height");
+                }
+                event.height = arg.Get("height").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("border_width")) {
+                    throw Napi::TypeError::New(env, "send_configure_notify requires a border_width");
+                }
+                event.border_width = arg.Get("border_width").As<Napi::Number>().Uint32Value();
+
+                fprintf(stdout, "OWM[diag] send_configure_notify win=0x%x x=%d y=%d w=%u h=%u border=%u\n", event.window, event.x, event.y,
+                        event.width, event.height, event.border_width);
+                fflush(stdout);
+
+                xcb_send_event(wm->conn, false, event.window, XCB_EVENT_MASK_STRUCTURE_NOTIFY, reinterpret_cast<char *>(&event));
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("get_atom_name", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "get_atom_name requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                const uint32_t atom = info[1].As<Napi::Number>().Uint32Value();
+
+                auto cookie = xcb_get_atom_name(wm->conn, atom);
+                xcb_generic_error_t *err = nullptr;
+                auto reply = xcb_get_atom_name_reply(wm->conn, cookie, &err);
+                if (!reply) {
+                    if (err) {
+                        char buff[2048];
+                        xcb_errors_context_t *errctx;
+                        xcb_errors_context_new(wm->conn, &errctx);
+                        const char *major = xcb_errors_get_name_for_major_code(errctx, err->major_code);
+                        const char *minor = xcb_errors_get_name_for_minor_code(errctx, err->major_code, err->minor_code);
+                        const char *ext = nullptr;
+                        const char *error = xcb_errors_get_name_for_error(errctx, err->error_code, &ext);
+
+                        snprintf(buff, std::size(buff), "get_atom_name no reply: '%s:%s %s:%s, res %u seq %u'", error,
+                                 ext ? ext : "no_extension", major, minor ? minor : "no_minor", err->resource_id,
+                                 static_cast<uint32_t>(err->sequence));
+
+                        xcb_errors_context_free(errctx);
+
+                        throw Napi::TypeError::New(env, buff);
+                    } else {
+                        throw Napi::TypeError::New(env, "get_atom_name no reply");
+                    }
+                }
+
+                const char *cname = xcb_get_atom_name_name(reply);
+                const int len = xcb_get_atom_name_name_length(reply);
+                if (!cname || !len) {
+                    free(reply);
+                    throw Napi::TypeError::New(env, "get_atom_name no name");
+                }
+
+                auto name = Napi::String::New(env, cname, len);
+
+                free(reply);
+
+                return name;
+            }));
+
+    xcb.Set("get_property", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "get_property requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "get_property requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("property")) {
+                    throw Napi::TypeError::New(env, "get_property requires a property");
+                }
+                const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
+
+                uint32_t offset = 0;
+                uint32_t length = 4096;
+                uint32_t type = XCB_GET_PROPERTY_TYPE_ANY;
+
+                if (arg.Has("offset")) {
+                    offset = arg.Get("offset").As<Napi::Number>().Uint32Value();
+                }
+
+                if (arg.Has("length")) {
+                    length = arg.Get("length").As<Napi::Number>().Uint32Value();
+                }
+
+                if (arg.Has("type")) {
+                    type = arg.Get("type").As<Napi::Number>().Uint32Value();
+                }
+
+                auto cookie = xcb_get_property(wm->conn, 0, window, property, type, offset, length);
+                auto reply = xcb_get_property_reply(wm->conn, cookie, nullptr);
+
+                if (!reply) {
+                    throw Napi::TypeError::New(env, "get_property no reply");
+                }
+
+                const int rlength = xcb_get_property_value_length(reply);
+
+                void *rdata = rlength > 0 ? xcb_get_property_value(reply) : nullptr;
+                auto ret = Napi::Object::New(env);
+                ret.Set("format", reply->format);
+                ret.Set("type", reply->type);
+                if (rdata && rlength) {
+                    ret.Set("buffer", Napi::ArrayBuffer::New(env, rdata, rlength, [reply](napi_env, void *) { free(reply); }));
+                } else {
+                    free(reply);
+                    ret.Set("buffer", Napi::ArrayBuffer::New(env, 0));
+                }
+                return ret;
+            }));
+
+    xcb.Set("change_property", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "change_property requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "change_property requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("mode")) {
+                    throw Napi::TypeError::New(env, "change_property requires a mode");
+                }
+                const uint32_t mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("type")) {
+                    throw Napi::TypeError::New(env, "change_property requires a type");
+                }
+                const uint32_t type = arg.Get("type").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("property")) {
+                    throw Napi::TypeError::New(env, "change_property requires a property");
+                }
+                const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("format")) {
+                    throw Napi::TypeError::New(env, "change_property requires a format");
+                }
+                const uint32_t format = arg.Get("format").As<Napi::Number>().Uint32Value();
+
+                uint32_t elems = 0;
+                if (arg.Has("data_len")) {
+                    elems = arg.Get("data_len").As<Napi::Number>().Uint32Value();
+                }
+
+                if (format != 8 && format != 16 && format != 32) {
+                    throw Napi::TypeError::New(env, "change_property format needs to be 8/16/32");
+                }
+
+                const uint32_t bpe = format / 8;
+
+                size_t offset;
+                size_t size;
+
+                const auto ndata = arg.Get("data");
+                Napi::ArrayBuffer data;
+                if (ndata.IsArrayBuffer()) {
+                    data = ndata.As<Napi::ArrayBuffer>();
+                    offset = 0;
+                    size = data.ByteLength();
+                } else if (ndata.IsTypedArray()) {
+                    const auto tdata = ndata.As<Napi::TypedArray>();
+                    data = tdata.ArrayBuffer();
+                    offset = tdata.ByteOffset();
+                    size = tdata.ByteLength();
+                } else {
+                    throw Napi::TypeError::New(env, "change_property data must be an arraybuffer, typedarray or node buffer");
+                }
+
+                if (size % bpe) {
+                    throw Napi::TypeError::New(env, "change_property data must be divisible by format/8");
+                }
+
+                if (!elems)
+                    elems = size / bpe;
+
+                if (elems * bpe > size) {
+                    throw Napi::TypeError::New(env, "change_property data_len too big?");
+                }
+
+                xcb_change_property(wm->conn, mode, window, property, type, format, elems,
+                                    reinterpret_cast<uint8_t *>(data.Data()) + offset);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("delete_property", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "delete_property requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "delete_property requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("property")) {
+                    throw Napi::TypeError::New(env, "delete_property requires a property");
+                }
+                const uint32_t property = arg.Get("property").As<Napi::Number>().Uint32Value();
+
+                xcb_delete_property(wm->conn, window, property);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("reparent_window", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "reparent_window requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                int32_t x = 0, y = 0;
+                uint32_t window, parent;
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "reparent_window requires a window");
+                }
+                window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("parent")) {
+                    throw Napi::TypeError::New(env, "reparent_window requires a parent");
+                }
+                parent = arg.Get("parent").As<Napi::Number>().Uint32Value();
+
+                if (arg.Has("x")) {
+                    x = arg.Get("x").As<Napi::Number>().Int32Value();
+                }
+                if (arg.Has("y")) {
+                    y = arg.Get("y").As<Napi::Number>().Int32Value();
+                }
+
+                xcb_reparent_window(wm->conn, window, parent, x, y);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("set_input_focus", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "set_input_focus requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t window, revert_to, time = XCB_TIME_CURRENT_TIME;
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "set_input_focus requires a window");
+                }
+                window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("revert_to")) {
+                    throw Napi::TypeError::New(env, "set_input_focus requires a revert_to");
+                }
+                revert_to = arg.Get("revert_to").As<Napi::Number>().Uint32Value();
+
+                if (arg.Has("time")) {
+                    time = arg.Get("time").As<Napi::Number>().Uint32Value();
+                }
+
+                xcb_set_input_focus(wm->conn, revert_to, window, time);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("map_window", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "map_window requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                const auto window = info[1].As<Napi::Number>().Uint32Value();
+
+                xcb_map_window(wm->conn, window);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("unmap_window", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "unmap_window requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                const auto window = info[1].As<Napi::Number>().Uint32Value();
+
+                xcb_unmap_window(wm->conn, window);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("destroy_window", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "destroy_window requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                const auto window = info[1].As<Napi::Number>().Uint32Value();
+
+                xcb_destroy_window(wm->conn, window);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("free_pixmap", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "free_pixmap requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                const auto pixmap = info[1].As<Napi::Number>().Uint32Value();
+
+                xcb_free_pixmap(wm->conn, pixmap);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("kill_client", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "kill_client requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                const auto resource = info[1].As<Napi::Number>().Uint32Value();
+
+                xcb_kill_client(wm->conn, resource);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("change_save_set", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "change_save_set requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t window, mode;
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "change_save_set requires a window");
+                }
+                window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("mode")) {
+                    throw Napi::TypeError::New(env, "change_save_set requires a mode");
+                }
+                mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
+
+                xcb_change_save_set(wm->conn, mode, window);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("query_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 1 || !info[0].IsObject()) {
+                    throw Napi::TypeError::New(env, "unmap_window requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                xcb_window_t window;
+                if (info.Length() > 1) {
+                    window = info[1].As<Napi::Number>().Uint32Value();
+                } else {
+                    window = wm->defaultScreen->root;
+                }
+
+                auto cookie = xcb_query_pointer(wm->conn, window);
+                auto reply = xcb_query_pointer_reply(wm->conn, cookie, nullptr);
+                if (!reply) {
+                    throw Napi::TypeError::New(env, "unable to query pointer");
+                }
+
+                auto obj = Napi::Object::New(env);
+
+                obj.Set("same_screen", Napi::Number::New(env, reply->same_screen));
+                obj.Set("root", Napi::Number::New(env, reply->root));
+                obj.Set("child", Napi::Number::New(env, reply->child));
+                obj.Set("root_x", Napi::Number::New(env, reply->root_x));
+                obj.Set("root_y", Napi::Number::New(env, reply->root_y));
+                obj.Set("win_x", Napi::Number::New(env, reply->win_x));
+                obj.Set("win_y", Napi::Number::New(env, reply->win_y));
+                obj.Set("mask", Napi::Number::New(env, reply->mask));
+
+                free(reply);
+
+                return obj;
+            }));
+
+    xcb.Set("grab_key", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "grab_key requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "grab_key requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("owner_events")) {
+                    throw Napi::TypeError::New(env, "grab_key requires a owner_events");
+                }
+                const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("modifiers")) {
+                    throw Napi::TypeError::New(env, "grab_key requires a modifiers");
+                }
+                const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("key")) {
+                    throw Napi::TypeError::New(env, "grab_key requires a key");
+                }
+                const uint32_t key = arg.Get("key").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("pointer_mode")) {
+                    throw Napi::TypeError::New(env, "grab_key requires a pointer_mode");
+                }
+                const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("keyboard_mode")) {
+                    throw Napi::TypeError::New(env, "grab_key requires a keyboard_mode");
+                }
+                const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+                xcb_grab_key(wm->conn, owner_events, window, modifiers, key, pointer_mode, keyboard_mode);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("ungrab_key", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "ungrab_key requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "ungrab_key requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("modifiers")) {
+                    throw Napi::TypeError::New(env, "ungrab_key requires a modifiers");
+                }
+                const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("key")) {
+                    throw Napi::TypeError::New(env, "ungrab_key requires a key");
+                }
+                const uint32_t key = arg.Get("key").As<Napi::Number>().Uint32Value();
+
+                xcb_ungrab_key(wm->conn, key, window, modifiers);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("grab_button", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "grab_button requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "grab_button requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("owner_events")) {
+                    throw Napi::TypeError::New(env, "grab_button requires a owner_events");
+                }
+                const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("modifiers")) {
+                    throw Napi::TypeError::New(env, "grab_button requires a modifiers");
+                }
+                const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("event_mask")) {
+                    throw Napi::TypeError::New(env, "grab_button requires a event_mask");
+                }
+                const uint32_t event_mask = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("button")) {
+                    throw Napi::TypeError::New(env, "grab_button requires a button");
+                }
+                const uint32_t button = arg.Get("button").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("pointer_mode")) {
+                    throw Napi::TypeError::New(env, "grab_button requires a pointer_mode");
+                }
+                const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("keyboard_mode")) {
+                    throw Napi::TypeError::New(env, "grab_button requires a keyboard_mode");
+                }
+                const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+                xcb_grab_button(wm->conn, owner_events, window, event_mask, pointer_mode, keyboard_mode, XCB_NONE, XCB_NONE, button,
+                                modifiers);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("ungrab_button", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "ungrab_button requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "ungrab_button requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("modifiers")) {
+                    throw Napi::TypeError::New(env, "ungrab_button requires a modifiers");
+                }
+                const uint32_t modifiers = arg.Get("modifiers").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("button")) {
+                    throw Napi::TypeError::New(env, "ungrab_button requires a key");
+                }
+                const uint32_t button = arg.Get("button").As<Napi::Number>().Uint32Value();
+
+                xcb_ungrab_button(wm->conn, button, window, modifiers);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("grab_keyboard", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "grab_keyboard requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "grab_keyboard requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("owner_events")) {
+                    throw Napi::TypeError::New(env, "grab_keyboard requires a owner_events");
+                }
+                const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("pointer_mode")) {
+                    throw Napi::TypeError::New(env, "grab_keyboard requires a pointer_mode");
+                }
+                const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("keyboard_mode")) {
+                    throw Napi::TypeError::New(env, "grab_keyboard requires a keyboard_mode");
+                }
+                const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+                uint32_t time = XCB_TIME_CURRENT_TIME;
+                if (arg.Has("time")) {
+                    time = arg.Get("time").As<Napi::Number>().Uint32Value();
+                }
+
+                auto cookie = xcb_grab_keyboard(wm->conn, owner_events, window, time, pointer_mode, keyboard_mode);
+                auto reply = xcb_grab_keyboard_reply(wm->conn, cookie, nullptr);
+                if (!reply) {
+                    throw Napi::TypeError::New(env, "grab_keyboard no reply");
+                }
+
+                const auto status = reply->status;
+
+                free(reply);
+
+                return Napi::Number::New(env, status);
+            }));
+
+    xcb.Set("ungrab_keyboard", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 1 || !info[0].IsObject()) {
+                    throw Napi::TypeError::New(env, "ungrab_keyboard requires one argument");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t time = XCB_TIME_CURRENT_TIME;
+                if (info.Length() > 1 && info[1].IsNumber()) {
+                    time = info[1].As<Napi::Number>().Uint32Value();
+                }
+
+                xcb_ungrab_keyboard(wm->conn, time);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("grab_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "grab_pointer requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "grab_pointer requires a window");
+                }
+                const uint32_t window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("owner_events")) {
+                    throw Napi::TypeError::New(env, "grab_pointer requires a owner_events");
+                }
+                const uint32_t owner_events = arg.Get("owner_events").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("event_mask")) {
+                    throw Napi::TypeError::New(env, "grab_pointer requires a event_mask");
+                }
+                const uint32_t event_mask = arg.Get("event_mask").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("pointer_mode")) {
+                    throw Napi::TypeError::New(env, "grab_pointer requires a pointer_mode");
+                }
+                const uint32_t pointer_mode = arg.Get("pointer_mode").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("keyboard_mode")) {
+                    throw Napi::TypeError::New(env, "grab_pointer requires a keyboard_mode");
+                }
+                const uint32_t keyboard_mode = arg.Get("keyboard_mode").As<Napi::Number>().Uint32Value();
+
+                uint32_t time = XCB_TIME_CURRENT_TIME;
+                if (arg.Has("time")) {
+                    time = arg.Get("time").As<Napi::Number>().Uint32Value();
+                }
+
+                auto cookie
+                    = xcb_grab_pointer(wm->conn, owner_events, window, event_mask, pointer_mode, keyboard_mode, XCB_NONE, XCB_NONE, time);
+                auto reply = xcb_grab_pointer_reply(wm->conn, cookie, nullptr);
+                if (!reply) {
+                    throw Napi::TypeError::New(env, "grab_pointer no reply");
+                }
+
+                const auto status = reply->status;
+
+                free(reply);
+
+                return Napi::Number::New(env, status);
+            }));
+
+    xcb.Set("ungrab_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 1 || !info[0].IsObject()) {
+                    throw Napi::TypeError::New(env, "ungrab_pointer requires one argument");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t time = XCB_TIME_CURRENT_TIME;
+                if (info.Length() > 1 && info[1].IsNumber()) {
+                    time = info[1].As<Napi::Number>().Uint32Value();
+                }
+
+                xcb_ungrab_pointer(wm->conn, time);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("warp_pointer", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "warp_pointer requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("dst_x")) {
+                    throw Napi::TypeError::New(env, "warp_pointer requires dst_x");
+                }
+                if (!arg.Has("dst_y")) {
+                    throw Napi::TypeError::New(env, "warp_pointer requires dst_y");
+                }
+                const int32_t dst_x = arg.Get("dst_x").As<Napi::Number>().Int32Value();
+                const int32_t dst_y = arg.Get("dst_y").As<Napi::Number>().Int32Value();
+
+                const uint32_t src_window = arg.Has("src_window") ? arg.Get("src_window").As<Napi::Number>().Uint32Value() : XCB_NONE;
+                const uint32_t dst_window = arg.Has("dst_window") ? arg.Get("dst_window").As<Napi::Number>().Uint32Value() : XCB_NONE;
+
+                const int32_t src_x = arg.Has("src_x") ? arg.Get("src_x").As<Napi::Number>().Int32Value() : 0;
+                const int32_t src_y = arg.Has("src_y") ? arg.Get("src_y").As<Napi::Number>().Int32Value() : 0;
+
+                const uint32_t src_width = arg.Has("src_width") ? arg.Get("src_width").As<Napi::Number>().Uint32Value() : 0;
+                const uint32_t src_height = arg.Has("src_height") ? arg.Get("src_height").As<Napi::Number>().Uint32Value() : 0;
+
+                xcb_warp_pointer(wm->conn, src_window, dst_window, src_x, src_y, src_width, src_height, dst_x, dst_y);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("allow_events", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "allow_events requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                if (!arg.Has("mode")) {
+                    throw Napi::TypeError::New(env, "allow_events requires a mode");
+                }
+                const uint32_t mode = arg.Get("mode").As<Napi::Number>().Uint32Value();
+
+                uint32_t time = XCB_TIME_CURRENT_TIME;
+                if (arg.Has("time")) {
+                    time = arg.Get("time").As<Napi::Number>().Uint32Value();
+                }
+
+                xcb_allow_events(wm->conn, mode, time);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("key_symbols_get_keycode", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "key_symbols_get_keycode requires two argument");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                const uint32_t sym = info[1].As<Napi::Number>().Uint32Value();
+
+                Napi::Array array = Napi::Array::New(env);
+
+                xcb_keycode_t *keycodes = xcb_key_symbols_get_keycode(wm->xkb.syms, sym);
+                if (!keycodes) {
+                    return array;
+                }
+
+                uint32_t idx = 0;
+                for (xcb_keycode_t *code = keycodes; *code; ++code, ++idx) {
+                    array.Set(idx, *code);
+                }
+
+                free(keycodes);
+
+                return array;
+            }));
+
+    xcb.Set("poly_fill_rectangle", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "poly_fill_rectangle requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t window, gc;
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "poly_fill_rectangle requires a window");
+                }
+                window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("gc")) {
+                    throw Napi::TypeError::New(env, "poly_fill_rectangle requires a gc");
+                }
+                gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("rects")) {
+                    throw Napi::TypeError::New(env, "poly_fill_rectangle requires a rects");
+                }
+
+                std::vector<xcb_rectangle_t> rectsVector;
+                auto makeRect = [&rectsVector](const Napi::Object &obj) {
+                    if (!obj.Has("width"))
+                        return;
+                    if (!obj.Has("height"))
+                        return;
+                    int16_t x, y;
+                    uint16_t width, height;
+                    if (obj.Has("x")) {
+                        x = obj.Get("x").As<Napi::Number>().Int32Value();
+                    } else {
+                        x = 0;
+                    }
+                    if (obj.Has("y")) {
+                        y = obj.Get("y").As<Napi::Number>().Int32Value();
+                    } else {
+                        y = 0;
+                    }
+                    width = obj.Get("width").As<Napi::Number>().Uint32Value();
+                    height = obj.Get("height").As<Napi::Number>().Uint32Value();
+                    rectsVector.push_back({ x, y, width, height });
+                };
+
+                const auto rects = arg.Get("rects");
+                if (rects.IsArray()) {
+                    const auto rectsArray = rects.As<Napi::Array>();
+                    const size_t sz = rectsArray.Length();
+                    rectsVector.reserve(sz);
+                    for (size_t i = 0; i < sz; ++i) {
+                        const auto item = rectsArray.Get(i);
+                        if (item.IsObject()) {
+                            makeRect(item.As<Napi::Object>());
+                        }
+                    }
+                } else if (rects.IsObject()) {
+                    makeRect(rects.As<Napi::Object>());
+                } else {
+                    throw Napi::TypeError::New(env, "poly_fill_rectangle rects must be an array or object");
+                }
+
+                if (!rectsVector.empty()) {
+                    xcb_poly_fill_rectangle(wm->conn, window, gc, rectsVector.size(), &rectsVector[0]);
+                }
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("create_gc", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "create_gc requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t window;
+                if (!arg.Has("window")) {
+                    throw Napi::TypeError::New(env, "create_gc requires a window");
+                }
+                window = arg.Get("window").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("values")) {
+                    throw Napi::TypeError::New(env, "create_gc requires a values");
+                }
+                auto vals = arg.Get("values").As<Napi::Object>();
+
+                uint32_t values[23];
+                uint32_t mask = 0;
+                uint32_t off = 0;
+
+                if (vals.Has("function")) {
+                    mask |= XCB_GC_FUNCTION;
+                    values[off++] = vals.Get("function").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("plane_mask")) {
+                    mask |= XCB_GC_PLANE_MASK;
+                    values[off++] = vals.Get("plane_mask").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("foreground")) {
+                    mask |= XCB_GC_FOREGROUND;
+                    values[off++] = vals.Get("foreground").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("background")) {
+                    mask |= XCB_GC_BACKGROUND;
+                    values[off++] = vals.Get("background").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("line_width")) {
+                    mask |= XCB_GC_LINE_WIDTH;
+                    values[off++] = vals.Get("line_width").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("line_style")) {
+                    mask |= XCB_GC_LINE_STYLE;
+                    values[off++] = vals.Get("line_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("cap_style")) {
+                    mask |= XCB_GC_CAP_STYLE;
+                    values[off++] = vals.Get("cap_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("join_style")) {
+                    mask |= XCB_GC_JOIN_STYLE;
+                    values[off++] = vals.Get("join_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("fill_style")) {
+                    mask |= XCB_GC_FILL_STYLE;
+                    values[off++] = vals.Get("fill_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("fill_rule")) {
+                    mask |= XCB_GC_FILL_RULE;
+                    values[off++] = vals.Get("fill_rule").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("tile")) {
+                    mask |= XCB_GC_TILE;
+                    values[off++] = vals.Get("tile").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("stipple")) {
+                    mask |= XCB_GC_STIPPLE;
+                    values[off++] = vals.Get("stipple").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("tile_stipple_origin_x")) {
+                    mask |= XCB_GC_TILE_STIPPLE_ORIGIN_X;
+                    values[off++] = vals.Get("tile_stipple_origin_x").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("tile_stipple_origin_y")) {
+                    mask |= XCB_GC_TILE_STIPPLE_ORIGIN_Y;
+                    values[off++] = vals.Get("tile_stipple_origin_y").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("font")) {
+                    mask |= XCB_GC_FONT;
+                    values[off++] = vals.Get("font").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("subwindow_mode")) {
+                    mask |= XCB_GC_SUBWINDOW_MODE;
+                    values[off++] = vals.Get("subwindow_mode").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("graphics_exposures")) {
+                    mask |= XCB_GC_GRAPHICS_EXPOSURES;
+                    values[off++] = vals.Get("graphics_exposures").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("clip_origin_x")) {
+                    mask |= XCB_GC_CLIP_ORIGIN_X;
+                    values[off++] = vals.Get("clip_origin_x").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("clip_origin_y")) {
+                    mask |= XCB_GC_CLIP_ORIGIN_Y;
+                    values[off++] = vals.Get("clip_origin_y").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("clip_mask")) {
+                    mask |= XCB_GC_CLIP_MASK;
+                    values[off++] = vals.Get("clip_mask").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("dash_offset")) {
+                    mask |= XCB_GC_DASH_OFFSET;
+                    values[off++] = vals.Get("dash_offset").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("dash_list")) {
+                    mask |= XCB_GC_DASH_LIST;
+                    values[off++] = vals.Get("dash_list").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("arc_mode")) {
+                    mask |= XCB_GC_ARC_MODE;
+                    values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
+                }
+
+                if (!off) {
+                    throw Napi::TypeError::New(env, "create_gc no value");
+                }
+
+                auto gcid = xcb_generate_id(wm->conn);
+                xcb_create_gc(wm->conn, gcid, window, mask, values);
+                return Napi::Number::New(env, gcid);
+            }));
+
+    xcb.Set("change_gc", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsObject()) {
+                    throw Napi::TypeError::New(env, "change_gc requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+                auto arg = info[1].As<Napi::Object>();
+
+                uv_async_send(wm->asyncFlush);
+
+                uint32_t gc;
+                if (!arg.Has("gc")) {
+                    throw Napi::TypeError::New(env, "change_gc requires a gc");
+                }
+                gc = arg.Get("gc").As<Napi::Number>().Uint32Value();
+
+                if (!arg.Has("values")) {
+                    throw Napi::TypeError::New(env, "create_gc requires a values");
+                }
+                auto vals = arg.Get("values").As<Napi::Object>();
+
+                uint32_t values[23];
+                uint32_t mask = 0;
+                uint32_t off = 0;
+
+                if (vals.Has("function")) {
+                    mask |= XCB_GC_FUNCTION;
+                    values[off++] = vals.Get("function").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("plane_mask")) {
+                    mask |= XCB_GC_PLANE_MASK;
+                    values[off++] = vals.Get("plane_mask").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("foreground")) {
+                    mask |= XCB_GC_FOREGROUND;
+                    values[off++] = vals.Get("foreground").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("background")) {
+                    mask |= XCB_GC_BACKGROUND;
+                    values[off++] = vals.Get("background").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("line_width")) {
+                    mask |= XCB_GC_LINE_WIDTH;
+                    values[off++] = vals.Get("line_width").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("line_style")) {
+                    mask |= XCB_GC_LINE_STYLE;
+                    values[off++] = vals.Get("line_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("cap_style")) {
+                    mask |= XCB_GC_CAP_STYLE;
+                    values[off++] = vals.Get("cap_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("join_style")) {
+                    mask |= XCB_GC_JOIN_STYLE;
+                    values[off++] = vals.Get("join_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("fill_style")) {
+                    mask |= XCB_GC_FILL_STYLE;
+                    values[off++] = vals.Get("fill_style").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("fill_rule")) {
+                    mask |= XCB_GC_FILL_RULE;
+                    values[off++] = vals.Get("fill_rule").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("tile")) {
+                    mask |= XCB_GC_TILE;
+                    values[off++] = vals.Get("tile").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("stipple")) {
+                    mask |= XCB_GC_STIPPLE;
+                    values[off++] = vals.Get("stipple").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("tile_stipple_origin_x")) {
+                    mask |= XCB_GC_TILE_STIPPLE_ORIGIN_X;
+                    values[off++] = vals.Get("tile_stipple_origin_x").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("tile_stipple_origin_y")) {
+                    mask |= XCB_GC_TILE_STIPPLE_ORIGIN_Y;
+                    values[off++] = vals.Get("tile_stipple_origin_y").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("font")) {
+                    mask |= XCB_GC_FONT;
+                    values[off++] = vals.Get("font").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("subwindow_mode")) {
+                    mask |= XCB_GC_SUBWINDOW_MODE;
+                    values[off++] = vals.Get("subwindow_mode").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("graphics_exposures")) {
+                    mask |= XCB_GC_GRAPHICS_EXPOSURES;
+                    values[off++] = vals.Get("graphics_exposures").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("clip_origin_x")) {
+                    mask |= XCB_GC_CLIP_ORIGIN_X;
+                    values[off++] = vals.Get("clip_origin_x").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("clip_origin_y")) {
+                    mask |= XCB_GC_CLIP_ORIGIN_Y;
+                    values[off++] = vals.Get("clip_origin_y").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("clip_mask")) {
+                    mask |= XCB_GC_CLIP_MASK;
+                    values[off++] = vals.Get("clip_mask").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("dash_offset")) {
+                    mask |= XCB_GC_DASH_OFFSET;
+                    values[off++] = vals.Get("dash_offset").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("dash_list")) {
+                    mask |= XCB_GC_DASH_LIST;
+                    values[off++] = vals.Get("dash_list").As<Napi::Number>().Uint32Value();
+                }
+                if (vals.Has("arc_mode")) {
+                    mask |= XCB_GC_ARC_MODE;
+                    values[off++] = vals.Get("arc_mode").As<Napi::Number>().Uint32Value();
+                }
+
+                if (!off) {
+                    throw Napi::TypeError::New(env, "change_gc no value");
+                }
+
+                xcb_change_gc(wm->conn, gc, mask, values);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("free_gc", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "free_gc requires two arguments");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                const auto gcid = info[1].As<Napi::Number>().Uint32Value();
+
+                xcb_free_gc(wm->conn, gcid);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("grab_server", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 1 || !info[0].IsObject()) {
+                    throw Napi::TypeError::New(env, "grab_server requires one argument");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                xcb_grab_server(wm->conn);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("ungrab_server", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 1 || !info[0].IsObject()) {
+                    throw Napi::TypeError::New(env, "ungrab_server requires one argument");
+                }
+
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
+
+                uv_async_send(wm->asyncFlush);
+
+                xcb_ungrab_server(wm->conn);
+
+                return env.Undefined();
+            }));
+
+    xcb.Set("request_window_information", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
+
+                if (info.Length() < 2 || !info[0].IsObject() || !info[1].IsNumber()) {
+                    throw Napi::TypeError::New(env, "request_window_information requires two argument");
+                }
 
 #warning should grab the server for this so we dont get any property updates while this all happens
 
-        auto wm = Wrap<std::shared_ptr<WM> >::unwrap(info[0]);
+                auto wm = Wrap<std::shared_ptr<WM>>::unwrap(info[0]);
 
-        uv_async_send(wm->asyncFlush);
+                uv_async_send(wm->asyncFlush);
 
-        const uint32_t window = info[1].As<Napi::Number>().Uint32Value();
+                const uint32_t window = info[1].As<Napi::Number>().Uint32Value();
 
-        const auto utf8_string = wm->atoms.at("UTF8_STRING");
+                const auto utf8_string = wm->atoms.at("UTF8_STRING");
 
-        auto attribCookie = xcb_get_window_attributes_unchecked(wm->conn, window);
-        auto geomCookie = xcb_get_geometry_unchecked(wm->conn, window);
-        auto leaderCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("WM_CLIENT_LEADER"), XCB_ATOM_WINDOW, 0, 1);
-        auto roleCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("WM_WINDOW_ROLE"), XCB_GET_PROPERTY_TYPE_ANY, 0, 128);
-        auto normalHintsCookie = xcb_icccm_get_wm_normal_hints(wm->conn, window);
-        auto transientCookie = xcb_icccm_get_wm_transient_for(wm->conn, window);
-        auto hintsCookie = xcb_icccm_get_wm_hints(wm->conn, window);
-        auto classCookie = xcb_icccm_get_wm_class(wm->conn, window);
-        auto nameCookie = xcb_icccm_get_wm_name(wm->conn, window);
-        auto protocolsCookie = xcb_icccm_get_wm_protocols(wm->conn, window, wm->atoms.at("WM_PROTOCOLS"));
-        auto ewmhNameCookie = xcb_ewmh_get_wm_name(wm->ewmh, window);
-        auto strutCookie = xcb_ewmh_get_wm_strut(wm->ewmh, window);
-        auto partialStrutCookie = xcb_ewmh_get_wm_strut_partial(wm->ewmh, window);
-        auto stateCookie = xcb_ewmh_get_wm_state(wm->ewmh, window);
-        auto typeCookie = xcb_ewmh_get_wm_window_type(wm->ewmh, window);
-        auto pidCookie = xcb_ewmh_get_wm_pid(wm->ewmh, window);
-        auto desktopCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("_NET_WM_DESKTOP"), XCB_ATOM_CARDINAL, 0, 1);
+                auto attribCookie = xcb_get_window_attributes_unchecked(wm->conn, window);
+                auto geomCookie = xcb_get_geometry_unchecked(wm->conn, window);
+                auto leaderCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("WM_CLIENT_LEADER"), XCB_ATOM_WINDOW, 0, 1);
+                auto roleCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("WM_WINDOW_ROLE"), XCB_GET_PROPERTY_TYPE_ANY, 0, 128);
+                auto normalHintsCookie = xcb_icccm_get_wm_normal_hints(wm->conn, window);
+                auto transientCookie = xcb_icccm_get_wm_transient_for(wm->conn, window);
+                auto hintsCookie = xcb_icccm_get_wm_hints(wm->conn, window);
+                auto classCookie = xcb_icccm_get_wm_class(wm->conn, window);
+                auto nameCookie = xcb_icccm_get_wm_name(wm->conn, window);
+                auto protocolsCookie = xcb_icccm_get_wm_protocols(wm->conn, window, wm->atoms.at("WM_PROTOCOLS"));
+                auto ewmhNameCookie = xcb_ewmh_get_wm_name(wm->ewmh, window);
+                auto strutCookie = xcb_ewmh_get_wm_strut(wm->ewmh, window);
+                auto partialStrutCookie = xcb_ewmh_get_wm_strut_partial(wm->ewmh, window);
+                auto stateCookie = xcb_ewmh_get_wm_state(wm->ewmh, window);
+                auto typeCookie = xcb_ewmh_get_wm_window_type(wm->ewmh, window);
+                auto pidCookie = xcb_ewmh_get_wm_pid(wm->ewmh, window);
+                auto desktopCookie = xcb_get_property(wm->conn, 0, window, wm->atoms.at("_NET_WM_DESKTOP"), XCB_ATOM_CARDINAL, 0, 1);
 
-        xcb_size_hints_t normalHints;
-        xcb_icccm_wm_hints_t wmHints;
-        xcb_icccm_get_wm_class_reply_t wmClass;
-        xcb_icccm_get_text_property_reply_t wmName;
-        xcb_ewmh_get_utf8_strings_reply_t ewmhName;
-        xcb_window_t transientWin, leaderWin;
-        xcb_icccm_get_wm_protocols_reply_t wmProtocols;
-        xcb_ewmh_get_extents_reply_t ewmhStrut;
-        xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
-        xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
-        std::string wmRole;
-        uint32_t pid, desktop;
+                xcb_size_hints_t normalHints;
+                xcb_icccm_wm_hints_t wmHints;
+                xcb_icccm_get_wm_class_reply_t wmClass;
+                xcb_icccm_get_text_property_reply_t wmName;
+                xcb_ewmh_get_utf8_strings_reply_t ewmhName;
+                xcb_window_t transientWin, leaderWin;
+                xcb_icccm_get_wm_protocols_reply_t wmProtocols;
+                xcb_ewmh_get_extents_reply_t ewmhStrut;
+                xcb_ewmh_wm_strut_partial_t ewmhStrutPartial;
+                xcb_ewmh_get_atoms_reply_t ewmhState, ewmhWindowType;
+                std::string wmRole;
+                uint32_t pid, desktop;
 
-        xcb_get_window_attributes_reply_t* attrib = xcb_get_window_attributes_reply(wm->conn, attribCookie, nullptr);
-        xcb_get_geometry_reply_t* geom = xcb_get_geometry_reply(wm->conn, geomCookie, nullptr);
-        if (geom->width < 1 || geom->height < 1) {
-            free(attrib);
-            free(geom);
-            throw Napi::TypeError::New(env, "request_window_information width/height < 1");
-        }
-        xcb_get_property_reply_t* leaderReply = xcb_get_property_reply(wm->conn, leaderCookie, nullptr);
-        if (!leaderReply) {
-            leaderWin = XCB_NONE;
-        } else {
-            if (leaderReply->type != XCB_ATOM_WINDOW || leaderReply->format != 32 || !leaderReply->length) {
-                leaderWin = XCB_NONE;
-            } else {
-                leaderWin = *static_cast<xcb_window_t*>(xcb_get_property_value(leaderReply));
-            }
-            free(leaderReply);
-        }
-        xcb_get_property_reply_t* roleReply = xcb_get_property_reply(wm->conn, roleCookie, nullptr);
-        if (!roleReply) {
-            wmRole.clear();
-        } else {
-            const auto len = xcb_get_property_value_length(roleReply);
-            if (roleReply->format != 8 || !len) {
-                wmRole.clear();
-            } else if (roleReply->type == utf8_string) {
-                wmRole = std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len);
-            } else {
-                wmRole = latin1toutf8(std::string(reinterpret_cast<char*>(xcb_get_property_value(roleReply)), len));
-            }
-            free(roleReply);
-        }
-        if (!xcb_icccm_get_wm_normal_hints_reply(wm->conn, normalHintsCookie, &normalHints, nullptr)) {
-            memset(&normalHints, 0, sizeof(normalHints));
-        }
-        if (!xcb_icccm_get_wm_transient_for_reply(wm->conn, transientCookie, &transientWin, nullptr)) {
-            transientWin = XCB_NONE;
-        }
-        if (!xcb_icccm_get_wm_hints_reply(wm->conn, hintsCookie, &wmHints, nullptr)) {
-            memset(&wmHints, 0, sizeof(wmHints));
-        }
-        if (!xcb_icccm_get_wm_class_reply(wm->conn, classCookie, &wmClass, nullptr)) {
-            memset(&wmClass, 0, sizeof(wmClass));
-        }
-        if (!xcb_icccm_get_wm_name_reply(wm->conn, nameCookie, &wmName, nullptr)) {
-            memset(&wmName, 0, sizeof(wmName));
-        }
-        if (!xcb_ewmh_get_wm_name_reply(wm->ewmh, ewmhNameCookie, &ewmhName, nullptr)) {
-            memset(&ewmhName, 0, sizeof(ewmhName));
-        }
-        if (!xcb_icccm_get_wm_protocols_reply(wm->conn, protocolsCookie, &wmProtocols, nullptr)) {
-            memset(&wmProtocols, 0, sizeof(wmProtocols));
-        }
-        if (!xcb_ewmh_get_wm_strut_reply(wm->ewmh, strutCookie, &ewmhStrut, nullptr)) {
-            memset(&ewmhStrut, 0, sizeof(ewmhStrut));
-        }
-        if (!xcb_ewmh_get_wm_strut_partial_reply(wm->ewmh, partialStrutCookie, &ewmhStrutPartial, nullptr)) {
-            memset(&ewmhStrutPartial, 0, sizeof(ewmhStrutPartial));
-        }
-        if (!xcb_ewmh_get_wm_state_reply(wm->ewmh, stateCookie, &ewmhState, nullptr)) {
-            memset(&ewmhState, 0, sizeof(ewmhState));
-        }
-        if (!xcb_ewmh_get_wm_window_type_reply(wm->ewmh, typeCookie, &ewmhWindowType, nullptr)) {
-            memset(&ewmhWindowType, 0, sizeof(ewmhWindowType));
-        }
-        if (!xcb_ewmh_get_wm_pid_reply(wm->ewmh, pidCookie, &pid, nullptr)) {
-            pid = 0;
-        }
-        xcb_get_property_reply_t* desktopReply = xcb_get_property_reply(wm->conn, desktopCookie, nullptr);
-        if (!desktopReply) {
-            desktop = 0;
-        } else {
-            if (desktopReply->type != XCB_ATOM_CARDINAL || desktopReply->format != 32 || !desktopReply->length) {
-                desktop = 0;
-            } else {
-                desktop = *static_cast<uint32_t*>(xcb_get_property_value(desktopReply));
-            }
-            free(desktopReply);
-        }
+                xcb_get_window_attributes_reply_t *attrib = xcb_get_window_attributes_reply(wm->conn, attribCookie, nullptr);
+                xcb_get_geometry_reply_t *geom = xcb_get_geometry_reply(wm->conn, geomCookie, nullptr);
+                if (geom->width < 1 || geom->height < 1) {
+                    free(attrib);
+                    free(geom);
+                    throw Napi::TypeError::New(env, "request_window_information width/height < 1");
+                }
+                xcb_get_property_reply_t *leaderReply = xcb_get_property_reply(wm->conn, leaderCookie, nullptr);
+                if (!leaderReply) {
+                    leaderWin = XCB_NONE;
+                } else {
+                    if (leaderReply->type != XCB_ATOM_WINDOW || leaderReply->format != 32 || !leaderReply->length) {
+                        leaderWin = XCB_NONE;
+                    } else {
+                        leaderWin = *static_cast<xcb_window_t *>(xcb_get_property_value(leaderReply));
+                    }
+                    free(leaderReply);
+                }
+                xcb_get_property_reply_t *roleReply = xcb_get_property_reply(wm->conn, roleCookie, nullptr);
+                if (!roleReply) {
+                    wmRole.clear();
+                } else {
+                    const auto len = xcb_get_property_value_length(roleReply);
+                    if (roleReply->format != 8 || !len) {
+                        wmRole.clear();
+                    } else if (roleReply->type == utf8_string) {
+                        wmRole = std::string(reinterpret_cast<char *>(xcb_get_property_value(roleReply)), len);
+                    } else {
+                        wmRole = latin1toutf8(std::string(reinterpret_cast<char *>(xcb_get_property_value(roleReply)), len));
+                    }
+                    free(roleReply);
+                }
+                if (!xcb_icccm_get_wm_normal_hints_reply(wm->conn, normalHintsCookie, &normalHints, nullptr)) {
+                    memset(&normalHints, 0, sizeof(normalHints));
+                }
+                if (!xcb_icccm_get_wm_transient_for_reply(wm->conn, transientCookie, &transientWin, nullptr)) {
+                    transientWin = XCB_NONE;
+                }
+                if (!xcb_icccm_get_wm_hints_reply(wm->conn, hintsCookie, &wmHints, nullptr)) {
+                    memset(&wmHints, 0, sizeof(wmHints));
+                }
+                if (!xcb_icccm_get_wm_class_reply(wm->conn, classCookie, &wmClass, nullptr)) {
+                    memset(&wmClass, 0, sizeof(wmClass));
+                }
+                if (!xcb_icccm_get_wm_name_reply(wm->conn, nameCookie, &wmName, nullptr)) {
+                    memset(&wmName, 0, sizeof(wmName));
+                }
+                if (!xcb_ewmh_get_wm_name_reply(wm->ewmh, ewmhNameCookie, &ewmhName, nullptr)) {
+                    memset(&ewmhName, 0, sizeof(ewmhName));
+                }
+                if (!xcb_icccm_get_wm_protocols_reply(wm->conn, protocolsCookie, &wmProtocols, nullptr)) {
+                    memset(&wmProtocols, 0, sizeof(wmProtocols));
+                }
+                if (!xcb_ewmh_get_wm_strut_reply(wm->ewmh, strutCookie, &ewmhStrut, nullptr)) {
+                    memset(&ewmhStrut, 0, sizeof(ewmhStrut));
+                }
+                if (!xcb_ewmh_get_wm_strut_partial_reply(wm->ewmh, partialStrutCookie, &ewmhStrutPartial, nullptr)) {
+                    memset(&ewmhStrutPartial, 0, sizeof(ewmhStrutPartial));
+                }
+                if (!xcb_ewmh_get_wm_state_reply(wm->ewmh, stateCookie, &ewmhState, nullptr)) {
+                    memset(&ewmhState, 0, sizeof(ewmhState));
+                }
+                if (!xcb_ewmh_get_wm_window_type_reply(wm->ewmh, typeCookie, &ewmhWindowType, nullptr)) {
+                    memset(&ewmhWindowType, 0, sizeof(ewmhWindowType));
+                }
+                if (!xcb_ewmh_get_wm_pid_reply(wm->ewmh, pidCookie, &pid, nullptr)) {
+                    pid = 0;
+                }
+                xcb_get_property_reply_t *desktopReply = xcb_get_property_reply(wm->conn, desktopCookie, nullptr);
+                if (!desktopReply) {
+                    desktop = 0;
+                } else {
+                    if (desktopReply->type != XCB_ATOM_CARDINAL || desktopReply->format != 32 || !desktopReply->length) {
+                        desktop = 0;
+                    } else {
+                        desktop = *static_cast<uint32_t *>(xcb_get_property_value(desktopReply));
+                    }
+                    free(desktopReply);
+                }
 
-        const Window win = {
-            window,
-            {
-                attrib->bit_gravity,
-                attrib->win_gravity,
-                attrib->map_state,
-                attrib->override_redirect,
-                attrib->all_event_masks,
-                attrib->your_event_mask,
-                attrib->do_not_propagate_mask
-            }, {
-                geom->root,
-                geom->x,
-                geom->y,
-                geom->width,
-                geom->height,
-                geom->border_width
-            },
-            owm::makeSizeHint(normalHints),
-            owm::makeWMHints(wmHints),
-            owm::makeWMClass(wmClass),
-            std::move(wmRole),
-            owm::makeString(wmName, wmName.encoding == utf8_string),
-            owm::makeString(ewmhName, true), // always UTF8
-            owm::makeAtoms(wmProtocols),
-            owm::makeAtoms(ewmhState),
-            owm::makeAtoms(ewmhWindowType),
-            owm::makeExtents(ewmhStrut),
-            owm::makeStrutPartial(ewmhStrutPartial),
-            pid, transientWin, leaderWin, desktop
-        };
+                const Window win = { window,
+                                     { attrib->bit_gravity, attrib->win_gravity, attrib->map_state, attrib->override_redirect,
+                                       attrib->all_event_masks, attrib->your_event_mask, attrib->do_not_propagate_mask },
+                                     { geom->root, geom->x, geom->y, geom->width, geom->height, geom->border_width },
+                                     owm::makeSizeHint(normalHints),
+                                     owm::makeWMHints(wmHints),
+                                     owm::makeWMClass(wmClass),
+                                     std::move(wmRole),
+                                     owm::makeString(wmName, wmName.encoding == utf8_string),
+                                     owm::makeString(ewmhName, true), // always UTF8
+                                     owm::makeAtoms(wmProtocols),
+                                     owm::makeAtoms(ewmhState),
+                                     owm::makeAtoms(ewmhWindowType),
+                                     owm::makeExtents(ewmhStrut),
+                                     owm::makeStrutPartial(ewmhStrutPartial),
+                                     pid,
+                                     transientWin,
+                                     leaderWin,
+                                     desktop };
 
-        if (wmName.name && wmName.name_len) {
-            xcb_icccm_get_text_property_reply_wipe(&wmName);
-        }
-        if (wmClass.instance_name || wmClass.class_name) {
-            xcb_icccm_get_wm_class_reply_wipe(&wmClass);
-        }
-        if (wmProtocols.atoms && wmProtocols.atoms_len) {
-            xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
-        }
-        if (ewmhName.strings && ewmhName.strings_len) {
-            xcb_ewmh_get_utf8_strings_reply_wipe(&ewmhName);
-        }
-        if (ewmhState.atoms && ewmhState.atoms_len) {
-            xcb_ewmh_get_atoms_reply_wipe(&ewmhState);
-        }
-        if (ewmhWindowType.atoms && ewmhWindowType.atoms_len) {
-            xcb_ewmh_get_atoms_reply_wipe(&ewmhWindowType);
-        }
+                if (wmName.name && wmName.name_len) {
+                    xcb_icccm_get_text_property_reply_wipe(&wmName);
+                }
+                if (wmClass.instance_name || wmClass.class_name) {
+                    xcb_icccm_get_wm_class_reply_wipe(&wmClass);
+                }
+                if (wmProtocols.atoms && wmProtocols.atoms_len) {
+                    xcb_icccm_get_wm_protocols_reply_wipe(&wmProtocols);
+                }
+                if (ewmhName.strings && ewmhName.strings_len) {
+                    xcb_ewmh_get_utf8_strings_reply_wipe(&ewmhName);
+                }
+                if (ewmhState.atoms && ewmhState.atoms_len) {
+                    xcb_ewmh_get_atoms_reply_wipe(&ewmhState);
+                }
+                if (ewmhWindowType.atoms && ewmhWindowType.atoms_len) {
+                    xcb_ewmh_get_atoms_reply_wipe(&ewmhWindowType);
+                }
 
-        free(attrib);
-        free(geom);
+                free(attrib);
+                free(geom);
 
-        return makeWindow(env, win);
-    }));
+                return makeWindow(env, win);
+            }));
 
     xcb.Set("atom", initAtoms(env, wm));
     xcb.Set("event", initEvents(env, wm));
@@ -2973,25 +2977,25 @@ Napi::Value makeXcb(napi_env env, const std::shared_ptr<WM>& wm)
     return xcb;
 }
 
-Napi::Value makeXkb(napi_env env, const std::shared_ptr<WM>& wm)
+Napi::Value makeXkb(napi_env env, const std::shared_ptr<WM> &wm)
 {
     Napi::Object xkb = Napi::Object::New(env);
 
-    xkb.Set("keysym_from_name", Napi::Function::New(env, [](const Napi::CallbackInfo& info) -> Napi::Value {
-        auto env = info.Env();
+    xkb.Set("keysym_from_name", Napi::Function::New(env, [](const Napi::CallbackInfo &info) -> Napi::Value {
+                auto env = info.Env();
 
-        if (info.Length() < 1 || !info[0].IsString()) {
-            throw Napi::TypeError::New(env, "keysym_from_name requires one argument");
-        }
+                if (info.Length() < 1 || !info[0].IsString()) {
+                    throw Napi::TypeError::New(env, "keysym_from_name requires one argument");
+                }
 
-        const std::string key = info[0].As<Napi::String>();
-        const xkb_keysym_t sym = xkb_keysym_from_name(key.c_str(), XKB_KEYSYM_CASE_INSENSITIVE);
-        if (sym == XKB_KEY_NoSymbol) {
-            return env.Undefined();
-        }
+                const std::string key = info[0].As<Napi::String>();
+                const xkb_keysym_t sym = xkb_keysym_from_name(key.c_str(), XKB_KEYSYM_CASE_INSENSITIVE);
+                if (sym == XKB_KEY_NoSymbol) {
+                    return env.Undefined();
+                }
 
-        return Napi::Number::New(env, sym);
-    }));
+                return Napi::Number::New(env, sym);
+            }));
 
     return xkb;
 }

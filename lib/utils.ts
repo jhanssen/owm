@@ -31,17 +31,13 @@ export class Geometry
     public height: number;
 
     constructor(geom: GeometryData = {} as GeometryData) {
-        let {
-            x = 0,
-            y = 0,
-            height = 0,
-            width = 0
-        } = geom;
-
-        this.x = x;
-        this.y = y;
-        this.height = height;
-        this.width = width;
+        const numOr0 = (v: number | null | undefined): number => {
+            return (typeof v === "number" && isFinite(v)) ? v : 0;
+        };
+        this.x = numOr0(geom.x);
+        this.y = numOr0(geom.y);
+        this.height = numOr0(geom.height);
+        this.width = numOr0(geom.width);
     }
 
     contains(geom: Geometry | { x: number, y: number }) {

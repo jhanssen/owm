@@ -1128,11 +1128,16 @@ export class Client implements ContainerItem
     }
 
     private _configure(args: ConfigureArgs, keepHeight?: boolean) {
-        // this._log.info("_configure", args, keepHeight);
-        if ((args.x === undefined) != (args.y === undefined)) {
+        const hasFiniteNumber = (v: number | null | undefined): v is number => {
+            return typeof v === "number" && isFinite(v);
+        };
+        const hasPos = hasFiniteNumber(args.x) && hasFiniteNumber(args.y);
+        const hasSize = hasFiniteNumber(args.width) && hasFiniteNumber(args.height);
+
+        if (hasFiniteNumber(args.x) !== hasFiniteNumber(args.y)) {
             throw new Error(`_configure, x must be set if y is`);
         }
-        if ((args.width === undefined) != (args.height === undefined)) {
+        if (hasFiniteNumber(args.width) !== hasFiniteNumber(args.height)) {
             throw new Error(`_configure, width must be set if height is`);
         }
 
@@ -1143,12 +1148,12 @@ export class Client implements ContainerItem
         } = { window: this._window.window };
         let parentArgs = Object.assign({ window: this._parent }, args);
 
-        if (args.x !== undefined && args.y !== undefined) {
+        if (hasPos) {
             const oldmonitor = this._monitor;
             const oldws = this.workspace;
 
-            this._geometry.x = args.x;
-            this._geometry.y = args.y;
+            this._geometry.x = args.x as number;
+            this._geometry.y = args.y as number;
 
             parentArgs.x = this._frameGeometry.x = this._geometry.x - this._border;
             parentArgs.y = this._frameGeometry.y = this._geometry.y - this._border;
@@ -1182,14 +1187,14 @@ export class Client implements ContainerItem
                 }
             }
         }
-        if (args.width !== undefined && args.height !== undefined) {
+        if (hasSize) {
             if (!this.dock) {
-                this._enforceSize(args.width, args.height, keepHeight, !this._floating);
+                this._enforceSize(args.width as number, args.height as number, keepHeight, !this._floating);
             } else {
-                this._geometry.width = args.width;
-                this._geometry.height = args.height;
-                this._frameGeometry.width = args.width + (this._border * 2);
-                this._frameGeometry.height = args.height + (this._border * 2);
+                this._geometry.width = args.width as number;
+                this._geometry.height = args.height as number;
+                this._frameGeometry.width = (args.width as number) + (this._border * 2);
+                this._frameGeometry.height = (args.height as number) + (this._border * 2);
             }
 
             parentArgs.width = this._frameGeometry.width;
@@ -1203,8 +1208,16 @@ export class Client implements ContainerItem
         this._owm.xcb.configure_window(this._owm.wm, thisArgs);
         this._owm.xcb.configure_window(this._owm.wm, parentArgs);
 
-        // fake an absolute configure notify
-        const fake = Object.assign({ window: thisArgs.window, border_width: 0 }, this.absoluteGeometry);
+        const abs = this.absoluteGeometry;
+        if (!hasFiniteNumber(abs.width) || !hasFiniteNumber(abs.height) || abs.width <= 0 || abs.height <= 0) {
+            this._log.error("_configure: refusing to send synthetic ConfigureNotify with bogus geometry",
+                            "window=0x" + this._window.window.toString(16),
+                            "absoluteGeometry=", JSON.stringify(abs),
+                            "args=", JSON.stringify(args));
+            return;
+        }
+
+        const fake = Object.assign({ window: thisArgs.window, border_width: 0 }, abs);
         this._owm.xcb.send_configure_notify(this._owm.wm, fake);
     }
 
@@ -1252,20 +1265,30 @@ export class Client implements ContainerItem
                 height = maxHeight;
             }
 
-            if (normal.flags & sizeHint.P_ASPECT) {
-                let ar = (width - baseWidth) / (height - baseHeight);
-                if (normal.min_aspect_num > 0 && normal.min_aspect_den > 0 && ar < (normal.min_aspect_num / normal.min_aspect_den)) {
+            // P_ASPECT: ICCCM defines the aspect ratio constraint on
+            // (width - baseWidth) / (height - baseHeight). If either
+            // delta is zero the ratio is undefined (0/0) or degenerate,
+            // and the window is already at its base size so there is
+            // nothing to enforce. Also skip if neither min nor max
+            // aspect is actually specified.
+            const haveMinAspect = normal.min_aspect_num > 0 && normal.min_aspect_den > 0;
+            const haveMaxAspect = normal.max_aspect_num > 0 && normal.max_aspect_den > 0;
+            const dw = width - baseWidth;
+            const dh = height - baseHeight;
+            if ((normal.flags & sizeHint.P_ASPECT) && dw > 0 && dh > 0 && (haveMinAspect || haveMaxAspect)) {
+                let ar = dw / dh;
+                if (haveMinAspect && ar < (normal.min_aspect_num / normal.min_aspect_den)) {
                     ar = normal.min_aspect_num / normal.min_aspect_den;
-                } else if (normal.max_aspect_num > 0 && normal.max_aspect_den > 0 && ar > (normal.max_aspect_num / normal.max_aspect_den)) {
+                } else if (haveMaxAspect && ar > (normal.max_aspect_num / normal.max_aspect_den)) {
                     ar = normal.max_aspect_num / normal.max_aspect_den;
                 }
 
                 let nw = 0, nh = 0;
                 if (keepHeight === true) {
-                    nw = Math.round((height - baseHeight) * ar);
+                    nw = Math.round(dh * ar);
                     nh = Math.round(nw / ar);
                 } else {
-                    nh = Math.round((width - baseWidth) / ar);
+                    nh = Math.round(dw / ar);
                     nw = Math.round(nh * ar);
                 }
 
