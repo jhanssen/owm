@@ -287,7 +287,6 @@ export class EWMH {
             if (propdata !== undefined) {
                 const buffer = propdata.buffer;
                 if (buffer.byteLength % 4) {
-                    // bad
                     throw new Error(`get_property bytelength invalid ${buffer.byteLength}`);
                 }
 
@@ -301,7 +300,6 @@ export class EWMH {
                         }
                     }
                     if (added < u32.length) {
-                        // removed
                         xcb.change_property(owm.wm, { window: window, mode: xcb.propMode.REPLACE,
                                                       property: property, type: xcb.atom.ATOM,
                                                       format: 32, data: n32, data_len: added });
@@ -310,8 +308,8 @@ export class EWMH {
             }
         } catch (e) {
             this._log.error("exception from _remove_property_atom", e);
+        } finally {
+            xcb.ungrab_server(owm.wm);
         }
-
-        xcb.ungrab_server(owm.wm);
     }
 }
