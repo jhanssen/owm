@@ -34,8 +34,12 @@ export class Workspace
     }
 
     set name(name: string | undefined) {
-        if (this._workspaces && name)
-            this._workspaces.removeByName(name);
+        if (this._workspaces && name) {
+            const existing = this._workspaces.workspaceByName(name);
+            if (existing && existing !== this) {
+                throw new Error(`Workspace name '${name}' already in use`);
+            }
+        }
         this._name = name;
     }
 
