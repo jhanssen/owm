@@ -193,10 +193,13 @@ lib.events.on("exit", (exitCode?: number) => {
     });
 });
 
-process.on("SIGINT", () => {
+function shutdown() {
     if (lib) {
         lib.cleanup();
     }
     native.stop();
     process.exit();
-});
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
