@@ -85,7 +85,6 @@ export class ConsoleLogger implements Logger
 
     fatal(...args: any) {
         this.log(Logger.Level.Fatal, ...args);
-        process.exit();
     }
 
     file(...args: any) {
