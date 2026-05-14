@@ -373,7 +373,7 @@ export class Keybindings
 
     private _unbind() {
         this._log.debug("unbind", this._owm.root);
-        this._owm.xcb.ungrab_key(this._owm.wm, { key: this._owm.xcb.grabAny, window: this._owm.root, modifiers: this._owm.xcb.buttonMask.ANY });
+        this._owm.xcb.ungrab_key(this._owm.wm, { key: this._owm.xcb.grabAny, window: this._owm.root, modifiers: this._owm.xcb.modMask.ANY });
     }
 
     private _rebind() {
