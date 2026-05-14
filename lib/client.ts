@@ -751,7 +751,7 @@ export class Client implements ContainerItem
                     client.kill(true);
                 }
             }, this._owm.options.killTimeout);
-        } else if (this._window.pid > 0) {
+        } else if (this._window.pid > 1 && this._window.pid !== process.pid) {
             this._log.info("killing pid");
             process.kill(this._window.pid);
         } else {
