@@ -1089,6 +1089,10 @@ export class OWMLib {
             env: env
         });
 
+        subprocess.on("error", (err) => {
+            this._log.error("spawn error", shell, err);
+        });
+
         if (detached)
             subprocess.unref();
         return subprocess;
