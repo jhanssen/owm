@@ -842,7 +842,8 @@ export class OWMLib {
         this._currentTime = event.time;
 
         // if this is our modifier grab, process that
-        if (event.state === this._moveModifierMask) {
+        const lockMask = this._xcb.modMask.LOCK | this._xcb.modMask["2"];
+        if ((event.state & ~lockMask) === this._moveModifierMask) {
             // yup.
             const client = this.findClientByPosition(event.root_x, event.root_y);
             if (!client || !client.floating) {
