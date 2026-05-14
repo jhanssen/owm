@@ -27,6 +27,7 @@
    "dependencies": {
       "@jhanssen/options": "^1.0.29",
       "dateformat": "^3.0.3",
+      "dbus-next": "^0.10.2",
       "hex-rgb": "^4.1.0",
       "request": "^2.88.0",
       "request-promise-native": "^1.0.8",

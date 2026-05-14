@@ -10,6 +10,7 @@ import { Container, ContainerItemType, isContainer } from "./container";
 import { Match } from "./match";
 import { Geometry } from "./utils";
 import { IPC, IPCMessage } from "./ipc";
+import { Notifications } from "./notifications";
 import { Bar } from "../applets";
 import { EventEmitter } from "events";
 import { spawn, StdioOptions } from "child_process";
@@ -100,6 +101,7 @@ export class OWMLib {
     private _log: Logger;
     private _bindings: Keybindings;
     private _ipc: IPC;
+    private _notifications: Notifications;
     private _root: number;
     private _events: EventEmitter;
     private _activeColor: number;
@@ -130,6 +132,7 @@ export class OWMLib {
         this._root = 0;
         this._events = new EventEmitter();
         this._ipc = new IPC(this, "owm", options.display);
+        this._notifications = new Notifications(this);
 
         this._policy = new Policy(this);
 
@@ -299,6 +302,10 @@ export class OWMLib {
 
     get events() {
         return this._events;
+    }
+
+    get notifications() {
+        return this._notifications;
     }
 
     get groups() {
@@ -1040,6 +1047,10 @@ export class OWMLib {
             // do an explicit flush here
             this._xcb.flush(this._wm);
 
+            this._notifications.init().catch((err) => {
+                this._log.error("notifications init rejected", err);
+            });
+
             this._events.emit("inited");
         });
     }
@@ -1097,6 +1108,7 @@ export class OWMLib {
     }
 
     cleanup() {
+        this._notifications.cleanup();
         for (const client of this._clients) {
             const window = ((client as unknown) as ClientInternal)._window.window;
             this._xcb.change_window_attributes(this._wm, { window: window, event_mask: 0 });
