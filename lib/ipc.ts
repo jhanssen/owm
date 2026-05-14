@@ -61,7 +61,8 @@ export class IPC
                     }
                 } catch (err) {
                     this._log.error("Got error parsing message", msg, err);
-                    ws.send(`{ \"type\": \"error\", \"error\": ${err}`);
+                    const errMsg = err instanceof Error ? err.message : String(err);
+                    ws.send(JSON.stringify({ type: "error", error: errMsg }));
                     ws.removeAllListeners();
                     ws.close();
                     this._clients.delete(ws);
