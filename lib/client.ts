@@ -738,10 +738,11 @@ export class Client implements ContainerItem
 
             // make sure the client dies
             const win = this._window.window;
+            const self = this;
             const owm = this._owm;
             setTimeout(() => {
                 const client = owm.findClientByWindow(win);
-                if (client) {
+                if (client && client === self) {
                     client.kill(true);
                 }
             }, this._owm.options.killTimeout);
