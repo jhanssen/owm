@@ -118,7 +118,7 @@ export class StackingLayoutConfig implements LayoutConfig
 }
 
 function isStackingLayoutConfig(o: any): o is StackingLayoutConfig {
-    return o._type === "stacking";
+    return o != null && o._type === "stacking";
 }
 
 export class StackingLayoutPolicy implements LayoutPolicy
@@ -433,5 +433,5 @@ export class StackingLayoutPolicy implements LayoutPolicy
 }
 
 export function isStackingLayout(o: any): o is StackingLayoutPolicy {
-    return o._type === "stacking";
+    return o != null && o._type === "stacking";
 }

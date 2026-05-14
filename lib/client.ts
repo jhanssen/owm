@@ -1541,7 +1541,7 @@ export namespace Client {
 }
 
 export function isClient(o: any): o is Client {
-    return o._type && o._type === "Client";
+    return o != null && o._type === "Client";
 }
 
 export class ClientGroup {

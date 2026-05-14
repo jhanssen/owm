@@ -69,7 +69,7 @@ export class TilingLayoutConfig implements LayoutConfig
 }
 
 function isTilingLayoutConfig(o: any): o is TilingLayoutConfig {
-    return o._type === "tiling";
+    return o != null && o._type === "tiling";
 }
 
 export class TilingLayoutPolicy implements LayoutPolicy
@@ -183,5 +183,5 @@ export class TilingLayoutPolicy implements LayoutPolicy
 }
 
 export function isTilingLayout(o: any): o is TilingLayoutPolicy {
-    return o._type === "tiling";
+    return o != null && o._type === "tiling";
 }

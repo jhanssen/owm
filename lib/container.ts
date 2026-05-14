@@ -960,5 +960,5 @@ export namespace Container {
 }
 
 export function isContainer(o: any): o is Container {
-    return o._type && o._type === "Container";
+    return o != null && o._type === "Container";
 }
