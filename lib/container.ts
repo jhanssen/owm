@@ -462,7 +462,7 @@ export class Container implements ContainerItem
         }
         let firstOnTopRelated = -1, lastOnTopRelated = -1;
         for (let nidx = 0; nidx < ontopItems.length; ++nidx) {
-            if (item.isRelated(regularItems[nidx]) && item !== regularItems[nidx]) {
+            if (item.isRelated(ontopItems[nidx]) && item !== ontopItems[nidx]) {
                 if (lastOnTopRelated === -1) {
                     firstOnTopRelated = nidx;
                     lastOnTopRelated = nidx;
@@ -604,7 +604,7 @@ export class Container implements ContainerItem
         }
         let firstOnTopRelated = -1, lastOnTopRelated = -1;
         for (let nidx = 0; nidx < ontopItems.length; ++nidx) {
-            if (item.isRelated(regularItems[nidx]) && item !== regularItems[nidx]) {
+            if (item.isRelated(ontopItems[nidx]) && item !== ontopItems[nidx]) {
                 if (lastOnTopRelated === -1) {
                     firstOnTopRelated = nidx;
                     lastOnTopRelated = nidx;
