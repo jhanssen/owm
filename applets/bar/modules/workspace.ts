@@ -131,19 +131,19 @@ export class Workspace extends EventEmitter implements BarModule
         const activeCtx = engine.createFromSurface(this._activeSurface);
         const inactiveCtx = engine.createFromSurface(this._inactiveSurface);
 
-        const { red: bred, blue: bblue, green: bgreen } = this._borderColor;
+        const { red: bred, green: bgreen, blue: bblue } = this._borderColor;
 
-        const { red: ared, blue: ablue, green: agreen } = this._activeBackgroundColor;
-        engine.setSourceRGB(activeCtx, bred, bblue, bgreen);
+        const { red: ared, green: agreen, blue: ablue } = this._activeBackgroundColor;
+        engine.setSourceRGB(activeCtx, bred, bgreen, bblue);
         engine.paint(activeCtx);
-        engine.setSourceRGB(activeCtx, ared, ablue, agreen);
+        engine.setSourceRGB(activeCtx, ared, agreen, ablue);
         engine.pathRectangle(activeCtx, border, border, size - (border * 2), size - (border * 2));
         engine.fill(activeCtx);
 
-        const { red: ired, blue: iblue, green: igreen } = this._inactiveBackgroundColor;
-        engine.setSourceRGB(inactiveCtx, bred, bblue, bgreen);
+        const { red: ired, green: igreen, blue: iblue } = this._inactiveBackgroundColor;
+        engine.setSourceRGB(inactiveCtx, bred, bgreen, bblue);
         engine.paint(inactiveCtx);
-        engine.setSourceRGB(inactiveCtx, ired, iblue, igreen);
+        engine.setSourceRGB(inactiveCtx, ired, igreen, iblue);
         engine.pathRectangle(inactiveCtx, border, border, size - (border * 2), size - (border * 2));
         engine.fill(inactiveCtx);
     }
