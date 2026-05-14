@@ -1281,14 +1281,13 @@ export class OWMLib {
 
         this._xcb.change_window_attributes(this._wm, { window: window, event_mask: 0 });
         this._xcb.unmap_window(this._wm, client.frame);
+        this._xcb.change_save_set(this._wm, { window: window, mode: this._xcb.setMode.DELETE });
         this._xcb.reparent_window(this._wm, { window: window, parent: client.root, x: 0, y: 0 });
         const gc = client.frameGC;
         if (gc !== undefined) {
             this._xcb.free_gc(this._wm, gc)
         }
         this._xcb.destroy_window(this._wm, client.frame);
-
-        this._xcb.change_save_set(this._wm, { window: window, mode: this._xcb.setMode.DELETE });
 
         if (client.ignoreWorkspace) {
             this.relayout();
