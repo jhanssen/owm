@@ -730,8 +730,9 @@ export class Client implements ContainerItem
         const deleteWindow = this._owm.xcb.atom.WM_DELETE_WINDOW;
         if (!force && this._window.wmProtocols.includes(deleteWindow)) {
             this._log.info("sending client delete message");
-            const data = new Uint32Array(1);
+            const data = new Uint32Array(2);
             data[0] = deleteWindow;
+            data[1] = this._owm.currentTime;
             this._owm.xcb.send_client_message(this._owm.wm, { window: this._window.window,
                                                               type: this._owm.xcb.atom.WM_PROTOCOLS,
                                                               data: data });
