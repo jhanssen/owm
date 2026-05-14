@@ -150,9 +150,9 @@ export class Monitors
             if (!first)
                 first = monitor;
             if (x >= monitor.screen.x
-                && x <= monitor.screen.x + monitor.screen.width
+                && x < monitor.screen.x + monitor.screen.width
                 && y >= monitor.screen.y
-                && y <= monitor.screen.y + monitor.screen.height) {
+                && y < monitor.screen.y + monitor.screen.height) {
                 return monitor;
             }
         }

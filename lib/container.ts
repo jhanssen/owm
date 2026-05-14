@@ -789,9 +789,9 @@ export class Container implements ContainerItem
             const item = allItems[i];
             const geom = item.geometry;
             if (x >= geom.x
-                && x <= geom.x + geom.width
+                && x < geom.x + geom.width
                 && y >= geom.y
-                && y <= geom.y + geom.height) {
+                && y < geom.y + geom.height) {
                 if (isContainer(item)) {
                     return (item as Container).findItemByPosition(x, y, itemType);
                 } else if (itemType === ContainerItemType.Client) {
