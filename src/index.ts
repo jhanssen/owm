@@ -101,6 +101,14 @@ process.on("uncaughtException", (err: any) => {
     }
 });
 
+process.on("unhandledRejection", (reason: any) => {
+    if (reason instanceof Error) {
+        log.error("Unhandled promise rejection", reason.message, reason.stack);
+    } else {
+        log.error("Unhandled promise rejection", reason);
+    }
+});
+
 let lib: OWMLib;
 
 const configDir = stringOption("config") || xdgBaseDir.config;
