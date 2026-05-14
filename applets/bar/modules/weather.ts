@@ -48,26 +48,7 @@ export class Weather extends EventEmitter implements BarModule
         this._zip = weatherConfig.zip;
         this._country = weatherConfig.country || "us";
         this._unit = weatherConfig.unit || "f";
-        this._icons = {
-            "01d": "☀",
-            "01n": "☀",
-            "02d": "🌤",
-            "02n": "🌤",
-            "03d": "☁",
-            "03n": "☁",
-            "04d": "🌥",
-            "04n": "🌥",
-            "09d": "🌧",
-            "09n": "🌧",
-            "10d": "🌦",
-            "10n": "🌦",
-            "11d": "⛈",
-            "11n": "⛈",
-            "13d": "🌨",
-            "13n": "🌨",
-            "50d": "🌫",
-            "50n": "🌫"
-        };
+        this._icons = {};
         if (weatherConfig.icons) {
             for (const k in weatherConfig.icons) {
                 this._icons[k] = weatherConfig.icons[k];
