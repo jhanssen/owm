@@ -555,11 +555,7 @@ export class OWMLib {
 
         // grab the left click button for focus policies
         const events = this._xcb.eventMask.BUTTON_PRESS | this._xcb.eventMask.BUTTON_RELEASE;
-        const syncMode = this._xcb.grabMode.SYNC;
-        const asyncMode = this._xcb.grabMode.ASYNC;
-        this._xcb.grab_button(this._wm, { window: this._root, modifiers: 0,
-                                          button: 1, owner_events: 1, event_mask: events,
-                                          pointer_mode: syncMode, keyboard_mode: asyncMode });
+        this._grabButtonAllVariants(1, 0, events);
     }
 
     mapRequest(event: XCB.MapRequest) {
@@ -1103,17 +1099,9 @@ export class OWMLib {
     }
 
     createMoveGrab() {
-        const grabMode = this._xcb.grabMode;
         const events = this._xcb.eventMask.BUTTON_PRESS;
-
-        // left button
-        this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
-                                          button: 1, owner_events: 1, event_mask: events,
-                                          pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
-        // right button
-        this._xcb.grab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask,
-                                          button: 3, owner_events: 1, event_mask: events,
-                                          pointer_mode: grabMode.SYNC, keyboard_mode: grabMode.ASYNC });
+        this._grabButtonAllVariants(1, this._moveModifierMask, events);
+        this._grabButtonAllVariants(3, this._moveModifierMask, events);
     }
 
     cleanup() {
@@ -1330,7 +1318,30 @@ export class OWMLib {
     }
 
     private _releaseMoveGrab() {
-        this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 1 });
-        this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: this._moveModifierMask, button: 3 });
+        this._ungrabButtonAllVariants(1, this._moveModifierMask);
+        this._ungrabButtonAllVariants(3, this._moveModifierMask);
+    }
+
+    private _lockVariants(mods: number): number[] {
+        const lock = this._xcb.modMask.LOCK;
+        const numlock = this._xcb.modMask["2"];
+        return [mods, mods | lock, mods | numlock, mods | lock | numlock];
+    }
+
+    private _grabButtonAllVariants(button: number, mods: number, event_mask: number, pointerMode?: number, keyboardMode?: number) {
+        const grabMode = this._xcb.grabMode;
+        const pm = pointerMode === undefined ? grabMode.SYNC : pointerMode;
+        const km = keyboardMode === undefined ? grabMode.ASYNC : keyboardMode;
+        for (const m of this._lockVariants(mods)) {
+            this._xcb.grab_button(this._wm, { window: this._root, modifiers: m,
+                                              button: button, owner_events: 1, event_mask: event_mask,
+                                              pointer_mode: pm, keyboard_mode: km });
+        }
+    }
+
+    private _ungrabButtonAllVariants(button: number, mods: number) {
+        for (const m of this._lockVariants(mods)) {
+            this._xcb.ungrab_button(this._wm, { window: this._root, modifiers: m, button: button });
+        }
     }
 };
