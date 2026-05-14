@@ -472,8 +472,12 @@ export class Client implements ContainerItem
         if (this._ignoreWorkspace || (ws && ws.visible)) {
             this._setState(Client.State.Normal);
             if (focus === true || focus === undefined) {
+                const win = this._window.window;
                 setImmediate(() => {
-                    this.focus();
+                    const client = owm.findClientByWindow(win);
+                    if (client === this) {
+                        this.focus();
+                    }
                 });
             }
             owm.xcb.send_expose(owm.wm, { window: this._parent, width: this.frameWidth, height: this.frameHeight });

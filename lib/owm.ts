@@ -1000,8 +1000,12 @@ export class OWMLib {
 
         const newfocus = this.findClientUnderCursor();
         if (newfocus) {
+            const win = newfocus.window.window;
             setImmediate(() => {
-                newfocus.focus();
+                const client = this.findClientByWindow(win);
+                if (client === newfocus) {
+                    client.focus();
+                }
             });
             return;
         }
