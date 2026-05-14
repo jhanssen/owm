@@ -47,6 +47,13 @@ export class IPC
         } catch (err) {
         }
 
+        httpServer.on("error", (err) => {
+            this._log.error("ipc http server error", err);
+        });
+        this._ws.on("error", (err) => {
+            this._log.error("ipc websocket server error", err);
+        });
+
         httpServer.listen(path);
 
         this._ws.on("connection", (ws: WebSocket) => {
