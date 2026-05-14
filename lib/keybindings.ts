@@ -224,16 +224,15 @@ export class Keybindings
             if (!codes.length)
                 return;
             const mods = binding.mods;
-            const mode = binding.mode;
-            const grabMode = this._owm.xcb.grabMode;
+            const kbMode = binding.mode;
             for (let code of codes) {
                 if (match) {
-                    this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                    this._grabKeyAllVariants(code, mods, kbMode);
                 } else {
                     const mask = this._owm.xcb.modMask;
+                    const grabMode = this._owm.xcb.grabMode;
                     this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mask.ANY,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: kbMode });
                 }
             }
         }
@@ -258,7 +257,7 @@ export class Keybindings
 
                 const mods = binding.mods;
                 for (let code of binding.codes) {
-                    this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: mods });
+                    this._ungrabKeyAllVariants(code, mods);
                 }
             }
         } else {
@@ -309,18 +308,18 @@ export class Keybindings
         const mode: KeybindingsMode | undefined = this._enteredModes.length > 0 ? this._enteredModes[this._enteredModes.length - 1] : undefined;
         let bindings = mode ? mode.bindings : this._bindings;
         const match = mode ? mode.matchModifiers : true;
+        const lockMask = this._owm.xcb.modMask.LOCK | this._owm.xcb.modMask["2"];
+        const pressMods = press.state & ~lockMask;
 
         for (const [key, keybinding] of bindings) {
-            //console.log("cand. binding", keybinding);
-            if (press.sym === keybinding.sym && (!match || press.state === keybinding.mods)) {
+            if (press.sym === keybinding.sym && (!match || pressMods === keybinding.mods)) {
                 keybinding.call(this);
             }
         }
         if (bindings !== this._bindings) {
             const allowEvents = (bindings: Map<string, Keybinding>) => {
                 for (const [key, keybinding] of bindings) {
-                    //console.log("cand. binding", keybinding);
-                    if (press.sym === keybinding.sym && (!match || press.state === keybinding.mods) && keybinding.sync) {
+                    if (press.sym === keybinding.sym && (!match || pressMods === keybinding.mods) && keybinding.sync) {
                         this._owm.xcb.allow_events(this._owm.wm, { mode: this._owm.xcb.allow.ASYNC_KEYBOARD, time: this._owm.currentTime });
                         return true;
                     }
@@ -350,12 +349,10 @@ export class Keybindings
                 return;
             const mods = keybinding.mods;
             const mode = keybinding.mode;
-            const grabMode = this._owm.xcb.grabMode;
             this._log.debug("codes", codes, mods, mode);
             for (let code of codes) {
                 this._log.debug("really add", this._owm.root, code);
-                this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                       key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                this._grabKeyAllVariants(code, mods, mode);
             }
         }
 
@@ -386,13 +383,10 @@ export class Keybindings
                     return;
                 const mods = keybinding.mods;
                 const mode = keybinding.mode;
-                const grabMode = this._owm.xcb.grabMode;
 
                 this._log.debug("rebind root", this._owm.root, mods, codes);
-                //this._owm.xcb.grab_key(this._owm.wm,
                 for (let code of codes) {
-                    this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: mods,
-                                                           key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: mode });
+                    this._grabKeyAllVariants(code, mods, mode);
                 }
             }
         };
@@ -414,5 +408,25 @@ export class Keybindings
                 return true;
         }
         return false;
+    }
+
+    private _lockVariants(mods: number): number[] {
+        const lock = this._owm.xcb.modMask.LOCK;
+        const numlock = this._owm.xcb.modMask["2"];
+        return [mods, mods | lock, mods | numlock, mods | lock | numlock];
+    }
+
+    private _grabKeyAllVariants(code: number, mods: number, keyboardMode: number) {
+        const grabMode = this._owm.xcb.grabMode;
+        for (const m of this._lockVariants(mods)) {
+            this._owm.xcb.grab_key(this._owm.wm, { window: this._owm.root, owner_events: 1, modifiers: m,
+                                                   key: code, pointer_mode: grabMode.ASYNC, keyboard_mode: keyboardMode });
+        }
+    }
+
+    private _ungrabKeyAllVariants(code: number, mods: number) {
+        for (const m of this._lockVariants(mods)) {
+            this._owm.xcb.ungrab_key(this._owm.wm, { key: code, window: this._owm.root, modifiers: m });
+        }
     }
 }
