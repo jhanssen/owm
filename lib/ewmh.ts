@@ -35,16 +35,20 @@ export class EWMH {
         const xcb = owm.xcb;
 
         const geoms = new Map<number, Geometry>();
+        let highest = 0;
 
         owm.monitors.forEachWorkspace((ws: Workspace) => {
             if (geoms.has(ws.id)) {
                 throw new Error(`geom already has workspace ${ws.id}`);
             }
             geoms.set(ws.id, ws.geometry);
+            if (ws.id > highest) {
+                highest = ws.id;
+            }
             return true;
         });
 
-        const waData = new Uint32Array(geoms.size * 4);
+        const waData = new Uint32Array(highest * 4);
         for (const [num, geom] of geoms) {
             waData[((num - 1) * 4)] = geom.x;
             waData[((num - 1) * 4) + 1] = geom.y;
