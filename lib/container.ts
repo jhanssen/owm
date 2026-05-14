@@ -877,7 +877,7 @@ export class Container implements ContainerItem
         }
         let otherIdx = -1;
         if (other !== undefined) {
-            otherIdx = this._layoutItems.indexOf(item);
+            otherIdx = this._layoutItems.indexOf(other);
             if (otherIdx === -1) {
                 throw new Error("can't find other for changeLayoutOrder");
             }
