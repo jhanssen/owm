@@ -744,7 +744,7 @@ export class OWMLib {
                     } = { window: event.window };
                     if (flags & ewmh.moveResizeWindow.X)
                         cfg.x = i32[1];
-                    if (flags & ewmh.moveResizeWindow.X)
+                    if (flags & ewmh.moveResizeWindow.Y)
                         cfg.y = i32[2];
                     if (flags & ewmh.moveResizeWindow.WIDTH)
                         cfg.width = i32[3];
